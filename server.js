@@ -19,7 +19,7 @@ function buildPocketHeaders(req) {
     token = `Bearer ${token.trim()}`;
   }
 
-  const language = req.query.language || req.headers['language'] || req.query.selected_language || 'hindi';
+  const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
 
   return {
     'Host': 'api.pocketfm.com',
@@ -127,8 +127,8 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
       });
     }
 
-    const language = req.query.language || req.headers['language'] || req.query.selected_language || 'hindi';
-    const apiType = req.query.api_type || 'explore_v2';
+    const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+    const apiType = req.headers['api_type'] || req.headers['api-type'] || req.query.api_type || 'explore_v2';
 
     const queryParams = new URLSearchParams({
       api_type: apiType,
@@ -219,8 +219,8 @@ app.get(['/search', '/api/search'], async (req, res) => {
       });
     }
 
-    const query = req.query.query || req.query.q || '';
-    const genre = req.query.genre || '';
+    const query = req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
+    const genre = req.headers['genre'] || req.query.genre || '';
 
     const queryParams = new URLSearchParams({
       query: query,
@@ -268,12 +268,12 @@ app.get(['/search', '/api/search'], async (req, res) => {
 
 app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
   try {
-    const showId = req.params.show_id || req.query.show_id;
+    const showId = req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.params.show_id || req.query.show_id;
 
     if (!showId) {
       return res.status(400).json({
         success: false,
-        error: "Missing 'show_id'. Pass it as path param (/show/:id) or query param (?show_id=...)"
+        error: "Missing 'show_id'. Pass it in headers (show_id: ...) or query params (?show_id=...)"
       });
     }
 
@@ -286,9 +286,9 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       });
     }
 
-    const startPtr = parseInt(req.query.curr_ptr || '0', 10);
-    const pageSource = req.query.page_source || 'show_detail';
-    const batchSize = Math.min(Math.max(parseInt(req.query.limit || '20', 10), 1), 50);
+    const startPtr = parseInt(req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
+    const pageSource = req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
+    const batchSize = Math.min(Math.max(parseInt(req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
 
     const ptrList = [];
     for (let i = 0; i < batchSize; i++) {
@@ -380,19 +380,19 @@ app.all(['/unlock', '/api/unlock', '/api/subscribe', '/api/user_action'], async 
       });
     }
 
-    const showId = req.query.show_id || req.query.entity_id || req.body?.show_id || req.body?.entity_id;
-    const storyId = req.query.story_id || req.body?.story_id;
+    const showId = req.headers['show_id'] || req.headers['show-id'] || req.headers['entity_id'] || req.headers['entity-id'] || req.query.show_id || req.query.entity_id || req.body?.show_id || req.body?.entity_id;
+    const storyId = req.headers['story_id'] || req.headers['story-id'] || req.headers['storyid'] || req.query.story_id || req.body?.story_id;
 
     if (!showId || !storyId) {
       return res.status(400).json({
         success: false,
-        error: "Missing 'show_id' or 'story_id'. Please pass them in query params or body."
+        error: "Missing 'show_id' or 'story_id'. Please pass them in headers, query params or body."
       });
     }
 
-    const action = req.query.action || req.body?.action || 'subscribe_story';
-    const entityType = req.query.entity_type || req.body?.entity_type || 'show';
-    const source = req.query.source || req.body?.source || 'player';
+    const action = req.headers['action'] || req.query.action || req.body?.action || 'subscribe_story';
+    const entityType = req.headers['entity_type'] || req.headers['entity-type'] || req.query.entity_type || req.body?.entity_type || 'show';
+    const source = req.headers['source'] || req.query.source || req.body?.source || 'player';
 
     const payload = {
       action: action,
@@ -431,12 +431,12 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
       });
     }
 
-    const showIds = req.query.show_id || req.query.show_ids;
+    const showIds = req.headers['show_id'] || req.headers['show-id'] || req.headers['show_ids'] || req.headers['show-ids'] || req.headers['showid'] || req.query.show_id || req.query.show_ids;
 
     if (!showIds) {
       return res.status(400).json({
         success: false,
-        error: "Missing 'show_id' (or 'show_ids'). Please pass it in query params."
+        error: "Missing 'show_id' (or 'show_ids'). Please pass it in headers or query params."
       });
     }
 
