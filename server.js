@@ -20,7 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 function buildPocketHeaders(req) {
   // Extract Authorization token
   let token = req.headers['authorization'] || req.headers['auth'] || req.headers['x-auth-token'] || process.env.DEFAULT_BEARER_TOKEN || '';
-  
+
   if (token && !token.toLowerCase().startsWith('bearer ')) {
     token = `Bearer ${token.trim()}`;
   }
@@ -38,6 +38,7 @@ function buildPocketHeaders(req) {
     'app-version': '2013',
     'language': language,
     'authorization': token,
+    'accept-encoding': 'gzip',
     'User-Agent': 'okhttp/4.9.2'
   };
 }
@@ -84,7 +85,7 @@ async function forwardToPocketFM(targetUrl, req, res) {
 app.get(['/health', '/ping'], (req, res) => {
   res.status(200).json({
     status: 'online',
-    message: 'Pocket FM API Proxy is awake and running',
+    message: 'API Proxy is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
@@ -97,7 +98,7 @@ app.get(['/health', '/ping'], (req, res) => {
 app.get('/api/feed', (req, res) => {
   const language = req.headers['language'] || req.query.selected_language || req.query.language || 'hindi';
   const apiType = req.query.api_type || 'explore_v2';
-  
+
   const queryParams = new URLSearchParams({
     api_type: apiType,
     selected_language: language,
@@ -133,7 +134,7 @@ app.get('/api/search', (req, res) => {
 // -------------------------------------------------------------
 app.get(['/api/show', '/api/show/:show_id'], (req, res) => {
   const showId = req.params.show_id || req.query.show_id;
-  
+
   if (!showId) {
     return res.status(400).json({
       success: false,
