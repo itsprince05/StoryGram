@@ -115,18 +115,96 @@ app.get(['/health', '/ping'], (req, res) => {
   });
 });
 
-app.get('/api/feed', (req, res) => {
-  const language = req.headers['language'] || req.query.selected_language || req.query.language || 'hindi';
-  const apiType = req.query.api_type || 'explore_v2';
+app.get('/api/feed', async (req, res) => {
+  try {
+    const headers = buildPocketHeaders(req);
 
-  const queryParams = new URLSearchParams({
-    api_type: apiType,
-    selected_language: language,
-    ...req.query
-  }).toString();
+    if (!headers.authorization || headers.authorization === 'Bearer ') {
+      return res.status(401).json({
+        success: false,
+        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers."
+      });
+    }
 
-  const url = `${BASE_URL}/v2/feed_api/get_feed_data?${queryParams}`;
-  return forwardToPocketFM(url, req, res);
+    const language = req.headers['language'] || req.query.selected_language || req.query.language || 'hindi';
+    const apiType = req.query.api_type || 'explore_v2';
+
+    const queryParams = new URLSearchParams({
+      api_type: apiType,
+      selected_language: language,
+      ...req.query
+    }).toString();
+
+    const url = `${BASE_URL}/v2/feed_api/get_feed_data?${queryParams}`;
+    const { statusCode, data } = await fetchViaWorkerProxy(url, headers, 'GET');
+
+    if (!data || typeof data !== 'object') {
+      return res.status(statusCode).send(data);
+    }
+
+    const rawModules = Array.isArray(data.result) ? data.result : [];
+    const filteredModules = [];
+
+    for (const mod of rawModules) {
+      if (!mod) continue;
+
+      const rawEntities = Array.isArray(mod.entities) ? mod.entities : [];
+      const shows = [];
+
+      for (const ent of rawEntities) {
+        if (!ent) continue;
+
+        let showId = "";
+        let title = "";
+        let imageUrl = "";
+
+        if (ent.type === 'show' && ent.value) {
+          showId = ent.value.show_id || ent.value.entity_id || "";
+          title = ent.value.show_title || ent.value.title || "";
+          imageUrl = ent.value.image_url || ent.value.cover_url || ent.value.gift_url || "";
+        } else if (ent.type === 'top_10_show' && ent.value) {
+          const showInfo = ent.value.show_info || ent.value;
+          showId = ent.value.show_id || showInfo.show_id || showInfo.entity_id || "";
+          title = showInfo.show_title || showInfo.title || "";
+          imageUrl = showInfo.image_url || showInfo.cover_url || showInfo.gift_url || "";
+        } else if (ent.value) {
+          const val = ent.value.show_info || ent.value;
+          showId = val.show_id || val.entity_id || "";
+          title = val.show_title || val.title || "";
+          imageUrl = val.image_url || val.cover_url || val.gift_url || "";
+        }
+
+        if (showId || title) {
+          shows.push({
+            show_id: showId,
+            title: title,
+            image_url: imageUrl
+          });
+        }
+      }
+
+      if (shows.length > 0 || mod.module_name) {
+        filteredModules.push({
+          module_name: mod.module_name || "",
+          shows: shows
+        });
+      }
+    }
+
+    const formattedResponse = {
+      status: data.status !== undefined ? data.status : 1,
+      message: data.message || "Home feed details",
+      result: filteredModules
+    };
+
+    return res.status(200).json(formattedResponse);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to process feed',
+      error: error.message
+    });
+  }
 });
 
 app.get('/api/search', async (req, res) => {
@@ -171,9 +249,8 @@ app.get('/api/search', async (req, res) => {
 
     const formattedResponse = {
       status: data.status !== undefined ? data.status : 1,
-      message: data.message || "successfully fetched shows",
+      message: data.message || "successfully fetched results",
       result: {
-        title: data.result?.title || "Top Results",
         shows: filteredShows
       }
     };
@@ -277,7 +354,7 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
           show_title: baseShow.show_title || "",
           image_url: baseShow.image_url || "",
           completed: Boolean(baseShow.completed),
-          show_desc_en: baseShow.show_desc_en || baseShow.show_desc || "",
+          description: baseShow.show_desc_en || baseShow.show_desc || baseShow.description || "",
           show_id: baseShow.show_id || showId,
           episodes_count: typeof baseShow.episodes_count === 'number' ? baseShow.episodes_count : parseInt(baseShow.episodes_count || '0', 10),
           stories: allStories,
