@@ -129,18 +129,63 @@ app.get('/api/feed', (req, res) => {
   return forwardToPocketFM(url, req, res);
 });
 
-app.get('/api/search', (req, res) => {
-  const query = req.query.query || req.query.q || '';
-  const genre = req.query.genre || '';
+app.get('/api/search', async (req, res) => {
+  try {
+    const headers = buildPocketHeaders(req);
 
-  const queryParams = new URLSearchParams({
-    query: query,
-    genre: genre,
-    ...req.query
-  }).toString();
+    if (!headers.authorization || headers.authorization === 'Bearer ') {
+      return res.status(401).json({
+        success: false,
+        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers."
+      });
+    }
 
-  const url = `${BASE_URL}/v3/search/universal.search?${queryParams}`;
-  return forwardToPocketFM(url, req, res);
+    const query = req.query.query || req.query.q || '';
+    const genre = req.query.genre || '';
+
+    const queryParams = new URLSearchParams({
+      query: query,
+      genre: genre,
+      ...req.query
+    }).toString();
+
+    const url = `${BASE_URL}/v3/search/universal.search?${queryParams}`;
+    const { statusCode, data } = await fetchViaWorkerProxy(url, headers, 'GET');
+
+    if (!data || typeof data !== 'object') {
+      return res.status(statusCode).send(data);
+    }
+
+    const rawShows = data.result?.shows || [];
+    const filteredShows = [];
+
+    for (const show of rawShows) {
+      if (show && (show.entity_id || show.show_id || show.title)) {
+        filteredShows.push({
+          show_id: show.entity_id || show.show_id || "",
+          title: show.title || show.show_title || "",
+          image_url: show.image_url || show.cover_url || show.thumbnail_url || ""
+        });
+      }
+    }
+
+    const formattedResponse = {
+      status: data.status !== undefined ? data.status : 1,
+      message: data.message || "successfully fetched shows",
+      result: {
+        title: data.result?.title || "Top Results",
+        shows: filteredShows
+      }
+    };
+
+    return res.status(200).json(formattedResponse);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to process search',
+      error: error.message
+    });
+  }
 });
 
 app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
@@ -205,7 +250,6 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
           if (story && (story.story_id || story.story_title || story.media_url)) {
             allStories.push({
               story_title: story.story_title || "",
-              show_id: story.show_id || showId,
               media_url: story.media_url || "",
               duration: typeof story.duration === 'number' ? story.duration : parseInt(story.duration || '0', 10),
               story_id: story.story_id || "",
