@@ -1,10 +1,30 @@
 import os
 import sys
+import subprocess
+
+def auto_install_deps():
+    packages = {
+        "requests": "requests",
+        "urllib3": "urllib3",
+        "Crypto": "pycryptodome",
+        "pywidevine": "pywidevine"
+    }
+    for mod, pkg in packages.items():
+        try:
+            __import__(mod)
+        except ImportError:
+            print(f"Auto-installing missing Python dependency: {pkg}...", flush=True)
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+            except Exception as e:
+                print(f"Failed to auto-install {pkg}: {e}", file=sys.stderr, flush=True)
+
+auto_install_deps()
+
 import re
 import time
 import shutil
 import platform
-import subprocess
 import zipfile
 import xml.etree.ElementTree as ET
 import urllib3
