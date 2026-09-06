@@ -332,8 +332,7 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
               duration: typeof story.duration === 'number' ? story.duration : parseInt(story.duration || '0', 10),
               story_id: story.story_id || "",
               media_url_enc: story.media_url_enc || "",
-              media_url_enc_fairplay: story.media_url_enc_fairplay || "",
-              natural_sequence_number: typeof story.natural_sequence_number === 'number' ? story.natural_sequence_number : parseInt(story.natural_sequence_number || '0', 10)
+              media_url_enc_fairplay: story.media_url_enc_fairplay || ""
             });
           }
         }
@@ -458,20 +457,13 @@ app.get(['/api/saved_stories', '/api/get_saved_stories'], async (req, res) => {
     for (const story of rawStories) {
       if (!story) continue;
 
-      const seqNum = typeof story.natural_sequence_number === 'number'
-        ? story.natural_sequence_number
-        : typeof story.seq_number === 'number'
-          ? story.seq_number
-          : parseInt(story.natural_sequence_number || story.seq_number || '0', 10);
-
       filteredStories.push({
         story_title: story.story_title || story.title || "",
         media_url: story.media_url || "",
         duration: typeof story.duration === 'number' ? story.duration : parseInt(story.duration || '0', 10),
         story_id: story.story_id || "",
         media_url_enc: story.media_url_enc || "",
-        media_url_enc_fairplay: story.media_url_enc_fairplay || "",
-        natural_sequence_number: seqNum
+        media_url_enc_fairplay: story.media_url_enc_fairplay || ""
       });
     }
 
