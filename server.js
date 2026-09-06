@@ -6,26 +6,19 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = 'https://api.pocketfm.com';
+const WORKER_PROXY_URL = 'https://curl-proxy.bruceliu-dev.workers.dev/';
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/**
- * Helper function to construct Pocket FM headers dynamically.
- * Client only needs to send 'authorization' (or 'auth') and optionally 'language'.
- * All other required device/platform headers are automatically attached.
- */
 function buildPocketHeaders(req) {
-  // Extract Authorization token
   let token = req.headers['authorization'] || req.headers['auth'] || req.headers['x-auth-token'] || process.env.DEFAULT_BEARER_TOKEN || '';
 
   if (token && !token.toLowerCase().startsWith('bearer ')) {
     token = `Bearer ${token.trim()}`;
   }
 
-  // Extract language from header, or query param, or default to hindi
   const language = req.headers['language'] || req.query.language || req.query.selected_language || 'hindi';
 
   return {
@@ -43,9 +36,6 @@ function buildPocketHeaders(req) {
   };
 }
 
-/**
- * Common request dispatcher for Pocket FM
- */
 async function forwardToPocketFM(targetUrl, req, res) {
   try {
     const headers = buildPocketHeaders(req);
@@ -57,31 +47,59 @@ async function forwardToPocketFM(targetUrl, req, res) {
       });
     }
 
-    const response = await axios({
-      method: req.method,
+    const proxyPayload = {
       url: targetUrl,
-      headers: headers,
-      params: req.query,
-      data: req.method !== 'GET' ? req.body : undefined,
-      timeout: 15000,
-      validateStatus: () => true // Allow handling non-200 responses smoothly
+      method: req.method.toUpperCase(),
+      headers: headers
+    };
+
+    if (['POST', 'PUT', 'PATCH'].includes(req.method.toUpperCase()) && req.body && Object.keys(req.body).length > 0) {
+      proxyPayload.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    }
+
+    const workerResponse = await axios.post(WORKER_PROXY_URL, proxyPayload, {
+      headers: {
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8',
+        'Content-Type': 'application/json',
+        'Origin': 'https://curlonline.com',
+        'Referer': 'https://curlonline.com/',
+        'sec-ch-ua': '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'cross-site',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0'
+      },
+      timeout: 30000,
+      validateStatus: () => true
     });
 
-    return res.status(response.status).json(response.data);
+    const statusCode = workerResponse.data?.status || workerResponse.status || 200;
+    let bodyData = workerResponse.data?.body !== undefined ? workerResponse.data.body : workerResponse.data;
+
+    if (typeof bodyData === 'string') {
+      try {
+        bodyData = JSON.parse(bodyData);
+      } catch (err) {}
+    }
+
+    if (typeof bodyData === 'object' && bodyData !== null) {
+      return res.status(statusCode).json(bodyData);
+    } else {
+      return res.status(statusCode).send(bodyData);
+    }
   } catch (error) {
-    console.error(`[Proxy Error] ${req.method} ${targetUrl} ->`, error.message);
     return res.status(error.response?.status || 500).json({
       success: false,
-      message: 'Failed to fetch from Pocket FM API',
+      message: 'Failed to fetch from Pocket FM API via Worker Proxy',
       error: error.message,
       details: error.response?.data || null
     });
   }
 }
 
-// -------------------------------------------------------------
-// 1. Health / Keep-Alive Endpoint (For 1-min Cron Job)
-// -------------------------------------------------------------
 app.get(['/health', '/ping'], (req, res) => {
   res.status(200).json({
     status: 'online',
@@ -91,10 +109,6 @@ app.get(['/health', '/ping'], (req, res) => {
   });
 });
 
-// -------------------------------------------------------------
-// 2. Feed Data Endpoint (Explore / Feed)
-// Example: GET /api/feed?api_type=explore_v2&selected_language=hindi
-// -------------------------------------------------------------
 app.get('/api/feed', (req, res) => {
   const language = req.headers['language'] || req.query.selected_language || req.query.language || 'hindi';
   const apiType = req.query.api_type || 'explore_v2';
@@ -109,10 +123,6 @@ app.get('/api/feed', (req, res) => {
   return forwardToPocketFM(url, req, res);
 });
 
-// -------------------------------------------------------------
-// 3. Universal Search Endpoint
-// Example: GET /api/search?query=insta%20millionaire&genre=
-// -------------------------------------------------------------
 app.get('/api/search', (req, res) => {
   const query = req.query.query || req.query.q || '';
   const genre = req.query.genre || '';
@@ -127,11 +137,6 @@ app.get('/api/search', (req, res) => {
   return forwardToPocketFM(url, req, res);
 });
 
-// -------------------------------------------------------------
-// 4. Show Details Endpoint
-// Example 1: GET /api/show?show_id=4befca3da259b11359969ac8d4813650c587b440&curr_ptr=100
-// Example 2: GET /api/show/4befca3da259b11359969ac8d4813650c587b440
-// -------------------------------------------------------------
 app.get(['/api/show', '/api/show/:show_id'], (req, res) => {
   const showId = req.params.show_id || req.query.show_id;
 
@@ -154,29 +159,17 @@ app.get(['/api/show', '/api/show/:show_id'], (req, res) => {
   return forwardToPocketFM(url, req, res);
 });
 
-// -------------------------------------------------------------
-// 5. Universal Dynamic Proxy (Hit ANY Pocket FM Endpoint)
-// Example: GET /api/proxy/v2/content_api/episode.get_details?episode_id=...
-// -------------------------------------------------------------
 app.all('/api/proxy/*', (req, res) => {
-  const endpointPath = req.params[0]; // captures everything after /api/proxy/
+  const endpointPath = req.params[0];
   const queryParams = new URLSearchParams(req.query).toString();
   const url = `${BASE_URL}/${endpointPath}${queryParams ? `?${queryParams}` : ''}`;
   return forwardToPocketFM(url, req, res);
 });
 
-// -------------------------------------------------------------
-// 6. Home Route
-// -------------------------------------------------------------
 app.get('/', (req, res) => {
   res.send('Running...');
 });
 
-// Start Server
 app.listen(PORT, () => {
-  console.log(`=========================================`);
-  console.log(`🚀 Pocket FM Proxy Server running on port ${PORT}`);
-  console.log(`🌐 Base URL: http://localhost:${PORT}`);
-  console.log(`💓 Keep-alive endpoint: http://localhost:${PORT}/health`);
-  console.log(`=========================================`);
+  console.log(`Server running on port ${PORT}`);
 });
