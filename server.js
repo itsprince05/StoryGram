@@ -24,6 +24,7 @@ function buildPocketHeaders(req) {
   return {
     'Host': 'api.pocketfm.com',
     'app-name': 'pocket_fm',
+    'platform': 'android',
     'content-type': 'application/json;charset=utf-8',
     'accept': 'application/json',
     'version-name': '9.1.3',
@@ -32,7 +33,7 @@ function buildPocketHeaders(req) {
     'language': language,
     'authorization': token,
     'accept-encoding': 'gzip',
-    'User-Agent': 'okhttp/4.9.2'
+    'User-Agent': 'com.radio.pocketfm'
   };
 }
 
@@ -368,6 +369,125 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to process show details batch',
+      error: error.message
+    });
+  }
+});
+
+app.all(['/api/subscribe', '/api/user_action'], async (req, res) => {
+  try {
+    const headers = buildPocketHeaders(req);
+
+    if (!headers.authorization || headers.authorization === 'Bearer ') {
+      return res.status(401).json({
+        success: false,
+        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers."
+      });
+    }
+
+    const showId = req.query.show_id || req.query.entity_id || req.body?.show_id || req.body?.entity_id;
+    const storyId = req.query.story_id || req.body?.story_id;
+
+    if (!showId || !storyId) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing 'show_id' or 'story_id'. Please pass them in query params or body."
+      });
+    }
+
+    const action = req.query.action || req.body?.action || 'subscribe_story';
+    const entityType = req.query.entity_type || req.body?.entity_type || 'show';
+    const source = req.query.source || req.body?.source || 'player';
+
+    const payload = {
+      action: action,
+      entity_id: showId,
+      entity_type: entityType,
+      progress_action: "",
+      source: source,
+      story_id: storyId
+    };
+
+    const targetUrl = `${BASE_URL}/v2/user_api/user_action.update`;
+    const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, 'POST', payload);
+
+    if (typeof data === 'object' && data !== null) {
+      return res.status(statusCode).json(data);
+    } else {
+      return res.status(statusCode).send(data);
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update user action',
+      error: error.message
+    });
+  }
+});
+
+app.get(['/api/saved_stories', '/api/get_saved_stories'], async (req, res) => {
+  try {
+    const headers = buildPocketHeaders(req);
+
+    if (!headers.authorization || headers.authorization === 'Bearer ') {
+      return res.status(401).json({
+        success: false,
+        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers."
+      });
+    }
+
+    const showIds = req.query.show_ids || req.query.show_id;
+
+    if (!showIds) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing 'show_ids' (or 'show_id'). Please pass it in query params."
+      });
+    }
+
+    const targetUrl = `${BASE_URL}/v2/feed_api/get_saved_stories?show_ids=${encodeURIComponent(showIds)}`;
+    const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
+
+    if (!data || typeof data !== 'object') {
+      return res.status(statusCode).send(data);
+    }
+
+    const rawStories = data.result?.stories || [];
+    const filteredStories = [];
+
+    for (const story of rawStories) {
+      if (!story) continue;
+
+      const seqNum = typeof story.natural_sequence_number === 'number'
+        ? story.natural_sequence_number
+        : typeof story.seq_number === 'number'
+          ? story.seq_number
+          : parseInt(story.natural_sequence_number || story.seq_number || '0', 10);
+
+      filteredStories.push({
+        story_title: story.story_title || story.title || "",
+        media_url: story.media_url || "",
+        duration: typeof story.duration === 'number' ? story.duration : parseInt(story.duration || '0', 10),
+        story_id: story.story_id || "",
+        media_url_enc: story.media_url_enc || "",
+        media_url_enc_fairplay: story.media_url_enc_fairplay || "",
+        natural_sequence_number: seqNum
+      });
+    }
+
+    const formattedResponse = {
+      status: data.status !== undefined ? data.status : 1,
+      message: data.message || "Successfully fetched saved stories !!!",
+      result: {
+        stories: filteredStories
+      }
+    };
+
+    return res.status(200).json(formattedResponse);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to process saved stories',
       error: error.message
     });
   }
