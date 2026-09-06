@@ -1,12 +1,40 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+const { spawn } = require('child_process');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = 'https://api.pocketfm.com';
 const WORKER_PROXY_URL = 'https://curl-proxy.bruceliu-dev.workers.dev/';
+
+// Directory for temporary decrypted streams
+const STREAM_DIR = path.join(__dirname, 'temp_streams');
+if (!fs.existsSync(STREAM_DIR)) {
+  fs.mkdirSync(STREAM_DIR, { recursive: true });
+}
+
+// Cleanup streams older than 2 hours
+function cleanupOldStreams() {
+  const maxAgeMs = 2 * 60 * 60 * 1000; // 2 hours
+  const now = Date.now();
+  fs.readdir(STREAM_DIR, (err, files) => {
+    if (err || !files) return;
+    files.forEach(file => {
+      const filePath = path.join(STREAM_DIR, file);
+      fs.stat(filePath, (err, stats) => {
+        if (!err && (now - stats.mtimeMs > maxAgeMs)) {
+          fs.unlink(filePath, () => {});
+        }
+      });
+    });
+  });
+}
+setInterval(cleanupOldStreams, 30 * 60 * 1000); // Check every 30 mins
 
 app.use(cors());
 app.use(express.json());
@@ -106,10 +134,46 @@ async function forwardToPocketFM(targetUrl, req, res) {
   }
 }
 
+function streamAudioFile(req, res, filePath) {
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+
+  if (range) {
+    const parts = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+    if (start >= fileSize) {
+      res.status(416).send('Requested range not satisfiable\n' + start + ' >= ' + fileSize);
+      return;
+    }
+
+    const chunksize = (end - start) + 1;
+    const file = fs.createReadStream(filePath, { start, end });
+    const head = {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunksize,
+      'Content-Type': 'audio/mp4',
+    };
+    res.writeHead(206, head);
+    file.pipe(res);
+  } else {
+    const head = {
+      'Content-Length': fileSize,
+      'Content-Type': 'audio/mp4',
+      'Accept-Ranges': 'bytes',
+    };
+    res.writeHead(200, head);
+    fs.createReadStream(filePath).pipe(res);
+  }
+}
+
 app.get(['/health', '/ping'], (req, res) => {
   res.status(200).json({
     status: 'online',
-    message: 'API Proxy is running',
+    message: 'API Proxy & DRM Streamer is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
@@ -314,6 +378,8 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
     let baseShow = null;
     const allStories = [];
 
+    const hostUrl = `${req.protocol}://${req.get('host')}`;
+
     for (const item of results) {
       if (!item.resData || !item.resData.data) continue;
       const json = item.resData.data;
@@ -325,6 +391,14 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
       if (json.result && Array.isArray(json.result) && json.result[0] && Array.isArray(json.result[0].stories)) {
         for (const story of json.result[0].stories) {
           if (story && (story.story_id || story.story_title || story.media_url)) {
+            const mpdUrl = story.media_url_enc || story.media_url || "";
+            const currentShowId = baseShow?.show_id || showId;
+            
+            // Build dynamic decrypted streaming/download URL
+            const downloadUrl = mpdUrl
+              ? `${hostUrl}/api/stream?show_id=${encodeURIComponent(currentShowId)}&story_id=${encodeURIComponent(story.story_id || "")}&mpd_url=${encodeURIComponent(mpdUrl)}`
+              : "";
+
             allStories.push({
               story_title: story.story_title || "",
               media_url: story.media_url || "",
@@ -332,6 +406,7 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
               story_id: story.story_id || "",
               media_url_enc: story.media_url_enc || "",
               media_url_enc_fairplay: story.media_url_enc_fairplay || "",
+              download_url: downloadUrl,
               natural_sequence_number: typeof story.natural_sequence_number === 'number' ? story.natural_sequence_number : parseInt(story.natural_sequence_number || '0', 10)
             });
           }
@@ -346,7 +421,7 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
       });
     }
 
-    const filteredResponse = {
+    const formattedResponse = {
       status: 1,
       message: "Result for show details page",
       result: [
@@ -363,7 +438,7 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
       ]
     };
 
-    return res.status(200).json(filteredResponse);
+    return res.status(200).json(formattedResponse);
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -371,6 +446,63 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
       error: error.message
     });
   }
+});
+
+// Real-time Decrypt & Stream Endpoint
+app.get('/api/stream', (req, res) => {
+  const mpdUrl = req.query.mpd_url;
+  const showId = req.query.show_id || "";
+  const storyId = req.query.story_id || "";
+
+  if (!mpdUrl) {
+    return res.status(400).json({
+      success: false,
+      error: "Missing required parameter: 'mpd_url'"
+    });
+  }
+
+  // Safe unique filename for caching
+  const safeId = storyId || crypto.createHash('md5').update(mpdUrl).digest('hex');
+  const safeName = `stream_${safeId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  const targetFile = path.join(STREAM_DIR, `${safeName}.m4a`);
+
+  // 1. If already decrypted and cached, stream immediately!
+  if (fs.existsSync(targetFile) && fs.statSync(targetFile).size > 1024) {
+    return streamAudioFile(req, res, targetFile);
+  }
+
+  // 2. Otherwise, spawn Python downloader to decrypt
+  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+  const scriptPath = path.join(__dirname, 'downloader.py');
+
+  const args = [scriptPath, mpdUrl, showId, safeName, '64k'];
+  const proc = spawn(pythonCmd, args, { cwd: __dirname });
+
+  let stdErrOutput = '';
+
+  proc.stderr.on('data', (data) => {
+    stdErrOutput += data.toString();
+  });
+
+  proc.on('close', (code) => {
+    if (code === 0 && fs.existsSync(targetFile)) {
+      return streamAudioFile(req, res, targetFile);
+    } else {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to decrypt and prepare audio stream',
+        error: stdErrOutput || `Downloader process exited with code ${code}`
+      });
+    }
+  });
+
+  proc.on('error', (err) => {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to spawn Python decryption worker',
+      error: err.message
+    });
+  });
 });
 
 app.all('/api/proxy/*', (req, res) => {
@@ -381,7 +513,7 @@ app.all('/api/proxy/*', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.send('Running...');
+  res.send('PocketFM API Proxy & DRM Decryption Streamer is Running...');
 });
 
 app.listen(PORT, () => {
