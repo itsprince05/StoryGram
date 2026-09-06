@@ -189,43 +189,60 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
     const results = await Promise.all(fetchPromises);
     results.sort((a, b) => a.ptr - b.ptr);
 
-    let baseResult = null;
+    let baseShow = null;
     const allStories = [];
 
     for (const item of results) {
       if (!item.resData || !item.resData.data) continue;
       const json = item.resData.data;
 
-      if (!baseResult && json.result && Array.isArray(json.result) && json.result.length > 0) {
-        baseResult = JSON.parse(JSON.stringify(json));
+      if (!baseShow && json.result && Array.isArray(json.result) && json.result[0]) {
+        baseShow = json.result[0];
       }
 
       if (json.result && Array.isArray(json.result) && json.result[0] && Array.isArray(json.result[0].stories)) {
         for (const story of json.result[0].stories) {
-          if (story && story.story_id) {
-            allStories.push(story);
+          if (story && (story.story_id || story.story_title || story.media_url)) {
+            allStories.push({
+              story_title: story.story_title || "",
+              show_id: story.show_id || showId,
+              media_url: story.media_url || "",
+              duration: typeof story.duration === 'number' ? story.duration : parseInt(story.duration || '0', 10),
+              story_id: story.story_id || "",
+              media_url_enc: story.media_url_enc || "",
+              media_url_enc_fairplay: story.media_url_enc_fairplay || "",
+              natural_sequence_number: typeof story.natural_sequence_number === 'number' ? story.natural_sequence_number : parseInt(story.natural_sequence_number || '0', 10)
+            });
           }
         }
       }
     }
 
-    if (!baseResult) {
-      const firstValid = results.find(r => r.resData?.data);
-      if (firstValid) {
-        return res.status(firstValid.resData.statusCode || 200).json(firstValid.resData.data);
-      }
+    if (!baseShow) {
       return res.status(500).json({
         success: false,
         error: 'Failed to fetch show details from Pocket FM'
       });
     }
 
-    if (baseResult.result && baseResult.result[0]) {
-      baseResult.result[0].stories = allStories;
-      baseResult.result[0].next_ptr = startPtr + allStories.length;
-    }
+    const filteredResponse = {
+      status: 1,
+      message: "Result for show details page",
+      result: [
+        {
+          show_title: baseShow.show_title || "",
+          image_url: baseShow.image_url || "",
+          completed: Boolean(baseShow.completed),
+          show_desc_en: baseShow.show_desc_en || baseShow.show_desc || "",
+          show_id: baseShow.show_id || showId,
+          episodes_count: typeof baseShow.episodes_count === 'number' ? baseShow.episodes_count : parseInt(baseShow.episodes_count || '0', 10),
+          stories: allStories,
+          next_ptr: startPtr + allStories.length
+        }
+      ]
+    };
 
-    return res.status(200).json(baseResult);
+    return res.status(200).json(filteredResponse);
   } catch (error) {
     return res.status(500).json({
       success: false,
