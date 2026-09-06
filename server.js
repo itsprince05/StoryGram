@@ -475,31 +475,44 @@ app.get('/api/stream', (req, res) => {
   const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
   const scriptPath = path.join(__dirname, 'downloader.py');
 
+  console.log(`[STREAM] Starting decryption: show_id=${showId}, output=${safeName}`);
   const args = [scriptPath, mpdUrl, showId, safeName, '64k'];
   const proc = spawn(pythonCmd, args, { cwd: __dirname });
 
   let stdErrOutput = '';
+  let stdOutOutput = '';
+
+  proc.stdout.on('data', (data) => {
+    stdOutOutput += data.toString();
+    console.log(`[DOWNLOADER STDOUT] ${data.toString().trim()}`);
+  });
 
   proc.stderr.on('data', (data) => {
     stdErrOutput += data.toString();
+    console.error(`[DOWNLOADER STDERR] ${data.toString().trim()}`);
   });
 
   proc.on('close', (code) => {
+    console.log(`[STREAM] Downloader finished with code ${code}`);
     if (code === 0 && fs.existsSync(targetFile)) {
       return streamAudioFile(req, res, targetFile);
     } else {
+      console.error(`[STREAM ERROR] Target file missing or code != 0. stderr: ${stdErrOutput}`);
       return res.status(500).json({
         success: false,
         message: 'Failed to decrypt and prepare audio stream',
-        error: stdErrOutput || `Downloader process exited with code ${code}`
+        exit_code: code,
+        error: stdErrOutput || 'Unknown error occurred during decryption',
+        logs: stdOutOutput
       });
     }
   });
 
   proc.on('error', (err) => {
+    console.error(`[SPAWN ERROR] ${err.message}`);
     return res.status(500).json({
       success: false,
-      message: 'Failed to spawn Python decryption worker',
+      message: 'Failed to spawn Python decryption worker. Ensure python3 is installed.',
       error: err.message
     });
   });
