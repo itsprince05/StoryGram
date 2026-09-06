@@ -1,4 +1,0 @@
-pycryptodome
-pywidevine
-requests
-urllib3
