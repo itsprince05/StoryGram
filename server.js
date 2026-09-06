@@ -19,7 +19,7 @@ function buildPocketHeaders(req) {
     token = `Bearer ${token.trim()}`;
   }
 
-  const language = req.headers['language'] || req.query.language || req.query.selected_language || 'hindi';
+  const language = req.query.language || req.headers['language'] || req.query.selected_language || 'hindi';
 
   return {
     'Host': 'api.pocketfm.com',
@@ -116,7 +116,7 @@ app.get(['/health', '/ping'], (req, res) => {
   });
 });
 
-app.get('/api/feed', async (req, res) => {
+app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
 
@@ -127,7 +127,7 @@ app.get('/api/feed', async (req, res) => {
       });
     }
 
-    const language = req.headers['language'] || req.query.selected_language || req.query.language || 'hindi';
+    const language = req.query.language || req.headers['language'] || req.query.selected_language || 'hindi';
     const apiType = req.query.api_type || 'explore_v2';
 
     const queryParams = new URLSearchParams({
@@ -208,7 +208,7 @@ app.get('/api/feed', async (req, res) => {
   }
 });
 
-app.get('/api/search', async (req, res) => {
+app.get(['/search', '/api/search'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
 
@@ -266,14 +266,14 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
+app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
   try {
     const showId = req.params.show_id || req.query.show_id;
 
     if (!showId) {
       return res.status(400).json({
         success: false,
-        error: "Missing 'show_id'. Pass it as path param (/api/show/:id) or query param (?show_id=...)"
+        error: "Missing 'show_id'. Pass it as path param (/show/:id) or query param (?show_id=...)"
       });
     }
 
@@ -325,14 +325,12 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
 
       if (json.result && Array.isArray(json.result) && json.result[0] && Array.isArray(json.result[0].stories)) {
         for (const story of json.result[0].stories) {
-          if (story && (story.story_id || story.story_title || story.media_url)) {
+          if (story && (story.story_id || story.story_title || story.media_url_enc || story.media_url)) {
             allStories.push({
               story_title: story.story_title || "",
-              media_url: story.media_url || "",
               duration: typeof story.duration === 'number' ? story.duration : parseInt(story.duration || '0', 10),
               story_id: story.story_id || "",
-              media_url_enc: story.media_url_enc || "",
-              media_url_enc_fairplay: story.media_url_enc_fairplay || ""
+              media_url_enc: story.media_url_enc || ""
             });
           }
         }
@@ -353,8 +351,6 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
         {
           show_title: baseShow.show_title || "",
           image_url: baseShow.image_url || "",
-          completed: Boolean(baseShow.completed),
-          description: baseShow.show_desc_en || baseShow.show_desc || baseShow.description || "",
           show_id: baseShow.show_id || showId,
           episodes_count: typeof baseShow.episodes_count === 'number' ? baseShow.episodes_count : parseInt(baseShow.episodes_count || '0', 10),
           stories: allStories,
@@ -373,7 +369,7 @@ app.get(['/api/show', '/api/show/:show_id'], async (req, res) => {
   }
 });
 
-app.all(['/api/subscribe', '/api/user_action'], async (req, res) => {
+app.all(['/unlock', '/api/unlock', '/api/subscribe', '/api/user_action'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
 
@@ -424,7 +420,7 @@ app.all(['/api/subscribe', '/api/user_action'], async (req, res) => {
   }
 });
 
-app.get(['/api/saved_stories', '/api/get_saved_stories'], async (req, res) => {
+app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_stories'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
 
@@ -435,12 +431,12 @@ app.get(['/api/saved_stories', '/api/get_saved_stories'], async (req, res) => {
       });
     }
 
-    const showIds = req.query.show_ids || req.query.show_id;
+    const showIds = req.query.show_id || req.query.show_ids;
 
     if (!showIds) {
       return res.status(400).json({
         success: false,
-        error: "Missing 'show_ids' (or 'show_id'). Please pass it in query params."
+        error: "Missing 'show_id' (or 'show_ids'). Please pass it in query params."
       });
     }
 
@@ -459,11 +455,9 @@ app.get(['/api/saved_stories', '/api/get_saved_stories'], async (req, res) => {
 
       filteredStories.push({
         story_title: story.story_title || story.title || "",
-        media_url: story.media_url || "",
         duration: typeof story.duration === 'number' ? story.duration : parseInt(story.duration || '0', 10),
         story_id: story.story_id || "",
-        media_url_enc: story.media_url_enc || "",
-        media_url_enc_fairplay: story.media_url_enc_fairplay || ""
+        media_url_enc: story.media_url_enc || ""
       });
     }
 
