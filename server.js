@@ -330,7 +330,7 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               story_title: story.story_title || "",
               duration: typeof story.duration === 'number' ? story.duration : parseInt(story.duration || '0', 10),
               story_id: story.story_id || "",
-              media_url_enc: story.media_url_enc || ""
+              media_url: story.media_url_enc || story.media_url || ""
             });
           }
         }
@@ -457,7 +457,7 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
         story_title: story.story_title || story.title || "",
         duration: typeof story.duration === 'number' ? story.duration : parseInt(story.duration || '0', 10),
         story_id: story.story_id || "",
-        media_url_enc: story.media_url_enc || ""
+        media_url: story.media_url_enc || story.media_url || ""
       });
     }
 
