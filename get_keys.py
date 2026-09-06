@@ -1,4 +1,24 @@
 import sys
+import subprocess
+
+def auto_install_deps():
+    packages = {
+        "requests": "requests",
+        "urllib3": "urllib3",
+        "Crypto": "pycryptodome",
+        "pywidevine": "pywidevine"
+    }
+    for mod, pkg in packages.items():
+        try:
+            __import__(mod)
+        except ImportError:
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+            except Exception as e:
+                pass
+
+auto_install_deps()
+
 import json
 import requests
 import re
