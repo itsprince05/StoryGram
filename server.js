@@ -475,14 +475,15 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               }
             }
 
+            const actualShowId = story.show_id || (baseShow && baseShow.show_id) || showId;
             const androidVideoUrl = (videoInfoObj && videoInfoObj.android && videoInfoObj.android.video_url) || (story.android && story.android.video_url) || "";
             const webVideoUrl = (videoInfoObj && videoInfoObj.web && videoInfoObj.web.video_url) || (story.web && story.web.video_url) || "";
-            const realMediaUrlEnc = story.media_url_enc || story.media_url || "";
+            const realMediaUrlEnc = story.media_url_enc || story.media_url || story.media_enc || story.media || "";
             const videoDashUrl = (story.video_url && story.video_url.includes('.mpd') ? story.video_url : "") || androidVideoUrl || "";
 
             const storyObj = {
               story_title: story.story_title || story.title || "",
-              show_id: story.show_id || (baseShow && baseShow.show_id) || showId,
+              show_id: actualShowId,
               image_url: story.image_url || story.cover_url || (baseShow && baseShow.image_url) || "",
               duration: typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0'),
               story_id: story.story_id || ""
