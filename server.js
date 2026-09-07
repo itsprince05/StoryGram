@@ -365,6 +365,26 @@ app.get(['/search', '/api/search'], async (req, res) => {
     const { statusCode, data } = await fetchViaWorkerProxy(url, headers, 'GET');
 
     if (typeof data === 'object' && data !== null) {
+      if (data.result && data.result.shows && Array.isArray(data.result.shows)) {
+        const formattedShows = data.result.shows.map(show => {
+          const showId = show.show_id || show.entity_id || "";
+          return {
+            show_id: showId,
+            title: show.title || show.show_title || "",
+            plays: show.plays !== undefined ? String(show.plays) : "",
+            avg_rating: show.avg_rating !== undefined ? show.avg_rating : (show.rating !== undefined ? show.rating : null),
+            image_url: show.image_url || show.cover_url || ""
+          };
+        });
+
+        return res.status(200).json({
+          status: data.status !== undefined ? data.status : 1,
+          message: data.message || "successfully fetched shows",
+          result: {
+            shows: formattedShows
+          }
+        });
+      }
       return res.status(statusCode).json(data);
     } else {
       return res.status(statusCode).send(data);
