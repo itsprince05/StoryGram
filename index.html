@@ -2142,7 +2142,6 @@
             <i data-lucide="search"
               style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--primary); opacity: 0.8;"></i>
             <p style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px;">Search Shows</p>
-            <p style="font-size: 12px;">Type above to search Pocket FM shows and episodes</p>
           </div>
         </div>
       </div>
@@ -2723,7 +2722,11 @@
       }
 
       try {
-        const response = await fetch(`/home?language=${encodeURIComponent(currentLanguage)}`);
+        const response = await fetch('/home', {
+          headers: {
+            'language': currentLanguage
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           if (data && data.result && data.result.length > 0) {
@@ -2966,7 +2969,13 @@
     async function fetchShowEpisodes(showId, currPtr = 0, append = false, startEpisodeNum = 1) {
       currentBatchStartPtr = currPtr;
       try {
-        const response = await fetch(`/show?show_id=${encodeURIComponent(showId)}&curr_ptr=${currPtr}`);
+        const response = await fetch('/show', {
+          headers: {
+            'show_id': showId,
+            'curr_ptr': String(currPtr),
+            'language': currentLanguage
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           const showData = data.result && data.result[0];
@@ -3057,8 +3066,13 @@
       unlockedStoriesMap[storyId] = true;
 
       try {
-        await fetch(`/unlock?show_id=${encodeURIComponent(showId)}&story_id=${encodeURIComponent(storyId)}`, {
-          method: 'POST'
+        await fetch('/unlock', {
+          method: 'POST',
+          headers: {
+            'show_id': showId,
+            'story_id': storyId,
+            'language': currentLanguage
+          }
         });
       } catch (e) { }
 
@@ -3507,7 +3521,6 @@
         <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
           <i data-lucide="search" style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--primary); opacity: 0.8;"></i>
           <p style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px;">Search Shows</p>
-          <p style="font-size: 12px;">Type above to search Pocket FM shows and episodes</p>
         </div>
       `;
       refreshIcons();
@@ -3527,7 +3540,12 @@
       container.innerHTML = `<div class="loader" style="min-height: 40vh;"><div class="spinner"></div></div>`;
 
       try {
-        const res = await fetch(`/search?query=${encodeURIComponent(query)}`);
+        const res = await fetch('/search', {
+          headers: {
+            'query': query,
+            'language': currentLanguage
+          }
+        });
         if (res.ok) {
           const data = await res.json();
           let shows = [];
