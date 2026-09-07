@@ -2738,22 +2738,12 @@
     function showToast(msg, isError = false) {
       const toast = document.getElementById('toast');
       const text = document.getElementById('toast-message');
-      if (!toast || !text) return;
-      if (isError) {
-        toast.style.borderColor = 'rgba(239, 68, 68, 0.6)';
-        toast.style.background = 'rgba(30, 10, 15, 0.95)';
-        toast.innerHTML = `<i data-lucide="alert-triangle" style="color: #ef4444; width: 16px; height: 16px; min-width: 16px;"></i> <span id="toast-message" style="word-break: break-word;">${escapeHtml(msg)}</span>`;
-      } else {
-        toast.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-        toast.style.background = 'var(--bg-glass)';
-        toast.innerHTML = `<i data-lucide="check-circle-2" style="color: #4ade80; width: 16px; height: 16px; min-width: 16px;"></i> <span id="toast-message">${escapeHtml(msg)}</span>`;
-      }
+      text.innerText = msg;
       toast.classList.add('show');
       refreshIcons();
-      clearTimeout(window._toastTimer);
-      window._toastTimer = setTimeout(() => {
+      setTimeout(() => {
         toast.classList.remove('show');
-      }, isError ? 6000 : 3000);
+      }, 3000);
     }
 
     function switchTab(tabName, updateNav = true) {
@@ -3263,10 +3253,9 @@
         const hasVideo = Boolean(story.video_url);
         const durationText = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
         const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
-        const audioUrl = story.audio_url || story.media_url || "";
+        const audioUrl = story.audio_url || story.media_url_enc || story.media_url || "";
         const videoUrl = story.video_url || "";
-        const mediaUrlEnc = story.media_url_enc || "";
-        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo, mediaUrlEnc);
+        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo);
 
         const iconHtml = (isCurrent && isAudioBuffering)
           ? '<span class="btn-spinner"></span>'
@@ -3453,10 +3442,9 @@
               const hasVid = Boolean(item.hasVideo && item.videoUrl);
               const audioUrl = item.audioUrl || item.mediaUrl || "";
               const videoUrl = item.videoUrl || "";
-              const mediaUrlEnc = item.mediaUrlEnc || "";
               return `
                 <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border);">
-                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(audioUrl)}', '${escapeAttr(videoUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid}, '${escapeAttr(mediaUrlEnc)}')">
+                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(audioUrl)}', '${escapeAttr(videoUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid})">
                     <div class="ep-play-btn" data-has-video="${hasVid ? 'true' : 'false'}">
                       <i data-lucide="${isThisPlaying ? 'pause' : (hasVid ? 'video' : 'headphones')}"></i>
                     </div>
@@ -3730,11 +3718,10 @@
         const prevStory = loadedEpisodesList[currentIndex - 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const audioUrl = prevStory.audio_url || prevStory.media_url || "";
+        const audioUrl = prevStory.audio_url || prevStory.media_url_enc || prevStory.media_url || "";
         const videoUrl = prevStory.video_url || "";
-        const mediaUrlEnc = prevStory.media_url_enc || "";
         const hasVid = Boolean(videoUrl);
-        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid, mediaUrlEnc);
+        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
       }
     }
 
@@ -3745,57 +3732,29 @@
         const nextStory = loadedEpisodesList[currentIndex + 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const audioUrl = nextStory.audio_url || nextStory.media_url || "";
+        const audioUrl = nextStory.audio_url || nextStory.media_url_enc || nextStory.media_url || "";
         const videoUrl = nextStory.video_url || "";
-        const mediaUrlEnc = nextStory.media_url_enc || "";
         const hasVid = Boolean(videoUrl);
-        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid, mediaUrlEnc);
+        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
       }
     }
 
-    function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, mediaUrlEnc) {
+    function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
       if (currentPlayingStory && currentPlayingStory.storyId === storyId) {
         togglePlayPause();
       } else {
-        playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, mediaUrlEnc);
+        playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo);
       }
     }
 
-    async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, mediaUrlEnc) {
+    async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
       const isVid = Boolean(hasVideo || videoUrl);
-      const rawAudio = (audioUrl && typeof audioUrl === 'string' && audioUrl.trim()) ? audioUrl.trim() : "";
-      const rawVideo = (videoUrl && typeof videoUrl === 'string' && videoUrl.trim()) ? videoUrl.trim() : "";
-      const rawEnc = (mediaUrlEnc && typeof mediaUrlEnc === 'string' && mediaUrlEnc.trim()) ? mediaUrlEnc.trim() : "";
-
-      // PRIORITY RULE:
-      // 1. If audioUrl exists -> Play audioUrl (ALWAYS NON-DRM! No license requested)
-      // 2. If videoUrl exists -> Play videoUrl (HLS Video)
-      // 3. ONLY IF audioUrl is absent AND mediaUrlEnc exists -> Play mediaUrlEnc (Widevine DRM + /api/license)
-
-      let effectiveStreamUrl = "";
-      let isDrmEncryptedStream = false;
-
-      if (rawAudio) {
-        effectiveStreamUrl = rawAudio;
-        isDrmEncryptedStream = false; // audio_url is ALWAYS NON-DRM!
-      } else if (rawEnc) {
-        effectiveStreamUrl = rawEnc;
-        isDrmEncryptedStream = true; // ONLY media_url_enc uses DRM Widevine!
-      } else if (rawVideo) {
-        effectiveStreamUrl = rawVideo;
-        isDrmEncryptedStream = false;
-      } else {
-        effectiveStreamUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-        isDrmEncryptedStream = false;
-      }
-
       currentPlayingStory = {
         storyId,
         title,
-        audioUrl: rawAudio,
-        videoUrl: rawVideo,
-        mediaUrlEnc: rawEnc,
-        mediaUrl: effectiveStreamUrl,
+        audioUrl: audioUrl || "",
+        videoUrl: videoUrl || "",
+        mediaUrl: audioUrl || "",
         showTitle,
         thumbUrl,
         hasVideo: isVid
@@ -3822,10 +3781,9 @@
       const historyItem = {
         storyId,
         title: title || "Now Playing",
-        audioUrl: rawAudio,
-        videoUrl: rawVideo,
-        mediaUrlEnc: rawEnc,
-        mediaUrl: effectiveStreamUrl,
+        audioUrl: audioUrl || "",
+        videoUrl: videoUrl || "",
+        mediaUrl: audioUrl || "",
         showTitle: showTitle || "Story Gram",
         thumbUrl: thumbUrl || "",
         hasVideo: isVid,
@@ -3851,129 +3809,12 @@
 
       updateFullscreenPlayerUI();
 
-      // CASE 1: ONLY DRM Encrypted Stream (media_url_enc) without audio_url
-      if (isDrmEncryptedStream && shakaPlayer) {
+      const streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+
+      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash'))) {
         try {
           await shakaPlayer.unload();
-
-          // 1. Resolve Show ID for PocketFM DRM License
-          let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
-          if (!targetShowId && effectiveStreamUrl) {
-            const match = effectiveStreamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || effectiveStreamUrl.match(/\/([a-f0-9]{24,32})\//);
-            if (match) targetShowId = match[1];
-          }
-
-          // 2. Fetch Widevine DRM License URL from backend
-          let licenseUrl = "";
-          if (targetShowId) {
-            try {
-              const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}`);
-              if (licRes.ok) {
-                const licData = await licRes.json();
-                if (licData.success && licData.license_url) {
-                  licenseUrl = licData.license_url;
-                }
-              }
-            } catch (licErr) {
-              console.warn("DRM license fetch warning:", licErr);
-            }
-          }
-
-          // 3. Configure Shaka Request Filters to route segments & license via backend proxy to eliminate CORS
-          const netEngine = shakaPlayer.getNetworkingEngine();
-          netEngine.clearAllRequestFilters();
-
-          netEngine.registerRequestFilter((type, request) => {
-            if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST || 
-                type === shaka.net.NetworkingEngine.RequestType.SEGMENT) {
-              request.uris = request.uris.map(u => {
-                if (u.startsWith('http') && !u.includes('/api/dash-proxy') && !u.includes('/api/proxy-stream')) {
-                  return `/api/dash-proxy?url=${encodeURIComponent(u)}`;
-                }
-                return u;
-              });
-            }
-            if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
-              request.uris = request.uris.map(u => {
-                if (u.startsWith('http') && !u.includes('/api/license-proxy')) {
-                  return `/api/license-proxy?url=${encodeURIComponent(u)}`;
-                }
-                return u;
-              });
-            }
-          });
-
-          // 4. Configure Shaka Player DRM
-          const drmConfig = {
-            drm: {
-              servers: {},
-              advanced: {
-                'com.widevine.alpha': {
-                  videoRobustness: '',
-                  audioRobustness: '',
-                  distinctiveIdentifierRequired: false,
-                  persistentStateRequired: false
-                }
-              }
-            }
-          };
-
-          if (licenseUrl) {
-            drmConfig.drm.servers['com.widevine.alpha'] = `/api/license-proxy?url=${encodeURIComponent(licenseUrl)}`;
-          }
-
-          shakaPlayer.configure(drmConfig);
-
-          // 5. Load the stream via CORS-friendly DASH proxy
-          const proxiedUrl = `/api/dash-proxy?url=${encodeURIComponent(effectiveStreamUrl)}`;
-          try {
-            await shakaPlayer.load(proxiedUrl);
-          } catch (proxLoadErr) {
-            console.warn("Proxied stream load failed, attempting direct stream...", proxLoadErr);
-            await shakaPlayer.load(effectiveStreamUrl);
-          }
-
-          audioElement.playbackRate = currentPlaybackSpeed;
-          await audioElement.play();
-          isAudioBuffering = false;
-          isPlaying = true;
-          updatePlayPauseButton();
-          showToast("Playing (DRM)");
-        } catch (err) {
-          console.error("DRM Shaka player error:", err);
-          const errMsg = (err && (err.message || err.detail?.message || (err.code ? 'Error Code ' + err.code : ''))) || "DRM Playback Failed";
-          isAudioBuffering = false;
-          isPlaying = false;
-          updatePlayPauseButton();
-          showToast(errMsg, true);
-        }
-      } else if (shakaPlayer && (effectiveStreamUrl.includes('.mpd') || effectiveStreamUrl.includes('/dash/'))) {
-        // CASE 2: Non-DRM DASH (e.g. audio_url containing vp9_output.mpd) -> Shaka Player WITHOUT ANY DRM License!
-        try {
-          await shakaPlayer.unload();
-          shakaPlayer.configure({ drm: { servers: {} } });
-          const netEngine = shakaPlayer.getNetworkingEngine();
-          netEngine.clearAllRequestFilters();
-
-          netEngine.registerRequestFilter((type, request) => {
-            if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST || 
-                type === shaka.net.NetworkingEngine.RequestType.SEGMENT) {
-              request.uris = request.uris.map(u => {
-                if (u.startsWith('http') && !u.includes('/api/dash-proxy') && !u.includes('/api/proxy-stream')) {
-                  return `/api/dash-proxy?url=${encodeURIComponent(u)}`;
-                }
-                return u;
-              });
-            }
-          });
-
-          const proxiedUrl = `/api/dash-proxy?url=${encodeURIComponent(effectiveStreamUrl)}`;
-          try {
-            await shakaPlayer.load(proxiedUrl);
-          } catch (e) {
-            await shakaPlayer.load(effectiveStreamUrl);
-          }
-
+          await shakaPlayer.load(streamUrl);
           audioElement.playbackRate = currentPlaybackSpeed;
           await audioElement.play();
           isAudioBuffering = false;
@@ -3981,20 +3822,30 @@
           updatePlayPauseButton();
           showToast("Playing");
         } catch (err) {
-          console.error("Non-DRM DASH player error:", err);
-          isAudioBuffering = false;
-          isPlaying = false;
-          updatePlayPauseButton();
-          showToast("Playback error: " + (err.message || "Failed to play"), true);
+          console.error("Shaka player error:", err);
+          try {
+            audioElement.src = streamUrl;
+            audioElement.playbackRate = currentPlaybackSpeed;
+            await audioElement.play();
+            isAudioBuffering = false;
+            isPlaying = true;
+            updatePlayPauseButton();
+            showToast("Playing");
+          } catch (audioErr) {
+            console.error("Audio playback error:", audioErr);
+            isAudioBuffering = false;
+            isPlaying = false;
+            updatePlayPauseButton();
+            showToast("Playback error", true);
+          }
         }
       } else {
-        // CASE 3: Standard Audio (MP3 / M4A / AAC) -> Direct HTML5 audio without DRM license call
         if (shakaPlayer) {
           try {
             await shakaPlayer.unload();
           } catch (e) { }
         }
-        audioElement.src = effectiveStreamUrl;
+        audioElement.src = streamUrl;
         audioElement.playbackRate = currentPlaybackSpeed;
         audioElement.play().then(() => {
           isAudioBuffering = false;
@@ -4002,11 +3853,10 @@
           updatePlayPauseButton();
           showToast("Playing");
         }).catch(err => {
-          console.error("Audio playback error:", err);
+          console.log("Audio autoplay fallback:", err);
           isAudioBuffering = false;
           isPlaying = false;
           updatePlayPauseButton();
-          showToast("Playback error: " + (err.message || "Failed to play"), true);
         });
       }
     }
