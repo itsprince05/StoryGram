@@ -42,8 +42,21 @@
       padding: 0;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
     }
 
+    *::-webkit-scrollbar,
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar,
+    div::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      background: transparent !important;
+    }
+
+    html,
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: #020617;
@@ -52,6 +65,8 @@
       justify-content: center;
       min-height: 100vh;
       overflow-x: hidden;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
     }
 
     .app-frame {
@@ -64,7 +79,7 @@
       flex-direction: column;
       box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
       overflow-x: hidden;
-      padding-bottom: calc(var(--nav-height) + 10px);
+      padding-bottom: calc(var(--nav-height) + 0px);
     }
 
     .app-frame.has-player {
@@ -845,7 +860,7 @@
     }
 
     .show-page-hero {
-      padding: 16px 10px 10px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -898,7 +913,6 @@
       justify-content: center;
       align-items: center;
       gap: 10px;
-      margin-bottom: 10px;
       position: relative;
       z-index: 2;
     }
@@ -907,7 +921,6 @@
       padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
     }
 
     .ep-range-select-btn {
@@ -1361,7 +1374,8 @@
             <div class="section-title" style="font-size: 16px; font-weight: 800;">
               <i class="fa-solid fa-list-ol"></i> <span id="show-page-ep-header-title">Episodes</span>
             </div>
-            <button class="ep-range-select-btn" id="episodes-counter-badge" onclick="openEpisodeRangeModal()" title="Select Episodes">
+            <button class="ep-range-select-btn" id="episodes-counter-badge" onclick="openEpisodeRangeModal()"
+              title="Select Episodes">
               <span>Ep 1-20</span>
               <i class="fa-solid fa-chevron-down"></i>
             </button>
@@ -1510,7 +1524,8 @@
   <div id="episodes-range-modal" class="modal-backdrop" onclick="closeEpisodeRangeModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
-        <div class="modal-title"><i class="fa-solid fa-list-ol" style="color: var(--primary);"></i> Select Episodes</div>
+        <div class="modal-title"><i class="fa-solid fa-list-ol" style="color: var(--primary);"></i> Select Episodes
+        </div>
         <button class="modal-close-btn" onclick="closeEpisodeRangeModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="range-grid" id="episodes-range-grid"></div>
