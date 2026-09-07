@@ -2648,6 +2648,86 @@
       }
     }
 
+    async function decryptPfmBlobClient(cipherBase64, deviceId = "mobile-web", clientTs = 1770000000) {
+      if (!cipherBase64 || !window.crypto || !window.crypto.subtle) return null;
+      try {
+        const binaryString = atob(cipherBase64);
+        const cipherBytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          cipherBytes[i] = binaryString.charCodeAt(i);
+        }
+        if (cipherBytes.length < 28) return null;
+
+        const salt = cipherBytes.slice(0, 16);
+        const iv = cipherBytes.slice(16, 28);
+        const strData = cipherBytes.slice(28, cipherBytes.length - 16);
+
+        const ctrIv = new Uint8Array(16);
+        ctrIv.set(iv, 0);
+        ctrIv[15] = 2;
+
+        const tsCandidates = [1770000000, clientTs, "1770000000"].filter(Boolean);
+        const devCandidates = [deviceId, "mobile-web"].filter(Boolean);
+
+        for (const dev of devCandidates) {
+          for (const ts of tsCandidates) {
+            try {
+              const rawData = `${dev}:${ts}`;
+              const b64 = btoa(rawData);
+              const chars = b64.split('');
+              for (let i = 0; i < chars.length - 1; i += 2) {
+                const temp = chars[i];
+                chars[i] = chars[i + 1];
+                chars[i + 1] = temp;
+              }
+              const keyString = chars.join('');
+              const keyBytes = new TextEncoder().encode(keyString);
+
+              const baseKey = await window.crypto.subtle.importKey(
+                "raw",
+                keyBytes,
+                "PBKDF2",
+                false,
+                ["deriveKey"]
+              );
+
+              const derivedKey = await window.crypto.subtle.deriveKey(
+                {
+                  name: "PBKDF2",
+                  salt: salt,
+                  iterations: 10000,
+                  hash: "SHA-256"
+                },
+                baseKey,
+                { name: "AES-CTR", length: 256 },
+                false,
+                ["decrypt"]
+              );
+
+              const decryptedBuf = await window.crypto.subtle.decrypt(
+                {
+                  name: "AES-CTR",
+                  counter: ctrIv,
+                  length: 32
+                },
+                derivedKey,
+                strData
+              );
+
+              const decryptedUrl = new TextDecoder().decode(decryptedBuf).trim();
+              if (decryptedUrl && (decryptedUrl.startsWith('http://') || decryptedUrl.startsWith('https://'))) {
+                console.log("[Client Decrypt] Successfully resolved Widevine license URL in browser:", decryptedUrl);
+                return decryptedUrl;
+              }
+            } catch (err) {}
+          }
+        }
+      } catch (e) {
+        console.warn("[Client Decrypt] Error in browser blob decryption:", e);
+      }
+      return null;
+    }
+
     [audioElement, videoElement].forEach(el => {
       if (!el) return;
       el.addEventListener('timeupdate', () => {
@@ -3834,9 +3914,25 @@
           };
 
           if (targetShowId) {
+            let clientResolvedLicenseUrl = null;
+            try {
+              const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}&device_id=mobile-web&client_ts=1770000000`);
+              if (licRes.ok) {
+                const licData = await licRes.json();
+                if (licData.license_url) {
+                  clientResolvedLicenseUrl = licData.license_url;
+                } else if (licData.blob || (licData.details && licData.details.blob)) {
+                  const rawBlob = licData.blob || licData.details.blob;
+                  clientResolvedLicenseUrl = await decryptPfmBlobClient(rawBlob);
+                }
+              }
+            } catch (licErr) {
+              console.warn("Client license fetch warning:", licErr);
+            }
+
             playerConfig.drm = {
               servers: {
-                'com.widevine.alpha': `/api/drm_license?show_id=${encodeURIComponent(targetShowId)}`
+                'com.widevine.alpha': clientResolvedLicenseUrl || `/api/drm_license?show_id=${encodeURIComponent(targetShowId)}`
               },
               advanced: {
                 'com.widevine.alpha': {
@@ -3845,11 +3941,6 @@
                 }
               }
             };
-
-            try {
-              // Pre-warm license in cache
-              fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}&device_id=mobile-web&client_ts=1770000000`).catch(() => {});
-            } catch (licErr) {}
           }
 
           shakaPlayer.configure(playerConfig);
