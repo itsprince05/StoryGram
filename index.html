@@ -505,7 +505,7 @@
       font-weight: 800;
       text-transform: uppercase;
       padding: 3px 8px;
-      border-radius: 4px;
+      border-radius: var(--radius-full);
       display: inline-flex;
       align-items: center;
       gap: 5px;
@@ -653,8 +653,8 @@
     .card-tag {
       position: absolute;
       top: 6px;
-      padding: 3px 6px;
-      border-radius: 6px;
+      padding: 3px 7px;
+      border-radius: var(--radius-full);
       font-size: 10px;
       font-weight: 800;
       display: flex;
@@ -840,11 +840,17 @@
 
     /* SHOW DETAIL PAGE */
     .show-page-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg-glass);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
       padding: 10px;
       display: flex;
       align-items: center;
       gap: 10px;
-      border-bottom: 1px solid var(--border);
     }
 
     .back-btn {
@@ -1341,9 +1347,9 @@
       <!-- TAB 2: DEDICATED SHOW DETAILS PAGE -->
       <div id="tab-show-detail" class="tab-content">
         <div class="show-page-header">
-          <button class="back-btn" onclick="goBack()">
-            <i class="fa-solid fa-arrow-left"></i> Back
-          </button>
+          <div class="icon-btn" onclick="goBack()" title="Back">
+            <i class="fa-solid fa-arrow-left"></i>
+          </div>
           <div id="show-page-bar-title"
             style="font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;">
             Show Details</div>
@@ -1820,8 +1826,12 @@
     }
 
     function switchTab(tabName, updateNav = true) {
+      const actionBar = document.querySelector('.action-bar');
       if (tabName !== 'show-detail') {
         currentTabName = tabName;
+        if (actionBar) actionBar.style.display = 'flex';
+      } else {
+        if (actionBar) actionBar.style.display = 'none';
       }
 
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
