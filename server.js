@@ -812,6 +812,90 @@ app.post(['/api/drm_license', '/api/license_proxy'], express.raw({ type: '*/*', 
   }
 });
 
+app.get(['/api/stream_proxy', '/api/manifest_proxy'], async (req, res) => {
+  try {
+    const targetUrl = req.query.url;
+    if (!targetUrl) {
+      return res.status(400).send("Missing 'url' parameter");
+    }
+
+    const response = await axios.get(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
+        'Accept': '*/*'
+      },
+      responseType: 'text',
+      timeout: 15000
+    });
+
+    let manifest = response.data;
+    const baseUrlMatch = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
+
+    // Rewrite relative BaseURLs so they route through media_proxy
+    manifest = manifest.replace(/<BaseURL>([^<]+)<\/BaseURL>/g, (match, chunkFile) => {
+      const fullChunkUrl = chunkFile.startsWith('http') ? chunkFile : `${baseUrlMatch}${chunkFile}`;
+      const proxiedChunkUrl = `/api/media_proxy?url=${encodeURIComponent(fullChunkUrl)}`;
+      return `<BaseURL>${proxiedChunkUrl}</BaseURL>`;
+    });
+
+    res.set({
+      'Content-Type': 'application/dash+xml',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': '*'
+    });
+    return res.send(manifest);
+  } catch (err) {
+    console.error("Stream proxy error:", err.message);
+    return res.status(500).send("Failed to proxy manifest: " + err.message);
+  }
+});
+
+app.get(['/api/media_proxy', '/api/chunk_proxy'], async (req, res) => {
+  try {
+    const targetUrl = req.query.url;
+    if (!targetUrl) {
+      return res.status(400).send("Missing 'url' parameter");
+    }
+
+    const forwardHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
+      'Accept': '*/*'
+    };
+
+    if (req.headers.range) {
+      forwardHeaders['Range'] = req.headers.range;
+    }
+
+    const response = await axios({
+      method: 'GET',
+      url: targetUrl,
+      headers: forwardHeaders,
+      responseType: 'stream',
+      validateStatus: (status) => status >= 200 && status < 400,
+      timeout: 20000
+    });
+
+    res.set({
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges'
+    });
+
+    if (response.headers['content-type']) res.set('Content-Type', response.headers['content-type']);
+    if (response.headers['content-range']) res.set('Content-Range', response.headers['content-range']);
+    if (response.headers['content-length']) res.set('Content-Length', response.headers['content-length']);
+    if (response.headers['accept-ranges']) res.set('Accept-Ranges', response.headers['accept-ranges']);
+
+    res.status(response.status);
+    response.data.pipe(res);
+  } catch (err) {
+    console.error("Media proxy error:", err.message);
+    return res.status(500).send("Failed to proxy media segment: " + err.message);
+  }
+});
+
 app.all('/api/proxy/*', (req, res) => {
   const endpointPath = req.params[0];
   const queryParams = new URLSearchParams(req.query).toString();
