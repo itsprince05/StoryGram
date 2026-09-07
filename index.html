@@ -319,7 +319,7 @@
     }
 
     .show-card {
-      flex: 0 0 120px;
+      flex: 0 0 130px;
       cursor: pointer;
       transition: all 0.25s ease;
       display: flex;
@@ -333,8 +333,9 @@
 
     .card-poster-wrap {
       position: relative;
-      width: 120px;
-      height: 160px;
+      width: 130px;
+      height: 130px;
+      aspect-ratio: 1 / 1;
       border-radius: var(--radius-md);
       overflow: hidden;
       background: var(--bg-surface);
@@ -442,7 +443,7 @@
 
     .grid-poster-wrap {
       width: 100%;
-      aspect-ratio: 3/4;
+      aspect-ratio: 1 / 1;
       border-radius: var(--radius-md);
       overflow: hidden;
       background: var(--bg-surface);
@@ -549,8 +550,9 @@
     }
 
     .show-detail-img {
-      width: 90px;
-      height: 120px;
+      width: 100px;
+      height: 100px;
+      aspect-ratio: 1 / 1;
       border-radius: var(--radius-md);
       object-fit: cover;
       box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
@@ -1176,7 +1178,7 @@
               ${mod.shows.map(show => `
                 <div class="show-card" onclick="openShowModal('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
                   <div class="card-poster-wrap">
-                    <img class="card-poster" src="${escapeAttr(show.image_url || 'https://via.placeholder.com/120x160')}" alt="${escapeAttr(show.title)}" loading="lazy">
+                    <img class="card-poster" src="${escapeAttr(show.image_url || 'https://via.placeholder.com/130')}" alt="${escapeAttr(show.title)}" loading="lazy">
                     <div class="card-play-overlay">
                       <div class="play-circle"><i class="fa-solid fa-play"></i></div>
                     </div>
@@ -1207,7 +1209,7 @@
       const modal = document.getElementById('show-modal');
       document.getElementById('modal-show-title').innerText = title || "Show Details";
       document.getElementById('modal-show-heading').innerText = title || "Series Title";
-      document.getElementById('modal-show-img').src = imageUrl || 'https://via.placeholder.com/90x120';
+      document.getElementById('modal-show-img').src = imageUrl || 'https://via.placeholder.com/100';
       document.getElementById('modal-show-ep-count').innerText = "Loading episodes...";
 
       const epContainer = document.getElementById('modal-episodes-container');
@@ -1418,7 +1420,7 @@
             ${shows.map(show => `
               <div class="grid-card" onclick="openShowModal('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
                 <div class="grid-poster-wrap">
-                  <img class="grid-poster" src="${escapeAttr(show.image_url || 'https://via.placeholder.com/120x160')}" alt="${escapeAttr(show.title)}" loading="lazy">
+                  <img class="grid-poster" src="${escapeAttr(show.image_url || 'https://via.placeholder.com/130')}" alt="${escapeAttr(show.title)}" loading="lazy">
                 </div>
                 <div class="grid-title">${escapeHtml(show.title)}</div>
               </div>
