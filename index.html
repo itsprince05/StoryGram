@@ -3768,25 +3768,19 @@
       const rawEnc = (mediaUrlEnc && typeof mediaUrlEnc === 'string' && mediaUrlEnc.trim()) ? mediaUrlEnc.trim() : "";
 
       // PRIORITY RULE:
-      // 1. If audioUrl exists -> Play audioUrl via standard HTML5 Audio (NO DRM / NO license request!)
-      // 2. If videoUrl exists -> Play videoUrl via Video element
-      // 3. ONLY IF neither audioUrl nor videoUrl exists -> Play mediaUrlEnc via Shaka Player + Widevine DRM
+      // 1. If audioUrl exists -> Play audioUrl (ALWAYS NON-DRM! No license requested)
+      // 2. If videoUrl exists -> Play videoUrl (HLS Video)
+      // 3. ONLY IF audioUrl is absent AND mediaUrlEnc exists -> Play mediaUrlEnc (Widevine DRM + /api/license)
 
       let effectiveStreamUrl = "";
       let isDrmEncryptedStream = false;
 
       if (rawAudio) {
         effectiveStreamUrl = rawAudio;
-        isDrmEncryptedStream = Boolean(rawAudio.includes('.mpd') || rawAudio.includes('drm-aac') || rawAudio.includes('/dash/'));
+        isDrmEncryptedStream = false; // audio_url is ALWAYS NON-DRM!
       } else if (rawEnc) {
         effectiveStreamUrl = rawEnc;
-        isDrmEncryptedStream = Boolean(
-          rawEnc.includes('.mpd') ||
-          rawEnc.includes('drm-aac') ||
-          rawEnc.includes('/dash/') ||
-          rawEnc.includes('manifest') ||
-          rawEnc.includes('audio_enc')
-        );
+        isDrmEncryptedStream = true; // ONLY media_url_enc uses DRM Widevine!
       } else if (rawVideo) {
         effectiveStreamUrl = rawVideo;
         isDrmEncryptedStream = false;
@@ -3857,7 +3851,7 @@
 
       updateFullscreenPlayerUI();
 
-      // CASE 1: ONLY DRM Encrypted Stream (media_url_enc) without plain audio_url
+      // CASE 1: ONLY DRM Encrypted Stream (media_url_enc) without audio_url
       if (isDrmEncryptedStream && shakaPlayer) {
         try {
           await shakaPlayer.unload();
@@ -3953,8 +3947,48 @@
           updatePlayPauseButton();
           showToast(errMsg, true);
         }
+      } else if (shakaPlayer && (effectiveStreamUrl.includes('.mpd') || effectiveStreamUrl.includes('/dash/'))) {
+        // CASE 2: Non-DRM DASH (e.g. audio_url containing vp9_output.mpd) -> Shaka Player WITHOUT ANY DRM License!
+        try {
+          await shakaPlayer.unload();
+          shakaPlayer.configure({ drm: { servers: {} } });
+          const netEngine = shakaPlayer.getNetworkingEngine();
+          netEngine.clearAllRequestFilters();
+
+          netEngine.registerRequestFilter((type, request) => {
+            if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST || 
+                type === shaka.net.NetworkingEngine.RequestType.SEGMENT) {
+              request.uris = request.uris.map(u => {
+                if (u.startsWith('http') && !u.includes('/api/dash-proxy') && !u.includes('/api/proxy-stream')) {
+                  return `/api/dash-proxy?url=${encodeURIComponent(u)}`;
+                }
+                return u;
+              });
+            }
+          });
+
+          const proxiedUrl = `/api/dash-proxy?url=${encodeURIComponent(effectiveStreamUrl)}`;
+          try {
+            await shakaPlayer.load(proxiedUrl);
+          } catch (e) {
+            await shakaPlayer.load(effectiveStreamUrl);
+          }
+
+          audioElement.playbackRate = currentPlaybackSpeed;
+          await audioElement.play();
+          isAudioBuffering = false;
+          isPlaying = true;
+          updatePlayPauseButton();
+          showToast("Playing");
+        } catch (err) {
+          console.error("Non-DRM DASH player error:", err);
+          isAudioBuffering = false;
+          isPlaying = false;
+          updatePlayPauseButton();
+          showToast("Playback error: " + (err.message || "Failed to play"), true);
+        }
       } else {
-        // CASE 2: Standard Audio (audio_url is present) - Direct HTML5 audio without DRM license call
+        // CASE 3: Standard Audio (MP3 / M4A / AAC) -> Direct HTML5 audio without DRM license call
         if (shakaPlayer) {
           try {
             await shakaPlayer.unload();
