@@ -448,7 +448,6 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               image_url: story.image_url || story.cover_url || (baseShow && baseShow.image_url) || "",
               duration: typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0'),
               video_url: story.video_url || story.video_info?.android?.video_url || "",
-              video_duration: story.video_duration !== undefined ? (typeof story.video_duration === 'number' ? story.video_duration : parseFloat(story.video_duration || '0')) : (typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0')),
               story_id: story.story_id || "",
               media_url_enc: story.media_url_enc || story.media_url || ""
             });
@@ -479,8 +478,7 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
           stats: {
             avg_rating: baseShow.stats?.avg_rating !== undefined ? baseShow.stats.avg_rating : null,
             total_plays_display: baseShow.stats?.total_plays_display || ""
-          },
-          rank_text: baseShow.rank_text || (baseShow.show_category_rank ? `#${baseShow.show_category_rank}` : "")
+          }
         }
       ]
     };
