@@ -450,16 +450,7 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               video_url: story.video_url || story.video_info?.android?.video_url || "",
               video_duration: story.video_duration !== undefined ? (typeof story.video_duration === 'number' ? story.video_duration : parseFloat(story.video_duration || '0')) : (typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0')),
               story_id: story.story_id || "",
-              media_url_enc: story.media_url_enc || story.media_url || "",
-              stats: {
-                total_plays_display: story.stats?.total_plays_display || "",
-                comment_count: story.stats?.comment_count !== undefined ? story.stats.comment_count : 0
-              },
-              video_info: {
-                android: {
-                  video_url: story.video_info?.android?.video_url || story.video_url || ""
-                }
-              }
+              media_url_enc: story.media_url_enc || story.media_url || ""
             });
           }
         }
@@ -480,7 +471,6 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
         {
           show_title: baseShow.show_title || baseShow.title || "",
           image_url: baseShow.image_url || baseShow.cover_url || baseShow.gift_url || "",
-          show_desc_en: baseShow.show_desc_en || baseShow.show_desc || "",
           show_category_rank: baseShow.show_category_rank !== undefined ? baseShow.show_category_rank : (baseShow.rank !== undefined ? baseShow.rank : null),
           show_id: baseShow.show_id || showId,
           episodes_count: typeof baseShow.episodes_count === 'number' ? baseShow.episodes_count : parseInt(baseShow.episodes_count || '0', 10),
