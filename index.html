@@ -2605,6 +2605,21 @@
       return (currentMediaMode === 'video' && videoElement) ? videoElement : audioElement;
     }
 
+    // Audio playback priority helper:
+    // Priority 1: Unencrypted audio_url (Highest)
+    // Priority 2: Unencrypted media_url
+    // Priority 3: DRM media_url_enc / fallback
+    function getStoryAudioUrl(story) {
+      if (!story) return "";
+      if (story.audio_url && !story.audio_url.includes('.mpd') && !story.audio_url.includes('drm-aac') && !story.audio_url.includes('manifest')) {
+        return story.audio_url;
+      }
+      if (story.media_url && !story.media_url.includes('.mpd') && !story.media_url.includes('drm-aac') && !story.media_url.includes('manifest')) {
+        return story.media_url;
+      }
+      return story.media_url_enc || story.audio_url || story.media_url || "";
+    }
+
     async function initShakaPlayer() {
       try {
         if (window.shaka) {
@@ -3337,7 +3352,7 @@
         const hasVideo = Boolean(story.video_url);
         const durationText = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
         const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
-        const audioUrl = story.audio_url || story.media_url_enc || story.media_url || "";
+        const audioUrl = getStoryAudioUrl(story);
         const videoUrl = story.video_url || "";
         epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo);
 
@@ -3802,7 +3817,7 @@
         const prevStory = loadedEpisodesList[currentIndex - 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const audioUrl = prevStory.audio_url || prevStory.media_url_enc || prevStory.media_url || "";
+        const audioUrl = getStoryAudioUrl(prevStory);
         const videoUrl = prevStory.video_url || "";
         const hasVid = Boolean(videoUrl);
         playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
@@ -3816,7 +3831,7 @@
         const nextStory = loadedEpisodesList[currentIndex + 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const audioUrl = nextStory.audio_url || nextStory.media_url_enc || nextStory.media_url || "";
+        const audioUrl = getStoryAudioUrl(nextStory);
         const videoUrl = nextStory.video_url || "";
         const hasVid = Boolean(videoUrl);
         playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
