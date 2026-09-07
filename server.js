@@ -273,68 +273,11 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
     const url = `${BASE_URL}/v2/feed_api/get_feed_data?${queryParams}`;
     const { statusCode, data } = await fetchViaWorkerProxy(url, headers, 'GET');
 
-    if (!data || typeof data !== 'object') {
+    if (typeof data === 'object' && data !== null) {
+      return res.status(statusCode).json(data);
+    } else {
       return res.status(statusCode).send(data);
     }
-
-    const rawModules = Array.isArray(data.result) ? data.result : [];
-    const filteredModules = [];
-
-    for (const mod of rawModules) {
-      if (!mod) continue;
-
-      const rawEntities = Array.isArray(mod.entities) ? mod.entities : [];
-      const shows = [];
-
-      for (const ent of rawEntities) {
-        if (!ent) continue;
-
-        let showId = "";
-        let title = "";
-        let imageUrl = "";
-
-        if (ent.type === 'show' && ent.value) {
-          showId = ent.value.show_id || ent.value.entity_id || "";
-          title = ent.value.show_title || ent.value.title || "";
-          imageUrl = ent.value.image_url || ent.value.cover_url || ent.value.gift_url || "";
-        } else if (ent.type === 'top_10_show' && ent.value) {
-          const showInfo = ent.value.show_info || ent.value;
-          showId = ent.value.show_id || showInfo.show_id || showInfo.entity_id || "";
-          title = showInfo.show_title || showInfo.title || "";
-          imageUrl = showInfo.image_url || showInfo.cover_url || showInfo.gift_url || "";
-        } else if (ent.value) {
-          const val = ent.value.show_info || ent.value;
-          showId = val.show_id || val.entity_id || "";
-          title = val.show_title || val.title || "";
-          imageUrl = val.image_url || val.cover_url || val.gift_url || "";
-        }
-
-        if (showId || title) {
-          shows.push({
-            show_id: showId,
-            title: title,
-            image_url: imageUrl
-          });
-        }
-      }
-
-      if (shows.length > 0 || mod.module_name) {
-        filteredModules.push({
-          module_name: mod.module_name || "",
-          shows: shows
-        });
-      }
-    }
-
-    const formattedResponse = {
-      status: data.status !== undefined ? data.status : 1,
-      message: data.message || "Home feed details",
-      cookies: cachedCookies || "No cookies found",
-      token: cachedToken || "",
-      result: filteredModules
-    };
-
-    return res.status(200).json(formattedResponse);
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -369,32 +312,11 @@ app.get(['/search', '/api/search'], async (req, res) => {
     const url = `${BASE_URL}/v3/search/universal.search?${queryParams}`;
     const { statusCode, data } = await fetchViaWorkerProxy(url, headers, 'GET');
 
-    if (!data || typeof data !== 'object') {
+    if (typeof data === 'object' && data !== null) {
+      return res.status(statusCode).json(data);
+    } else {
       return res.status(statusCode).send(data);
     }
-
-    const rawShows = data.result?.shows || [];
-    const filteredShows = [];
-
-    for (const show of rawShows) {
-      if (show && (show.entity_id || show.show_id || show.title)) {
-        filteredShows.push({
-          show_id: show.entity_id || show.show_id || "",
-          title: show.title || show.show_title || "",
-          image_url: show.image_url || show.cover_url || show.thumbnail_url || ""
-        });
-      }
-    }
-
-    const formattedResponse = {
-      status: data.status !== undefined ? data.status : 1,
-      message: data.message || "successfully fetched results",
-      result: {
-        shows: filteredShows
-      }
-    };
-
-    return res.status(200).json(formattedResponse);
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -424,84 +346,30 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       });
     }
 
-    const startPtr = parseInt(req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
+    const currPtr = req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0';
     const pageSource = req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
-    const batchSize = Math.min(Math.max(parseInt(req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
+    const infoLevel = req.headers['info_level'] || req.headers['info-level'] || req.query.info_level || currPtr;
 
-    const ptrList = [];
-    for (let i = 0; i < batchSize; i++) {
-      ptrList.push(startPtr + i);
+    const queryParams = new URLSearchParams({
+      show_id: showId,
+      curr_ptr: currPtr,
+      info_level: infoLevel,
+      page_source: pageSource,
+      ...req.query
+    }).toString();
+
+    const targetUrl = `${BASE_URL}/v2/content_api/show.get_details?${queryParams}`;
+    const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
+
+    if (typeof data === 'object' && data !== null) {
+      return res.status(statusCode).json(data);
+    } else {
+      return res.status(statusCode).send(data);
     }
-
-    const fetchPromises = ptrList.map(ptr => {
-      const queryParams = new URLSearchParams({
-        show_id: showId,
-        curr_ptr: String(ptr),
-        info_level: String(ptr),
-        page_source: pageSource
-      }).toString();
-
-      const targetUrl = `${BASE_URL}/v2/content_api/show.get_details?${queryParams}`;
-      return fetchViaWorkerProxy(targetUrl, headers, 'GET')
-        .then(resObj => ({ ptr, resData: resObj }))
-        .catch(err => ({ ptr, error: err }));
-    });
-
-    const results = await Promise.all(fetchPromises);
-    results.sort((a, b) => a.ptr - b.ptr);
-
-    let baseShow = null;
-    const allStories = [];
-
-    for (const item of results) {
-      if (!item.resData || !item.resData.data) continue;
-      const json = item.resData.data;
-
-      if (!baseShow && json.result && Array.isArray(json.result) && json.result[0]) {
-        baseShow = json.result[0];
-      }
-
-      if (json.result && Array.isArray(json.result) && json.result[0] && Array.isArray(json.result[0].stories)) {
-        for (const story of json.result[0].stories) {
-          if (story && (story.story_id || story.story_title || story.media_url_enc || story.media_url)) {
-            allStories.push({
-              story_title: story.story_title || "",
-              duration: typeof story.duration === 'number' ? story.duration : parseInt(story.duration || '0', 10),
-              story_id: story.story_id || "",
-              media_url: story.media_url_enc || story.media_url || ""
-            });
-          }
-        }
-      }
-    }
-
-    if (!baseShow) {
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch show details from Pocket FM'
-      });
-    }
-
-    const filteredResponse = {
-      status: 1,
-      message: "Result for show details page",
-      result: [
-        {
-          show_title: baseShow.show_title || "",
-          image_url: baseShow.image_url || "",
-          show_id: baseShow.show_id || showId,
-          episodes_count: typeof baseShow.episodes_count === 'number' ? baseShow.episodes_count : parseInt(baseShow.episodes_count || '0', 10),
-          stories: allStories,
-          next_ptr: startPtr + allStories.length
-        }
-      ]
-    };
-
-    return res.status(200).json(filteredResponse);
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: 'Failed to process show details batch',
+      message: 'Failed to process show details',
       error: error.message
     });
   }
@@ -581,33 +449,11 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
     const targetUrl = `${BASE_URL}/v2/feed_api/get_saved_stories?show_ids=${encodeURIComponent(showIds)}`;
     const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
 
-    if (!data || typeof data !== 'object') {
+    if (typeof data === 'object' && data !== null) {
+      return res.status(statusCode).json(data);
+    } else {
       return res.status(statusCode).send(data);
     }
-
-    const rawStories = data.result?.stories || [];
-    const filteredStories = [];
-
-    for (const story of rawStories) {
-      if (!story) continue;
-
-      filteredStories.push({
-        story_title: story.story_title || story.title || "",
-        duration: typeof story.duration === 'number' ? story.duration : parseInt(story.duration || '0', 10),
-        story_id: story.story_id || "",
-        media_url: story.media_url_enc || story.media_url || ""
-      });
-    }
-
-    const formattedResponse = {
-      status: data.status !== undefined ? data.status : 1,
-      message: data.message || "Successfully fetched saved stories !!!",
-      result: {
-        stories: filteredStories
-      }
-    };
-
-    return res.status(200).json(formattedResponse);
   } catch (error) {
     return res.status(500).json({
       success: false,
