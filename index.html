@@ -1772,6 +1772,26 @@
       renderFeedModules(modulesToRender);
     }
 
+    function extractShowsFromModule(mod) {
+      if (!mod) return [];
+      if (mod.shows && Array.isArray(mod.shows)) {
+        return mod.shows;
+      }
+      if (mod.entities && Array.isArray(mod.entities)) {
+        return mod.entities.map(ent => {
+          const val = ent.value || {};
+          return {
+            show_id: val.show_id || '',
+            title: val.show_title || val.title || 'Untitled',
+            image_url: val.image_url || '',
+            rating: val.stats?.avg_rating || '4.9',
+            plays: val.stats?.total_plays_display || '1M+'
+          };
+        }).filter(s => s.show_id || s.title);
+      }
+      return [];
+    }
+
     function renderFeedModules(modules) {
       const container = document.getElementById('home-feed-container');
       container.innerHTML = '';
@@ -1780,17 +1800,19 @@
         modules = SAMPLE_DATABASE['hindi'];
       }
 
-      let popularModule = modules.find(m => m.module_name && (m.module_name.toLowerCase().includes('popular') || m.module_name.toLowerCase().includes('pocket fm')));
+      let popularModule = modules.find(m => m.module_name && (m.module_name.toLowerCase().includes('popular') || m.module_name.toLowerCase().includes('pocket fm') || m.module_name.toLowerCase().includes('top picks')));
       if (!popularModule && modules.length > 0) {
         popularModule = modules[0];
       }
 
-      if (popularModule && popularModule.shows && popularModule.shows.length > 0) {
-        renderBannerSlider(popularModule.shows);
+      const popularShows = popularModule ? extractShowsFromModule(popularModule) : [];
+      if (popularShows.length > 0) {
+        renderBannerSlider(popularShows);
       }
 
       modules.forEach(mod => {
-        if (!mod.shows || mod.shows.length === 0) return;
+        const shows = extractShowsFromModule(mod);
+        if (shows.length === 0) return;
         const section = document.createElement('div');
         section.className = 'section';
 
@@ -1803,7 +1825,7 @@
             <span class="section-more" onclick="switchTab('search')">View All</span>
           </div>
           <div class="horizontal-rail">
-            ${mod.shows.map(show => `
+            ${shows.map(show => `
               <div class="show-card" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
                 <div class="card-poster-wrap">
                   <img class="card-poster" src="${escapeAttr(show.image_url || 'https://via.placeholder.com/130')}" alt="${escapeAttr(show.title)}" loading="lazy">
