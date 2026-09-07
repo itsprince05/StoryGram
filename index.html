@@ -1948,6 +1948,19 @@
       }
     }
 
+    .spin-animation {
+      animation: spin 0.8s linear infinite !important;
+      display: inline-block;
+    }
+
+    .inline-batch-loader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      color: var(--primary);
+    }
+
     .toast {
       position: fixed;
       top: 20px;
@@ -2433,10 +2446,14 @@
     let currentShowId = null;
     let currentShowObj = null;
     let currentNextPtr = 0;
+    let currentTopPtr = 0;
     let currentShowTotalEpisodes = 0;
     let currentBatchStartPtr = 0;
     let currentPlayingStory = null;
     let isPlaying = false;
+    let isAudioBuffering = false;
+    let isLoadingMoreBottom = false;
+    let isLoadingMoreTop = false;
     let currentSlideIndex = 0;
     let totalSlides = 0;
     let bannerSliderTimer = null;
@@ -2479,8 +2496,14 @@
                 }
               }
             });
+            shakaPlayer.addEventListener('buffering', (event) => {
+              isAudioBuffering = Boolean(event.buffering);
+              updatePlayPauseButton();
+            });
             shakaPlayer.addEventListener('error', (event) => {
               console.error('Shaka Player error:', event.detail);
+              isAudioBuffering = false;
+              updatePlayPauseButton();
             });
           } else {
             console.warn('Browser does not support Shaka Player');
@@ -2492,17 +2515,60 @@
     }
 
     audioElement.addEventListener('timeupdate', updateProgress);
-    audioElement.addEventListener('ended', () => {
-      isPlaying = false;
+    
+    audioElement.addEventListener('loadstart', () => {
+      isAudioBuffering = true;
+      updatePlayPauseButton();
+    });
+
+    audioElement.addEventListener('waiting', () => {
+      isAudioBuffering = true;
+      updatePlayPauseButton();
+    });
+
+    audioElement.addEventListener('seeking', () => {
+      isAudioBuffering = true;
+      updatePlayPauseButton();
+    });
+
+    audioElement.addEventListener('canplay', () => {
+      isAudioBuffering = false;
+      updatePlayPauseButton();
+    });
+
+    audioElement.addEventListener('canplaythrough', () => {
+      isAudioBuffering = false;
+      updatePlayPauseButton();
+    });
+
+    audioElement.addEventListener('playing', () => {
+      isAudioBuffering = false;
+      isPlaying = true;
       updatePlayPauseButton();
     });
 
     audioElement.addEventListener('play', () => {
+      if (audioElement.readyState < 3) {
+        isAudioBuffering = true;
+      }
       isPlaying = true;
       updatePlayPauseButton();
     });
 
     audioElement.addEventListener('pause', () => {
+      isAudioBuffering = false;
+      isPlaying = false;
+      updatePlayPauseButton();
+    });
+
+    audioElement.addEventListener('ended', () => {
+      isAudioBuffering = false;
+      isPlaying = false;
+      updatePlayPauseButton();
+    });
+
+    audioElement.addEventListener('error', () => {
+      isAudioBuffering = false;
       isPlaying = false;
       updatePlayPauseButton();
     });
@@ -2671,6 +2737,8 @@
 
     function selectEpisodeRange(startPtr, startNum, endNum) {
       currentBatchStartPtr = startPtr;
+      currentTopPtr = startPtr;
+      currentNextPtr = startPtr;
       closeEpisodeRangeModal();
       const badge = document.getElementById('episodes-counter-badge');
       if (badge) {
@@ -2683,7 +2751,7 @@
         epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"></div></div>';
       }
 
-      fetchShowEpisodes(currentShowId, startPtr, false, startNum);
+      fetchShowEpisodes(currentShowId, startPtr, 'replace', startNum);
     }
 
     function renderBannerSlider(shows) {
@@ -2903,6 +2971,7 @@
       previousTab = (currentTabName && currentTabName !== 'show-detail') ? currentTabName : 'home';
       currentShowId = showId;
       currentBatchStartPtr = 0;
+      currentTopPtr = 0;
       currentShowTotalEpisodes = 0;
       currentNextPtr = 0;
       loadedEpisodesList = [];
@@ -2932,7 +3001,7 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
       refreshIcons();
 
-      fetchShowEpisodes(showId, 0, false, 1);
+      fetchShowEpisodes(showId, 0, 'replace', 1);
     }
 
     function goBack() {
@@ -2981,22 +3050,45 @@
       refreshIcons();
     }
 
-    function renderEpisodesList(stories, append = false, startEpisodeNum = 1) {
+    function updateEpisodeCounterBadge() {
+      const startNum = currentTopPtr + 1;
+      const endNum = Math.min(currentNextPtr, currentShowTotalEpisodes || currentNextPtr);
+      const badge = document.getElementById('episodes-counter-badge');
+      if (badge) {
+        badge.innerHTML = `<span>Ep ${startNum}-${endNum}</span> <i data-lucide="chevron-down"></i>`;
+        refreshIcons();
+      }
+    }
+
+    function renderEpisodesList(stories, mode = 'replace', startEpisodeNum = 1) {
       const epContainer = document.getElementById('show-page-episodes-container');
-      if (!append) {
+      if (!epContainer) return;
+
+      if (mode === 'replace') {
         epContainer.innerHTML = '';
         loadedEpisodesList = [];
       }
 
       if (!stories || stories.length === 0) {
-        if (!append) epContainer.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted);"><i data-lucide="list-ordered" style="width: 24px; height: 24px; margin-bottom: 8px;"></i><p>No episodes found for this show.</p></div>`;
-        refreshIcons();
+        if (mode === 'replace') {
+          epContainer.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted);"><i data-lucide="list-ordered" style="width: 24px; height: 24px; margin-bottom: 8px;"></i><p>No episodes found for this show.</p></div>`;
+          refreshIcons();
+        }
         return;
       }
 
-      loadedEpisodesList = loadedEpisodesList.concat(stories);
-      const showTitle = document.getElementById('show-page-title').innerText;
-      const showImg = document.getElementById('show-page-img').src;
+      if (mode === 'replace') {
+        loadedEpisodesList = stories.slice();
+      } else if (mode === 'append') {
+        loadedEpisodesList = loadedEpisodesList.concat(stories);
+      } else if (mode === 'prepend') {
+        loadedEpisodesList = stories.concat(loadedEpisodesList);
+      }
+
+      const showTitle = document.getElementById('show-page-title')?.innerText || "Show Details";
+      const showImg = document.getElementById('show-page-img')?.src || "";
+
+      const fragment = document.createDocumentFragment();
 
       stories.forEach((story, idx) => {
         const epDiv = document.createElement('div');
@@ -3012,10 +3104,14 @@
 
         epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, mediaStreamUrl, showTitle, showImg, hasVideo);
 
+        const iconHtml = (isCurrent && isAudioBuffering)
+          ? '<i data-lucide="loader-2" class="spin-animation"></i>'
+          : (isThisPlaying ? '<i data-lucide="pause"></i>' : `<i data-lucide="${hasVideo ? 'video' : 'headphones'}"></i>`);
+
         epDiv.innerHTML = `
           <div class="ep-left">
             <div class="ep-play-btn" data-has-video="${hasVideo ? 'true' : 'false'}" title="${hasVideo ? 'Play Video Episode' : 'Play Audio Episode'}">
-              <i data-lucide="${isThisPlaying ? 'pause' : (hasVideo ? 'video' : 'headphones')}"></i>
+              ${iconHtml}
             </div>
             <div class="ep-info">
               <div class="ep-title">${escapeHtml(story.story_title || `Episode ${epNumber}`)}</div>
@@ -3023,13 +3119,23 @@
             </div>
           </div>
         `;
-        epContainer.appendChild(epDiv);
+        fragment.appendChild(epDiv);
       });
+
+      if (mode === 'prepend') {
+        epContainer.insertBefore(fragment, epContainer.firstChild);
+      } else {
+        epContainer.appendChild(fragment);
+      }
+
       refreshIcons();
     }
 
-    async function fetchShowEpisodes(showId, currPtr = 0, append = false, startEpisodeNum = 1) {
+    async function fetchShowEpisodes(showId, currPtr = 0, mode = 'replace', startEpisodeNum = 1) {
       currentBatchStartPtr = currPtr;
+      if (mode === 'replace') {
+        currentTopPtr = currPtr;
+      }
       try {
         const response = await fetch('/show', {
           headers: {
@@ -3079,14 +3185,11 @@
             document.getElementById('show-page-ep-header-title').innerText = `${totalCount} Episodes`;
 
             if (showData.stories && showData.stories.length > 0) {
-              renderEpisodesList(showData.stories, append, startEpisodeNum);
+              renderEpisodesList(showData.stories, mode, startEpisodeNum);
               currentNextPtr = showData.next_ptr || (currPtr + showData.stories.length);
-              const startNum = currPtr + 1;
-              const endNum = Math.min(currPtr + showData.stories.length, totalCount || (currPtr + showData.stories.length));
-              document.getElementById('episodes-counter-badge').innerHTML = `<span>Ep ${startNum}-${endNum}</span> <i data-lucide="chevron-down"></i>`;
-              refreshIcons();
+              updateEpisodeCounterBadge();
             } else {
-              if (!append) {
+              if (mode === 'replace') {
                 document.getElementById('show-page-episodes-container').innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted);"><i data-lucide="list-ordered" style="width: 24px; height: 24px; margin-bottom: 8px;"></i><p>No episodes found for this show.</p></div>';
                 refreshIcons();
               }
@@ -3096,7 +3199,7 @@
         }
         throw new Error("Failed to load show details");
       } catch (err) {
-        if (!append) {
+        if (mode === 'replace') {
           const epContainer = document.getElementById('show-page-episodes-container');
           if (epContainer && !epContainer.querySelector('.spinner')) {
             epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"></div></div>';
@@ -3104,22 +3207,113 @@
         }
         setTimeout(() => {
           if (currentShowId === showId) {
-            fetchShowEpisodes(showId, currPtr, append, startEpisodeNum);
+            fetchShowEpisodes(showId, currPtr, mode, startEpisodeNum);
           }
         }, 3000);
       }
     }
 
-    function loadNextEpisodeBatch() {
-      if (!currentShowId) return;
-      const btn = document.getElementById('show-page-load-more-btn');
-      if (btn) {
-        btn.innerHTML = '<i data-lucide="loader-2" class="spin-animation"></i> Loading...';
+    async function loadMoreEpisodesBottom() {
+      if (isLoadingMoreBottom || isLoadingMoreTop || !currentShowId || currentTabName !== 'show-detail') return;
+      if (currentShowTotalEpisodes > 0 && currentNextPtr >= currentShowTotalEpisodes) return;
+
+      isLoadingMoreBottom = true;
+      const epContainer = document.getElementById('show-page-episodes-container');
+
+      let bottomLoader = document.getElementById('ep-bottom-loader');
+      if (!bottomLoader && epContainer) {
+        bottomLoader = document.createElement('div');
+        bottomLoader.id = 'ep-bottom-loader';
+        bottomLoader.className = 'inline-batch-loader';
+        bottomLoader.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 24px; height: 24px;"></i>';
+        epContainer.appendChild(bottomLoader);
         refreshIcons();
-        fetchShowEpisodes(currentShowId, currentNextPtr, true).finally(() => {
-          btn.innerHTML = '<i data-lucide="plus"></i> Load Next 20 Episodes';
-          refreshIcons();
+      }
+
+      try {
+        const response = await fetch('/show', {
+          headers: {
+            'show_id': currentShowId,
+            'curr_ptr': String(currentNextPtr),
+            'language': currentLanguage
+          }
         });
+        if (response.ok) {
+          const data = await response.json();
+          const showData = data.result && data.result[0];
+          if (showData && showData.stories && showData.stories.length > 0) {
+            const newStories = showData.stories.filter(s => !loadedEpisodesList.some(existing => existing.story_id === s.story_id));
+            if (newStories.length > 0) {
+              const startEpNum = currentNextPtr + 1;
+              renderEpisodesList(newStories, 'append', startEpNum);
+              currentNextPtr = showData.next_ptr || (currentNextPtr + newStories.length);
+              updateEpisodeCounterBadge();
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Bottom pagination error:", e);
+      } finally {
+        const bl = document.getElementById('ep-bottom-loader');
+        if (bl) bl.remove();
+        isLoadingMoreBottom = false;
+      }
+    }
+
+    async function loadMoreEpisodesTop() {
+      if (isLoadingMoreTop || isLoadingMoreBottom || !currentShowId || currentTabName !== 'show-detail') return;
+      if (currentTopPtr <= 0) return;
+
+      isLoadingMoreTop = true;
+      const epContainer = document.getElementById('show-page-episodes-container');
+
+      let topLoader = document.getElementById('ep-top-loader');
+      if (!topLoader && epContainer) {
+        topLoader = document.createElement('div');
+        topLoader.id = 'ep-top-loader';
+        topLoader.className = 'inline-batch-loader';
+        topLoader.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 22px; height: 22px;"></i>';
+        epContainer.insertBefore(topLoader, epContainer.firstChild);
+        refreshIcons();
+      }
+
+      const prevStartPtr = Math.max(0, currentTopPtr - 20);
+      const prevBatchCount = currentTopPtr - prevStartPtr;
+      const prevStartNum = prevStartPtr + 1;
+
+      try {
+        const response = await fetch('/show', {
+          headers: {
+            'show_id': currentShowId,
+            'curr_ptr': String(prevStartPtr),
+            'limit': String(prevBatchCount),
+            'language': currentLanguage
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const showData = data.result && data.result[0];
+          if (showData && showData.stories && showData.stories.length > 0) {
+            const newStories = showData.stories.filter(s => !loadedEpisodesList.some(existing => existing.story_id === s.story_id));
+            if (newStories.length > 0) {
+              const oldScrollHeight = document.documentElement.scrollHeight;
+              const oldScrollTop = window.scrollY;
+
+              renderEpisodesList(newStories, 'prepend', prevStartNum);
+              currentTopPtr = prevStartPtr;
+              updateEpisodeCounterBadge();
+
+              const newScrollHeight = document.documentElement.scrollHeight;
+              window.scrollTo({ top: oldScrollTop + (newScrollHeight - oldScrollHeight), behavior: 'instant' });
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Top pagination error:", e);
+      } finally {
+        const tl = document.getElementById('ep-top-loader');
+        if (tl) tl.remove();
+        isLoadingMoreTop = false;
       }
     }
 
@@ -3397,6 +3591,8 @@
     async function playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl, hasVideo) {
       const isVid = Boolean(hasVideo !== undefined ? hasVideo : (mediaUrl && mediaUrl.includes('.mpd')));
       currentPlayingStory = { storyId, title, mediaUrl, showTitle, thumbUrl, hasVideo: isVid };
+      isAudioBuffering = true;
+      updatePlayPauseButton();
 
       const historyItem = {
         storyId,
@@ -3435,6 +3631,7 @@
           await shakaPlayer.load(streamUrl);
           audioElement.playbackRate = currentPlaybackSpeed;
           await audioElement.play();
+          isAudioBuffering = false;
           isPlaying = true;
           updatePlayPauseButton();
           showToast(`▶ Playing: ${title}`);
@@ -3444,11 +3641,13 @@
             audioElement.src = streamUrl;
             audioElement.playbackRate = currentPlaybackSpeed;
             await audioElement.play();
+            isAudioBuffering = false;
             isPlaying = true;
             updatePlayPauseButton();
             showToast(`▶ Playing: ${title}`);
           } catch (audioErr) {
             console.error("Audio playback error:", audioErr);
+            isAudioBuffering = false;
             isPlaying = false;
             updatePlayPauseButton();
             showToast("Playback error", true);
@@ -3463,11 +3662,13 @@
         audioElement.src = streamUrl;
         audioElement.playbackRate = currentPlaybackSpeed;
         audioElement.play().then(() => {
+          isAudioBuffering = false;
           isPlaying = true;
           updatePlayPauseButton();
           showToast(`▶ Playing: ${title}`);
         }).catch(err => {
           console.log("Audio autoplay fallback:", err);
+          isAudioBuffering = false;
           isPlaying = false;
           updatePlayPauseButton();
         });
@@ -3482,13 +3683,23 @@
 
     function togglePlayPause() {
       if (audioElement.paused) {
-        audioElement.play().catch(e => { });
-        isPlaying = true;
+        isAudioBuffering = true;
+        updatePlayPauseButton();
+        audioElement.play().then(() => {
+          isAudioBuffering = false;
+          isPlaying = true;
+          updatePlayPauseButton();
+        }).catch(e => {
+          isAudioBuffering = false;
+          isPlaying = false;
+          updatePlayPauseButton();
+        });
       } else {
         audioElement.pause();
+        isAudioBuffering = false;
         isPlaying = false;
+        updatePlayPauseButton();
       }
-      updatePlayPauseButton();
     }
 
     function updateEpisodeListIcons() {
@@ -3500,7 +3711,11 @@
         if (isCurrent) {
           el.classList.add('playing');
           if (playBtn) {
-            playBtn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : `<i data-lucide="${defaultIcon}"></i>`;
+            if (isAudioBuffering) {
+              playBtn.innerHTML = '<i data-lucide="loader-2" class="spin-animation"></i>';
+            } else {
+              playBtn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : `<i data-lucide="${defaultIcon}"></i>`;
+            }
           }
         } else {
           el.classList.remove('playing');
@@ -3515,11 +3730,19 @@
     function updatePlayPauseButton() {
       const btn = document.getElementById('play-pause-btn');
       if (btn) {
-        btn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
+        if (isAudioBuffering) {
+          btn.innerHTML = '<i data-lucide="loader-2" class="spin-animation"></i>';
+        } else {
+          btn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
+        }
       }
       const fsBtn = document.getElementById('fs-play-pause-btn');
       if (fsBtn) {
-        fsBtn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
+        if (isAudioBuffering) {
+          fsBtn.innerHTML = '<i data-lucide="loader-2" class="spin-animation"></i>';
+        } else {
+          fsBtn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
+        }
       }
       updateEpisodeListIcons();
       refreshIcons();
@@ -3535,6 +3758,7 @@
       audioElement.currentTime = 0;
       audioElement.removeAttribute('src');
       audioElement.load();
+      isAudioBuffering = false;
       isPlaying = false;
       currentPlayingStory = null;
 
@@ -3724,10 +3948,32 @@
       return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
+    let scrollThrottleTimer = null;
+    function handleWindowScroll() {
+      if (scrollThrottleTimer) return;
+      scrollThrottleTimer = setTimeout(() => {
+        scrollThrottleTimer = null;
+        if (currentTabName !== 'show-detail' || !currentShowId) return;
+
+        const scrollY = window.scrollY || document.documentElement.scrollTop;
+        const windowHeight = window.innerHeight;
+        const docHeight = document.documentElement.scrollHeight;
+
+        if (docHeight - (scrollY + windowHeight) < 450) {
+          loadMoreEpisodesBottom();
+        }
+
+        if (scrollY < 80 && currentTopPtr > 0) {
+          loadMoreEpisodesTop();
+        }
+      }, 120);
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       initShakaPlayer();
       refreshIcons();
       fetchHomeFeed();
+      window.addEventListener('scroll', handleWindowScroll, { passive: true });
 
       const sliderElem = document.getElementById('hero-slider-container');
       if (sliderElem) {
