@@ -738,6 +738,7 @@
       position: relative;
       display: flex;
       align-items: center;
+      width: calc(100% - 20px);
     }
 
     .search-input {
@@ -751,6 +752,16 @@
       font-family: inherit;
       outline: none;
       transition: border-color 0.2s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .search-input::-webkit-search-decoration,
+    .search-input::-webkit-search-cancel-button,
+    .search-input::-webkit-search-results-button,
+    .search-input::-webkit-search-results-decoration {
+      display: none;
+      -webkit-appearance: none;
     }
 
     .search-input:focus {
@@ -758,12 +769,32 @@
       box-shadow: 0 0 15px rgba(255, 51, 102, 0.25);
     }
 
-    .search-btn-icon {
+    .search-btn-icon-btn {
       position: absolute;
-      right: 16px;
+      right: 12px;
+      background: none;
+      border: none;
       color: var(--text-muted);
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      border-radius: 50%;
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    .search-btn-icon-btn:hover {
+      color: var(--primary);
+    }
+
+    .search-btn-icon-btn:active {
+      transform: scale(0.9);
+    }
+
+    .search-btn-icon {
       font-size: 16px;
+      pointer-events: none;
     }
 
     .search-tags {
@@ -1929,10 +1960,12 @@
 
       <!-- TAB 3: SEARCH -->
       <div id="tab-search" class="tab-content">
-        <div class="search-box">
-          <input type="text" id="search-input" class="search-input" placeholder="Search shows, characters, stories...">
-          <i data-lucide="search" class="search-btn-icon" onclick="performSearch()"></i>
-        </div>
+        <form class="search-box" id="search-form" onsubmit="handleSearchSubmit(event)" action="javascript:void(0);">
+          <input type="search" id="search-input" class="search-input" placeholder="Search shows, characters, stories..." enterkeyhint="search" inputmode="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <button type="submit" class="search-btn-icon-btn" aria-label="Search">
+            <i data-lucide="search" class="search-btn-icon"></i>
+          </button>
+        </form>
 
         <div id="search-results-container">
           <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
@@ -3104,13 +3137,36 @@
     }
 
     let searchTimeout = null;
+
+    function handleSearchSubmit(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      clearTimeout(searchTimeout);
+      const input = document.getElementById('search-input');
+      if (input) {
+        input.blur();
+        const query = input.value.trim();
+        performSearch(query);
+      }
+    }
+
     document.getElementById('search-input')?.addEventListener('input', (e) => {
       clearTimeout(searchTimeout);
       const query = e.target.value.trim();
       if (query.length > 0) {
-        searchTimeout = setTimeout(() => performSearch(query), 300);
+        searchTimeout = setTimeout(() => {
+          performSearch(query);
+        }, 2000);
       } else {
         renderSearchEmptyState();
+      }
+    });
+
+    document.getElementById('search-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        handleSearchSubmit(e);
       }
     });
 
