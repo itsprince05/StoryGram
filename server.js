@@ -465,53 +465,36 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
             if (seenStoryIds.has(story.story_id)) continue;
             seenStoryIds.add(story.story_id);
 
+            let videoInfoObj = story.video_info || story.video_urls || story.video_url_info || story.video_player || story.video || null;
+            if (typeof videoInfoObj === 'string') {
+              try {
+                videoInfoObj = JSON.parse(videoInfoObj);
+              } catch (e) {
+                videoInfoObj = null;
+              }
+            }
+
+            const androidVideoUrl = (videoInfoObj && videoInfoObj.android && videoInfoObj.android.video_url) || (story.android && story.android.video_url) || "";
+            const webVideoUrl = (videoInfoObj && videoInfoObj.web && videoInfoObj.web.video_url) || (story.web && story.web.video_url) || "";
+            const prevVideoValue = story.video_url || androidVideoUrl || "";
+            const audioUrl = prevVideoValue || story.media_url_enc || story.media_url || "";
+
             const storyObj = {
               story_title: story.story_title || story.title || "",
               show_id: story.show_id || (baseShow && baseShow.show_id) || showId,
               image_url: story.image_url || story.cover_url || (baseShow && baseShow.image_url) || "",
               duration: typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0'),
               story_id: story.story_id || "",
-              media_url: story.media_url_enc || story.media_url || ""
+              audio_url: audioUrl,
+              media_url: audioUrl
             };
-            let videoUrl = "";
-            if (story.video_info) {
-              let vInfo = story.video_info;
-              if (typeof vInfo === 'string') {
-                try {
-                  vInfo = JSON.parse(vInfo);
-                } catch (e) {}
-              }
-              if (vInfo && typeof vInfo === 'object') {
-                if (vInfo.web) {
-                  videoUrl = typeof vInfo.web === 'object' ? (vInfo.web.video_url || "") : vInfo.web;
-                }
-              }
+
+            if (webVideoUrl) {
+              storyObj.video_url = webVideoUrl;
+            } else if (story.video_url && !story.video_url.includes('.mpd') && story.video_url.includes('.m3u8')) {
+              storyObj.video_url = story.video_url;
             }
-            if (!videoUrl && story.video_urls && typeof story.video_urls === 'object' && story.video_urls.web) {
-              videoUrl = typeof story.video_urls.web === 'object' ? (story.video_urls.web.video_url || "") : story.video_urls.web;
-            }
-            if (!videoUrl && typeof story.video_url === 'object' && story.video_url !== null && story.video_url.web) {
-              videoUrl = typeof story.video_url.web === 'object' ? (story.video_url.web.video_url || "") : story.video_url.web;
-            }
-            if (!videoUrl && typeof story.video_url === 'string' && story.video_url) {
-              try {
-                const parsed = JSON.parse(story.video_url);
-                if (parsed && typeof parsed === 'object' && parsed.web) {
-                  videoUrl = typeof parsed.web === 'object' ? (parsed.web.video_url || "") : parsed.web;
-                }
-              } catch (e) {}
-            }
-            if (!videoUrl && story.web) {
-              videoUrl = typeof story.web === 'object' ? (story.web.video_url || "") : story.web;
-            }
-            if (!videoUrl && typeof story.video_url === 'string' && story.video_url) {
-              videoUrl = story.video_url;
-            } else if (!videoUrl && story.video_info?.android?.video_url) {
-              videoUrl = story.video_info.android.video_url;
-            }
-            if (videoUrl) {
-              storyObj.video_url = videoUrl;
-            }
+
             allStories.push(storyObj);
           }
         }
