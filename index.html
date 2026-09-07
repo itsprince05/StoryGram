@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
   <style>
     :root {
       --bg-main: #070a12;
@@ -1038,6 +1039,34 @@
       gap: 12px;
       flex: 1;
       min-width: 0;
+    }
+
+    .ep-type-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 13px;
+    }
+
+    .ep-type-badge.has-video {
+      background: rgba(56, 189, 248, 0.12);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    .ep-type-badge.audio-only {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .ep-type-badge svg {
+      width: 15px;
+      height: 15px;
     }
 
     .ep-num {
@@ -2430,6 +2459,36 @@
     } catch(e) { favoriteShowsMap = {}; }
 
     const audioElement = document.getElementById('audio-element');
+    let shakaPlayer = null;
+
+    async function initShakaPlayer() {
+      try {
+        if (window.shaka) {
+          shaka.polyfill.installAll();
+          if (shaka.Player.isBrowserSupported()) {
+            shakaPlayer = new shaka.Player(audioElement);
+            shakaPlayer.configure({
+              streaming: {
+                rebufferingGoal: 2,
+                bufferingGoal: 10,
+                retryParameters: {
+                  maxAttempts: 3,
+                  baseDelay: 1000,
+                  backoffFactor: 2
+                }
+              }
+            });
+            shakaPlayer.addEventListener('error', (event) => {
+              console.error('Shaka Player error:', event.detail);
+            });
+          } else {
+            console.warn('Browser does not support Shaka Player');
+          }
+        }
+      } catch (e) {
+        console.error('Failed to init Shaka player', e);
+      }
+    }
 
     audioElement.addEventListener('timeupdate', updateProgress);
     audioElement.addEventListener('ended', () => {
@@ -2945,19 +3004,22 @@
         epDiv.className = `episode-item ${isCurrent ? 'playing' : ''}`;
         epDiv.id = `ep-item-${story.story_id}`;
 
+        const hasVideo = Boolean(story.video_url);
         const durationText = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
         const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
-        const mediaStreamUrl = story.media_url_enc || story.media_url || "";
+        const mediaStreamUrl = story.video_url || story.media_url_enc || story.media_url || "";
 
-        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, mediaStreamUrl, showTitle, showImg);
+        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, mediaStreamUrl, showTitle, showImg, hasVideo);
 
         epDiv.innerHTML = `
           <div class="ep-left">
-            <span class="ep-num">#${epNumber}</span>
+            <div class="ep-type-badge ${hasVideo ? 'has-video' : 'audio-only'}" title="${hasVideo ? 'Video MPD Stream' : 'Audio Stream'}">
+              <i data-lucide="${hasVideo ? 'video' : 'headphones'}"></i>
+            </div>
             <div class="ep-play-btn"><i data-lucide="${isThisPlaying ? 'pause' : 'play'}"></i></div>
             <div class="ep-info">
               <div class="ep-title">${escapeHtml(story.story_title || `Episode ${epNumber}`)}</div>
-              <div class="ep-duration">${durationText}</div>
+              <div class="ep-duration">#${epNumber} • ${durationText}</div>
             </div>
           </div>
         `;
@@ -3298,7 +3360,7 @@
         const prevStory = loadedEpisodesList[currentIndex - 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const mediaStreamUrl = prevStory.media_url_enc || prevStory.media_url || "";
+        const mediaStreamUrl = prevStory.video_url || prevStory.media_url_enc || prevStory.media_url || "";
         playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, mediaStreamUrl, showTitle, showImg);
       } else {
         showToast("First episode in list");
@@ -3312,7 +3374,7 @@
         const nextStory = loadedEpisodesList[currentIndex + 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const mediaStreamUrl = nextStory.media_url_enc || nextStory.media_url || "";
+        const mediaStreamUrl = nextStory.video_url || nextStory.media_url_enc || nextStory.media_url || "";
         playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, mediaStreamUrl, showTitle, showImg);
       } else {
         showToast("Last episode in current batch");
@@ -3327,7 +3389,7 @@
       }
     }
 
-    function playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl) {
+    async function playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl) {
       currentPlayingStory = { storyId, title, mediaUrl, showTitle, thumbUrl };
 
       const historyItem = {
@@ -3359,18 +3421,50 @@
       updateFullscreenPlayerUI();
 
       const streamUrl = mediaUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-      audioElement.src = streamUrl;
-      audioElement.playbackRate = currentPlaybackSpeed;
 
-      audioElement.play().then(() => {
-        isPlaying = true;
-        updatePlayPauseButton();
-        showToast(`▶ Playing: ${title}`);
-      }).catch(err => {
-        console.log("Audio autoplay fallback:", err);
-        isPlaying = false;
-        updatePlayPauseButton();
-      });
+      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash'))) {
+        try {
+          await shakaPlayer.unload();
+          await shakaPlayer.load(streamUrl);
+          audioElement.playbackRate = currentPlaybackSpeed;
+          await audioElement.play();
+          isPlaying = true;
+          updatePlayPauseButton();
+          showToast(`▶ Playing: ${title}`);
+        } catch (err) {
+          console.error("Shaka player error:", err);
+          try {
+            audioElement.src = streamUrl;
+            audioElement.playbackRate = currentPlaybackSpeed;
+            await audioElement.play();
+            isPlaying = true;
+            updatePlayPauseButton();
+            showToast(`▶ Playing: ${title}`);
+          } catch (audioErr) {
+            console.error("Audio playback error:", audioErr);
+            isPlaying = false;
+            updatePlayPauseButton();
+            showToast("Playback error", true);
+          }
+        }
+      } else {
+        if (shakaPlayer) {
+          try {
+            await shakaPlayer.unload();
+          } catch (e) { }
+        }
+        audioElement.src = streamUrl;
+        audioElement.playbackRate = currentPlaybackSpeed;
+        audioElement.play().then(() => {
+          isPlaying = true;
+          updatePlayPauseButton();
+          showToast(`▶ Playing: ${title}`);
+        }).catch(err => {
+          console.log("Audio autoplay fallback:", err);
+          isPlaying = false;
+          updatePlayPauseButton();
+        });
+      }
     }
 
     function openCurrentPlayingShow() {
@@ -3421,7 +3515,12 @@
       refreshIcons();
     }
 
-    function closePlayerBar() {
+    async function closePlayerBar() {
+      if (shakaPlayer) {
+        try {
+          await shakaPlayer.unload();
+        } catch (e) { }
+      }
       audioElement.pause();
       audioElement.currentTime = 0;
       audioElement.removeAttribute('src');
@@ -3616,6 +3715,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      initShakaPlayer();
       refreshIcons();
       fetchHomeFeed();
 
