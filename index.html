@@ -3013,10 +3013,9 @@
 
         epDiv.innerHTML = `
           <div class="ep-left">
-            <div class="ep-type-badge ${hasVideo ? 'has-video' : 'audio-only'}" title="${hasVideo ? 'Video MPD Stream' : 'Audio Stream'}">
-              <i data-lucide="${hasVideo ? 'video' : 'headphones'}"></i>
+            <div class="ep-play-btn" data-has-video="${hasVideo ? 'true' : 'false'}" title="${hasVideo ? 'Play Video Episode' : 'Play Audio Episode'}">
+              <i data-lucide="${isThisPlaying ? 'pause' : (hasVideo ? 'video' : 'headphones')}"></i>
             </div>
-            <div class="ep-play-btn"><i data-lucide="${isThisPlaying ? 'pause' : 'play'}"></i></div>
             <div class="ep-info">
               <div class="ep-title">${escapeHtml(story.story_title || `Episode ${epNumber}`)}</div>
               <div class="ep-duration">#${epNumber} • ${durationText}</div>
@@ -3200,10 +3199,13 @@
             ${playHistory.map(item => {
               const isCurrent = currentPlayingStory && currentPlayingStory.storyId === item.storyId;
               const isThisPlaying = isCurrent && isPlaying;
+              const hasVid = Boolean(item.hasVideo || (item.mediaUrl && item.mediaUrl.includes('.mpd')));
               return `
                 <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border);">
-                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(item.mediaUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}')">
-                    <div class="ep-play-btn"><i data-lucide="${isThisPlaying ? 'pause' : 'play'}"></i></div>
+                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(item.mediaUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid})">
+                    <div class="ep-play-btn" data-has-video="${hasVid ? 'true' : 'false'}">
+                      <i data-lucide="${isThisPlaying ? 'pause' : (hasVid ? 'video' : 'headphones')}"></i>
+                    </div>
                     <div class="ep-info">
                       <div class="ep-title">${escapeHtml(item.title)}</div>
                       <div class="ep-duration" style="color: var(--primary); font-weight: 600;"><i data-lucide="headphones" style="width: 12px; height: 12px;"></i> ${escapeHtml(item.showTitle)}</div>
@@ -3361,7 +3363,8 @@
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
         const mediaStreamUrl = prevStory.video_url || prevStory.media_url_enc || prevStory.media_url || "";
-        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, mediaStreamUrl, showTitle, showImg);
+        const hasVid = Boolean(prevStory.video_url);
+        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, mediaStreamUrl, showTitle, showImg, hasVid);
       } else {
         showToast("First episode in list");
       }
@@ -3375,22 +3378,24 @@
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
         const mediaStreamUrl = nextStory.video_url || nextStory.media_url_enc || nextStory.media_url || "";
-        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, mediaStreamUrl, showTitle, showImg);
+        const hasVid = Boolean(nextStory.video_url);
+        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, mediaStreamUrl, showTitle, showImg, hasVid);
       } else {
         showToast("Last episode in current batch");
       }
     }
 
-    function handleEpisodeClick(storyId, title, mediaUrl, showTitle, thumbUrl) {
+    function handleEpisodeClick(storyId, title, mediaUrl, showTitle, thumbUrl, hasVideo) {
       if (currentPlayingStory && currentPlayingStory.storyId === storyId) {
         togglePlayPause();
       } else {
-        playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl);
+        playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl, hasVideo);
       }
     }
 
-    async function playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl) {
-      currentPlayingStory = { storyId, title, mediaUrl, showTitle, thumbUrl };
+    async function playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl, hasVideo) {
+      const isVid = Boolean(hasVideo !== undefined ? hasVideo : (mediaUrl && mediaUrl.includes('.mpd')));
+      currentPlayingStory = { storyId, title, mediaUrl, showTitle, thumbUrl, hasVideo: isVid };
 
       const historyItem = {
         storyId,
@@ -3398,6 +3403,7 @@
         mediaUrl: mediaUrl || "",
         showTitle: showTitle || "Story Gram",
         thumbUrl: thumbUrl || "",
+        hasVideo: isVid,
         playedAt: Date.now()
       };
       playHistory = [historyItem, ...playHistory.filter(h => h.storyId !== storyId)].slice(0, 50);
@@ -3488,18 +3494,21 @@
       document.querySelectorAll('.episode-item').forEach(el => {
         const isCurrent = currentPlayingStory && el.id === `ep-item-${currentPlayingStory.storyId}`;
         const playBtn = el.querySelector('.ep-play-btn');
+        const hasVideo = playBtn && playBtn.dataset.hasVideo === 'true';
+        const defaultIcon = hasVideo ? 'video' : 'headphones';
         if (isCurrent) {
           el.classList.add('playing');
           if (playBtn) {
-            playBtn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
+            playBtn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : `<i data-lucide="${defaultIcon}"></i>`;
           }
         } else {
           el.classList.remove('playing');
           if (playBtn) {
-            playBtn.innerHTML = '<i data-lucide="play"></i>';
+            playBtn.innerHTML = `<i data-lucide="${defaultIcon}"></i>`;
           }
         }
       });
+      refreshIcons();
     }
 
     function updatePlayPauseButton() {
