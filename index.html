@@ -443,17 +443,31 @@
     .card-tag {
       position: absolute;
       top: 6px;
-      left: 6px;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(4px);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 9px;
-      font-weight: 700;
-      color: #fbbf24;
+      padding: 3px 6px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 800;
       display: flex;
       align-items: center;
       gap: 3px;
+      z-index: 2;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    }
+
+    .card-tag-left {
+      left: 6px;
+      color: #fff;
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .card-tag-right {
+      right: 6px;
+      color: #fbbf24;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(251, 191, 36, 0.35);
     }
 
     .card-play-overlay {
@@ -1811,7 +1825,14 @@
     function extractShowsFromModule(mod) {
       if (!mod) return [];
       if (mod.shows && Array.isArray(mod.shows)) {
-        return mod.shows;
+        return mod.shows.map(s => ({
+          show_id: s.show_id || '',
+          title: s.title || s.show_title || 'Untitled',
+          image_url: s.image_url || '',
+          category_rank: s.show_category_rank !== undefined ? s.show_category_rank : (s.category_rank !== undefined ? s.category_rank : null),
+          rating: s.stats?.avg_rating || s.rating || null,
+          plays: s.stats?.total_plays_display || s.plays || '1M+'
+        }));
       }
       if (mod.entities && Array.isArray(mod.entities)) {
         return mod.entities.map(ent => {
@@ -1820,8 +1841,9 @@
             show_id: val.show_id || '',
             title: val.show_title || val.title || 'Untitled',
             image_url: val.image_url || '',
-            rating: val.stats?.avg_rating || '4.9',
-            plays: val.stats?.total_plays_display || '1M+'
+            category_rank: val.show_category_rank !== undefined ? val.show_category_rank : (val.category_rank !== undefined ? val.category_rank : null),
+            rating: val.stats?.avg_rating || val.rating || null,
+            plays: val.stats?.total_plays_display || val.plays || '1M+'
           };
         }).filter(s => s.show_id || s.title);
       }
@@ -1865,7 +1887,8 @@
               <div class="show-card" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
                 <div class="card-poster-wrap">
                   <img class="card-poster" src="${escapeAttr(show.image_url || 'https://via.placeholder.com/130')}" alt="${escapeAttr(show.title)}" loading="lazy">
-                  <div class="card-tag"><i class="fa-solid fa-star"></i> ${show.rating || '4.9'}</div>
+                  ${show.category_rank ? `<div class="card-tag card-tag-left">#${show.category_rank}</div>` : ''}
+                  ${show.rating ? `<div class="card-tag card-tag-right"><i class="fa-solid fa-star"></i> ${show.rating}</div>` : ''}
                   <div class="card-play-overlay">
                     <div class="play-circle"><i class="fa-solid fa-play"></i></div>
                   </div>
@@ -2022,8 +2045,8 @@
               document.getElementById('show-hero-bg').src = showData.image_url;
             }
 
-            if (showData.rank_text) {
-              document.getElementById('show-badge-rank-text').innerText = showData.rank_text;
+            if (showData.show_category_rank) {
+              document.getElementById('show-badge-rank-text').innerText = `#${showData.show_category_rank}`;
               document.getElementById('show-badge-rank').style.display = 'inline-flex';
             } else {
               document.getElementById('show-badge-rank').style.display = 'none';
