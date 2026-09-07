@@ -3777,10 +3777,16 @@
 
       if (rawAudio) {
         effectiveStreamUrl = rawAudio;
-        isDrmEncryptedStream = false;
+        isDrmEncryptedStream = Boolean(rawAudio.includes('.mpd') || rawAudio.includes('drm-aac') || rawAudio.includes('/dash/'));
       } else if (rawEnc) {
         effectiveStreamUrl = rawEnc;
-        isDrmEncryptedStream = true;
+        isDrmEncryptedStream = Boolean(
+          rawEnc.includes('.mpd') ||
+          rawEnc.includes('drm-aac') ||
+          rawEnc.includes('/dash/') ||
+          rawEnc.includes('manifest') ||
+          rawEnc.includes('audio_enc')
+        );
       } else if (rawVideo) {
         effectiveStreamUrl = rawVideo;
         isDrmEncryptedStream = false;
