@@ -449,7 +449,6 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               duration: typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0'),
               video_url: story.video_url || story.video_info?.android?.video_url || "",
               story_id: story.story_id || "",
-              media_url_enc: story.media_url_enc || story.media_url || "",
               media_url: story.media_url_enc || story.media_url || ""
             });
           }
