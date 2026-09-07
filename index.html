@@ -3336,8 +3336,9 @@
 
         const hasVideo = Boolean(story.video_url);
         const durationText = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
-        const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
-        const audioUrl = story.audio_url || story.media_url_enc || story.media_url || "";
+        const audioUrl = (story.audio_url && !story.audio_url.includes('.mpd') && !story.audio_url.includes('drm-aac')) ? story.audio_url :
+                         (story.media_url && !story.media_url.includes('.mpd') && !story.media_url.includes('drm-aac') ? story.media_url :
+                         (story.media_url_enc || story.audio_url || story.media_url || ""));
         const videoUrl = story.video_url || "";
         epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo);
 
@@ -3802,7 +3803,9 @@
         const prevStory = loadedEpisodesList[currentIndex - 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const audioUrl = prevStory.audio_url || prevStory.media_url_enc || prevStory.media_url || "";
+        const audioUrl = (prevStory.audio_url && !prevStory.audio_url.includes('.mpd') && !prevStory.audio_url.includes('drm-aac')) ? prevStory.audio_url :
+                         (prevStory.media_url && !prevStory.media_url.includes('.mpd') && !prevStory.media_url.includes('drm-aac') ? prevStory.media_url :
+                         (prevStory.media_url_enc || prevStory.audio_url || prevStory.media_url || ""));
         const videoUrl = prevStory.video_url || "";
         const hasVid = Boolean(videoUrl);
         playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
@@ -3816,7 +3819,9 @@
         const nextStory = loadedEpisodesList[currentIndex + 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const audioUrl = nextStory.audio_url || nextStory.media_url_enc || nextStory.media_url || "";
+        const audioUrl = (nextStory.audio_url && !nextStory.audio_url.includes('.mpd') && !nextStory.audio_url.includes('drm-aac')) ? nextStory.audio_url :
+                         (nextStory.media_url && !nextStory.media_url.includes('.mpd') && !nextStory.media_url.includes('drm-aac') ? nextStory.media_url :
+                         (nextStory.media_url_enc || nextStory.audio_url || nextStory.media_url || ""));
         const videoUrl = nextStory.video_url || "";
         const hasVid = Boolean(videoUrl);
         playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
@@ -3895,18 +3900,16 @@
 
       const streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
-      // Strictly detect if stream is DRM Encrypted (Never request license for unencrypted audio_url/video_url)
-      const isDrmStream = Boolean(
-        streamUrl && (
-          streamUrl.includes('drm-aac') ||
-          streamUrl.includes('protected_audio') ||
-          (!streamUrl.includes('vp9_output') && !streamUrl.includes('ddqs490ahjgsl') && streamUrl.includes('.mpd'))
-        )
-      );
-
-      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash') || isDrmStream)) {
+      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash') || streamUrl.includes('drm-aac'))) {
         try {
           await shakaPlayer.unload();
+
+          // Auto-detect show ID for PocketFM DRM License resolution
+          let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
+          if (!targetShowId) {
+            const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//);
+            if (match) targetShowId = match[1];
+          }
 
           const playerConfig = {
             abr: {
@@ -3915,43 +3918,34 @@
             }
           };
 
-          // ONLY resolve Widevine DRM license if stream is actually DRM protected
-          if (isDrmStream) {
-            let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
-            if (!targetShowId) {
-              const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//);
-              if (match) targetShowId = match[1];
-            }
-
-            if (targetShowId) {
-              let clientResolvedLicenseUrl = null;
-              try {
-                const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}&device_id=mobile-web&client_ts=1770000000`);
-                if (licRes.ok) {
-                  const licData = await licRes.json();
-                  if (licData.license_url) {
-                    clientResolvedLicenseUrl = licData.license_url;
-                  } else if (licData.blob || (licData.details && licData.details.blob)) {
-                    const rawBlob = licData.blob || licData.details.blob;
-                    clientResolvedLicenseUrl = await decryptPfmBlobClient(rawBlob);
-                  }
+          if (targetShowId) {
+            let clientResolvedLicenseUrl = null;
+            try {
+              const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}&device_id=mobile-web&client_ts=1770000000`);
+              if (licRes.ok) {
+                const licData = await licRes.json();
+                if (licData.license_url) {
+                  clientResolvedLicenseUrl = licData.license_url;
+                } else if (licData.blob || (licData.details && licData.details.blob)) {
+                  const rawBlob = licData.blob || licData.details.blob;
+                  clientResolvedLicenseUrl = await decryptPfmBlobClient(rawBlob);
                 }
-              } catch (licErr) {
-                console.warn("Client license fetch warning:", licErr);
               }
-
-              playerConfig.drm = {
-                servers: {
-                  'com.widevine.alpha': clientResolvedLicenseUrl || `/api/drm_license?show_id=${encodeURIComponent(targetShowId)}`
-                },
-                advanced: {
-                  'com.widevine.alpha': {
-                    videoRobustness: '',
-                    audioRobustness: ''
-                  }
-                }
-              };
+            } catch (licErr) {
+              console.warn("Client license fetch warning:", licErr);
             }
+
+            playerConfig.drm = {
+              servers: {
+                'com.widevine.alpha': clientResolvedLicenseUrl || `/api/drm_license?show_id=${encodeURIComponent(targetShowId)}`
+              },
+              advanced: {
+                'com.widevine.alpha': {
+                  videoRobustness: '',
+                  audioRobustness: ''
+                }
+              }
+            };
           }
 
           shakaPlayer.configure(playerConfig);
