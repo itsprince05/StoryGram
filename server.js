@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -16,6 +17,7 @@ let isRefreshing = false;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname));
 
 async function fetchDailyCookiesFromWebsite() {
   try {
@@ -86,8 +88,9 @@ async function fetchDailyCookiesFromWebsite() {
     for (const cookieItem of cookieList) {
       const parts = cookieItem.split('=');
       if (parts.length >= 2) {
-        const val = parts.slice(1).join('=');
-        if (val.startsWith('eyJ') && val.includes('.')) {
+        const key = parts[0].trim().toLowerCase();
+        const val = parts.slice(1).join('=').trim();
+        if (key === 'auth-token' || key === 'auth_token' || key === 'token' || (val.startsWith('eyJ') && val.includes('.'))) {
           cachedToken = val;
         }
       }
@@ -622,7 +625,7 @@ app.all('/api/proxy/*', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.send('Running...');
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
