@@ -2605,21 +2605,6 @@
       return (currentMediaMode === 'video' && videoElement) ? videoElement : audioElement;
     }
 
-    // Audio playback priority helper:
-    // Priority 1: Unencrypted audio_url (Highest)
-    // Priority 2: Unencrypted media_url
-    // Priority 3: DRM media_url_enc / fallback
-    function getStoryAudioUrl(story) {
-      if (!story) return "";
-      if (story.audio_url && !story.audio_url.includes('.mpd') && !story.audio_url.includes('drm-aac') && !story.audio_url.includes('manifest')) {
-        return story.audio_url;
-      }
-      if (story.media_url && !story.media_url.includes('.mpd') && !story.media_url.includes('drm-aac') && !story.media_url.includes('manifest')) {
-        return story.media_url;
-      }
-      return story.media_url_enc || story.audio_url || story.media_url || "";
-    }
-
     async function initShakaPlayer() {
       try {
         if (window.shaka) {
@@ -2627,10 +2612,6 @@
           if (shaka.Player.isBrowserSupported()) {
             shakaPlayer = new shaka.Player(audioElement);
             shakaPlayer.configure({
-              abr: {
-                enabled: false,
-                defaultBandwidthEstimate: 128000
-              },
               streaming: {
                 rebufferingGoal: 2,
                 bufferingGoal: 10,
@@ -2661,86 +2642,6 @@
       } catch (e) {
         console.error('Failed to init Shaka player', e);
       }
-    }
-
-    async function decryptPfmBlobClient(cipherBase64, deviceId = "mobile-web", clientTs = 1770000000) {
-      if (!cipherBase64 || !window.crypto || !window.crypto.subtle) return null;
-      try {
-        const binaryString = atob(cipherBase64);
-        const cipherBytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          cipherBytes[i] = binaryString.charCodeAt(i);
-        }
-        if (cipherBytes.length < 28) return null;
-
-        const salt = cipherBytes.slice(0, 16);
-        const iv = cipherBytes.slice(16, 28);
-        const strData = cipherBytes.slice(28, cipherBytes.length - 16);
-
-        const ctrIv = new Uint8Array(16);
-        ctrIv.set(iv, 0);
-        ctrIv[15] = 2;
-
-        const tsCandidates = [1770000000, clientTs, "1770000000"].filter(Boolean);
-        const devCandidates = [deviceId, "mobile-web"].filter(Boolean);
-
-        for (const dev of devCandidates) {
-          for (const ts of tsCandidates) {
-            try {
-              const rawData = `${dev}:${ts}`;
-              const b64 = btoa(rawData);
-              const chars = b64.split('');
-              for (let i = 0; i < chars.length - 1; i += 2) {
-                const temp = chars[i];
-                chars[i] = chars[i + 1];
-                chars[i + 1] = temp;
-              }
-              const keyString = chars.join('');
-              const keyBytes = new TextEncoder().encode(keyString);
-
-              const baseKey = await window.crypto.subtle.importKey(
-                "raw",
-                keyBytes,
-                "PBKDF2",
-                false,
-                ["deriveKey"]
-              );
-
-              const derivedKey = await window.crypto.subtle.deriveKey(
-                {
-                  name: "PBKDF2",
-                  salt: salt,
-                  iterations: 10000,
-                  hash: "SHA-256"
-                },
-                baseKey,
-                { name: "AES-CTR", length: 256 },
-                false,
-                ["decrypt"]
-              );
-
-              const decryptedBuf = await window.crypto.subtle.decrypt(
-                {
-                  name: "AES-CTR",
-                  counter: ctrIv,
-                  length: 32
-                },
-                derivedKey,
-                strData
-              );
-
-              const decryptedUrl = new TextDecoder().decode(decryptedBuf).trim();
-              if (decryptedUrl && (decryptedUrl.startsWith('http://') || decryptedUrl.startsWith('https://'))) {
-                console.log("[Client Decrypt] Successfully resolved Widevine license URL in browser:", decryptedUrl);
-                return decryptedUrl;
-              }
-            } catch (err) {}
-          }
-        }
-      } catch (e) {
-        console.warn("[Client Decrypt] Error in browser blob decryption:", e);
-      }
-      return null;
     }
 
     [audioElement, videoElement].forEach(el => {
@@ -3352,7 +3253,7 @@
         const hasVideo = Boolean(story.video_url);
         const durationText = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
         const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
-        const audioUrl = getStoryAudioUrl(story);
+        const audioUrl = story.audio_url || story.media_url_enc || story.media_url || "";
         const videoUrl = story.video_url || "";
         epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo);
 
@@ -3817,7 +3718,7 @@
         const prevStory = loadedEpisodesList[currentIndex - 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const audioUrl = getStoryAudioUrl(prevStory);
+        const audioUrl = prevStory.audio_url || prevStory.media_url_enc || prevStory.media_url || "";
         const videoUrl = prevStory.video_url || "";
         const hasVid = Boolean(videoUrl);
         playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
@@ -3831,7 +3732,7 @@
         const nextStory = loadedEpisodesList[currentIndex + 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const audioUrl = getStoryAudioUrl(nextStory);
+        const audioUrl = nextStory.audio_url || nextStory.media_url_enc || nextStory.media_url || "";
         const videoUrl = nextStory.video_url || "";
         const hasVid = Boolean(videoUrl);
         playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
@@ -3921,76 +3822,39 @@
             if (match) targetShowId = match[1];
           }
 
-          const playerConfig = {
-            abr: {
-              enabled: false,
-              defaultBandwidthEstimate: 128000
-            }
-          };
-
           if (targetShowId) {
-            let clientResolvedLicenseUrl = null;
             try {
-              const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}&device_id=mobile-web&client_ts=1770000000`);
+              const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}`);
               if (licRes.ok) {
                 const licData = await licRes.json();
-                if (licData.license_url) {
-                  clientResolvedLicenseUrl = licData.license_url;
-                } else if (licData.blob || (licData.details && licData.details.blob)) {
-                  const rawBlob = licData.blob || licData.details.blob;
-                  clientResolvedLicenseUrl = await decryptPfmBlobClient(rawBlob);
+                if (licData.success && licData.license_url) {
+                  shakaPlayer.configure({
+                    drm: {
+                      servers: {
+                        'com.widevine.alpha': licData.license_url
+                      },
+                      advanced: {
+                        'com.widevine.alpha': {
+                          videoRobustness: '',
+                          audioRobustness: ''
+                        }
+                      }
+                    }
+                  });
                 }
               }
             } catch (licErr) {
-              console.warn("Client license fetch warning:", licErr);
+              console.warn("DRM license fetch warning:", licErr);
             }
-
-            playerConfig.drm = {
-              servers: {
-                'com.widevine.alpha': clientResolvedLicenseUrl || `/api/drm_license?show_id=${encodeURIComponent(targetShowId)}`
-              },
-              advanced: {
-                'com.widevine.alpha': {
-                  videoRobustness: '',
-                  audioRobustness: ''
-                }
-              }
-            };
           }
 
-          shakaPlayer.configure(playerConfig);
-
-          // Direct CDN stream for Android WebView (Zero server bandwidth), proxy fallback for PC browser testing
-          try {
-            await shakaPlayer.load(streamUrl);
-          } catch (directErr) {
-            console.warn("Direct CDN load blocked by browser CORS, falling back to proxy...", directErr);
-            const loadUrl = `/api/stream_proxy?url=${encodeURIComponent(streamUrl)}`;
-            await shakaPlayer.load(loadUrl);
-          }
-
-          // By default, select 128k quality track (128000 bps / protected_audio_mpd_128k.mp4)
-          try {
-            const tracks = shakaPlayer.getVariantTracks();
-            if (tracks && tracks.length > 0) {
-              const track128k = tracks.find(t => t.bandwidth === 128000 || (t.bandwidth >= 120000 && t.bandwidth <= 135000))
-                             || tracks.find(t => t.bandwidth >= 128000)
-                             || tracks[0];
-              if (track128k) {
-                shakaPlayer.selectVariantTrack(track128k, true);
-                console.log(`[Shaka Player] Selected 128k audio track variant: ${track128k.bandwidth} bps`);
-              }
-            }
-          } catch (trackErr) {
-            console.warn("Track variant selection error:", trackErr);
-          }
-
+          await shakaPlayer.load(streamUrl);
           audioElement.playbackRate = currentPlaybackSpeed;
           await audioElement.play();
           isAudioBuffering = false;
           isPlaying = true;
           updatePlayPauseButton();
-          showToast("Playing (128 kbps)");
+          showToast("Playing");
         } catch (err) {
           console.error("Shaka player error:", err);
           try {
