@@ -1724,6 +1724,174 @@
       transform: translateY(-2px);
     }
 
+    /* LIBRARY TAB */
+    .library-header-pills {
+      display: flex;
+      gap: 10px;
+      padding: 12px 10px;
+      background: var(--bg-main);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .library-tab-pill {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: var(--radius-full);
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .library-tab-pill.active {
+      background: var(--primary-gradient);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 14px rgba(255, 51, 102, 0.4);
+    }
+
+    .library-tab-pill svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ACCOUNT TAB */
+    .account-page-wrap {
+      padding: 12px 10px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .account-profile-card {
+      background: linear-gradient(135deg, rgba(255, 51, 102, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .account-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--primary-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 24px;
+      box-shadow: 0 6px 18px rgba(255, 51, 102, 0.45);
+      flex-shrink: 0;
+    }
+
+    .account-avatar svg {
+      width: 26px;
+      height: 26px;
+    }
+
+    .account-user-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .account-user-name {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .account-user-status {
+      font-size: 11px;
+      color: #4ade80;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .account-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .account-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .account-row:last-child {
+      border-bottom: none;
+    }
+
+    .account-row-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .account-row-left svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .account-row-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .account-row-right svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .account-danger-btn {
+      width: 100%;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+      padding: 12px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .account-danger-btn:active {
+      transform: scale(0.98);
+      background: rgba(239, 68, 68, 0.2);
+    }
+
     /* LOADERS & TOASTS */
     .loader {
       display: flex;
@@ -1979,54 +2147,87 @@
         </div>
       </div>
 
-      <!-- TAB 4: UNLOCKED -->
-      <div id="tab-unlocked" class="tab-content">
-        <div class="section">
-          <div class="section-header">
-            <div class="section-title"><i data-lucide="bookmark-check"></i> Unlocked Audio Episodes</div>
-          </div>
-          <div id="unlocked-container" class="episodes-list">
-            <div style="text-align:center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;">
-              <i data-lucide="bookmark"
-                style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--accent);"></i>
-              <p>Episodes you unlock will appear here for instant playback.</p>
-            </div>
-          </div>
+      <!-- TAB 4: LIBRARY -->
+      <div id="tab-library" class="tab-content">
+        <div class="library-header-pills">
+          <button class="library-tab-pill active" id="lib-pill-history" onclick="switchLibrarySection('history')">
+            <i data-lucide="history"></i> History
+          </button>
+          <button class="library-tab-pill" id="lib-pill-favorite" onclick="switchLibrarySection('favorite')">
+            <i data-lucide="heart"></i> Favorite
+          </button>
         </div>
+        <div id="library-content-container" style="padding: 10px;"></div>
       </div>
 
-      <!-- TAB 5: SETTINGS -->
-      <div id="tab-settings" class="tab-content">
-        <div class="section">
-          <div class="section-header">
-            <div class="section-title"><i data-lucide="settings"></i> App & API Status</div>
+      <!-- TAB 5: ACCOUNT -->
+      <div id="tab-account" class="tab-content">
+        <div class="account-page-wrap">
+          <div class="account-profile-card">
+            <div class="account-avatar">
+              <i data-lucide="user"></i>
+            </div>
+            <div class="account-user-info">
+              <div class="account-user-name">Story Gram Listener</div>
+              <div class="account-user-status"><div class="status-dot"></div> VIP Member (Unlimited Streaming)</div>
+            </div>
           </div>
-          <div
-            style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 14px; font-size: 13px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: var(--text-muted);">App Name:</span>
-              <span style="font-weight: 700; color: var(--primary);">Story Gram</span>
+
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title"><i data-lucide="settings-2"></i> Preferences & Audio</div>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: var(--text-muted);">Daily Auto Cookie:</span>
-              <span class="status-badge">
-                <div class="status-dot"></div> Active (24h Auto)
-              </span>
+            <div class="account-card">
+              <div class="account-row" onclick="openLanguageModal()" style="cursor: pointer;">
+                <div class="account-row-left">
+                  <i data-lucide="globe" style="color: var(--primary);"></i>
+                  <span>Content Language</span>
+                </div>
+                <div class="account-row-right">
+                  <span id="account-current-lang" style="color: var(--text-main); font-weight: 700; text-transform: capitalize;">Hindi</span>
+                  <i data-lucide="chevron-right"></i>
+                </div>
+              </div>
+              <div class="account-row">
+                <div class="account-row-left">
+                  <i data-lucide="sparkles" style="color: #4ade80;"></i>
+                  <span>Stream Quality</span>
+                </div>
+                <div class="account-row-right">
+                  <span style="color: #4ade80; font-weight: 700;">Unlocked HD (AAC)</span>
+                </div>
+              </div>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: var(--text-muted);">Audio Stream:</span>
-              <span style="color: #4ade80; font-weight: 700;">media_url_enc (Unlocked HD)</span>
+          </div>
+
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title"><i data-lucide="server"></i> Server & API Status</div>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: var(--text-muted);">Current Language:</span>
-              <span id="settings-current-lang"
-                style="font-weight: 700; text-transform: capitalize; color: #fff;">Hindi</span>
+            <div class="account-card">
+              <div class="account-row">
+                <div class="account-row-left">
+                  <i data-lucide="activity" style="color: #38bdf8;"></i>
+                  <span>API Connection</span>
+                </div>
+                <span class="status-badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border-color: rgba(34, 197, 94, 0.3);">
+                  <div class="status-dot"></div> Online
+                </span>
+              </div>
+              <div class="account-row">
+                <div class="account-row-left">
+                  <i data-lucide="key" style="color: var(--gold);"></i>
+                  <span>Daily Auto Session</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted);">Active (24h Refresh)</span>
+              </div>
             </div>
-            <div
-              style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 12px;">
-              <span style="color: var(--text-muted);">Server URL:</span>
-              <span style="font-size: 11px; color: var(--text-muted);">api-3ua1.onrender.com</span>
-            </div>
+          </div>
+
+          <div class="section" style="margin-top: 10px;">
+            <button class="account-danger-btn" onclick="clearAllAppData()">
+              <i data-lucide="trash-2"></i> Clear History & App Cache
+            </button>
           </div>
         </div>
       </div>
@@ -2154,13 +2355,13 @@
         <i data-lucide="search"></i>
         <span>Search</span>
       </div>
-      <div class="nav-item" onclick="switchTab('unlocked')">
+      <div class="nav-item" onclick="switchTab('library')">
         <i data-lucide="bookmark"></i>
-        <span>Unlocked</span>
+        <span>Library</span>
       </div>
-      <div class="nav-item" onclick="switchTab('settings')">
-        <i data-lucide="settings"></i>
-        <span>Settings</span>
+      <div class="nav-item" onclick="switchTab('account')">
+        <i data-lucide="user"></i>
+        <span>Account</span>
       </div>
     </nav>
   </div>
@@ -2217,8 +2418,17 @@
     let previousTab = 'home';
     let currentTabName = 'home';
     let loadedEpisodesList = [];
-    let unlockedStoriesMap = {};
-    let favoritesList = new Set();
+    let currentLibrarySection = 'history';
+
+    let playHistory = [];
+    try {
+      playHistory = JSON.parse(localStorage.getItem('storygram_history') || '[]');
+    } catch(e) { playHistory = []; }
+
+    let favoriteShowsMap = {};
+    try {
+      favoriteShowsMap = JSON.parse(localStorage.getItem('storygram_favorites') || '{}');
+    } catch(e) { favoriteShowsMap = {}; }
 
     const audioElement = document.getElementById('audio-element');
 
@@ -2270,10 +2480,11 @@
 
       if (updateNav) {
         document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-        const tabs = ['home', 'search', 'unlocked', 'settings'];
+        const tabs = ['home', 'search', 'library', 'account'];
         const index = tabs.indexOf(tabName);
         if (index !== -1) {
-          document.querySelectorAll('.nav-item')[index].classList.add('active');
+          const navItems = document.querySelectorAll('.nav-item');
+          if (navItems[index]) navItems[index].classList.add('active');
         }
       }
 
@@ -2285,8 +2496,11 @@
         } else {
           renderSearchEmptyState();
         }
-      } else if (tabName === 'unlocked') {
-        renderUnlockedTab();
+      } else if (tabName === 'library') {
+        renderLibraryTab();
+      } else if (tabName === 'account') {
+        const langEl = document.getElementById('account-current-lang');
+        if (langEl) langEl.innerText = currentLanguage;
       }
       refreshIcons();
     }
@@ -2346,6 +2560,9 @@
 
       const settingsLang = document.getElementById('settings-current-lang');
       if (settingsLang) settingsLang.innerText = label;
+
+      const accountLang = document.getElementById('account-current-lang');
+      if (accountLang) accountLang.innerText = label;
 
       renderLanguageGrid();
       closeLanguageModal();
@@ -2662,20 +2879,36 @@
 
     function toggleFavoriteCurrentShow() {
       if (!currentShowId) return;
-      if (favoritesList.has(currentShowId)) {
-        favoritesList.delete(currentShowId);
-        showToast("Removed from Library");
+      if (favoriteShowsMap[currentShowId]) {
+        delete favoriteShowsMap[currentShowId];
+        showToast("Removed from Favorites");
       } else {
-        favoritesList.add(currentShowId);
-        showToast("Added to Library ❤️");
+        const title = document.getElementById('show-page-title')?.innerText || "Show Details";
+        const img = document.getElementById('show-page-img')?.src || "";
+        const rating = document.getElementById('show-badge-rating-text')?.innerText || "";
+        const plays = document.getElementById('show-badge-plays-text')?.innerText || "";
+        favoriteShowsMap[currentShowId] = {
+          show_id: currentShowId,
+          title: title,
+          image_url: img,
+          rating: rating,
+          plays: plays
+        };
+        showToast("Added to Favorites ❤️");
       }
+      try {
+        localStorage.setItem('storygram_favorites', JSON.stringify(favoriteShowsMap));
+      } catch (e) { }
       updateFavoriteButtonState();
+      if (currentTabName === 'library') {
+        renderLibraryTab();
+      }
     }
 
     function updateFavoriteButtonState() {
       const favBtn = document.getElementById('show-page-fav-btn');
       if (!favBtn || !currentShowId) return;
-      if (favoritesList.has(currentShowId)) {
+      if (favoriteShowsMap[currentShowId]) {
         favBtn.classList.add('active');
         favBtn.innerHTML = '<i data-lucide="heart" style="fill: var(--primary); color: var(--primary);"></i>';
       } else {
@@ -2835,37 +3068,132 @@
       }
     }
 
-    function renderUnlockedTab() {
-      const container = document.getElementById('unlocked-container');
-      const unlockedKeys = Object.keys(unlockedStoriesMap);
+    function switchLibrarySection(section) {
+      currentLibrarySection = section;
+      document.getElementById('lib-pill-history')?.classList.toggle('active', section === 'history');
+      document.getElementById('lib-pill-favorite')?.classList.toggle('active', section === 'favorite');
+      renderLibraryTab();
+      refreshIcons();
+    }
 
-      if (unlockedKeys.length === 0) {
+    function clearPlayHistory() {
+      playHistory = [];
+      try {
+        localStorage.removeItem('storygram_history');
+      } catch (e) { }
+      showToast("History cleared");
+      renderLibraryTab();
+    }
+
+    function removeFavoriteShow(e, showId) {
+      if (e) e.stopPropagation();
+      delete favoriteShowsMap[showId];
+      try {
+        localStorage.setItem('storygram_favorites', JSON.stringify(favoriteShowsMap));
+      } catch (e) { }
+      updateFavoriteButtonState();
+      renderLibraryTab();
+      showToast("Removed from Favorites");
+    }
+
+    function renderLibraryTab() {
+      const container = document.getElementById('library-content-container');
+      if (!container) return;
+
+      if (currentLibrarySection === 'history') {
+        if (!playHistory || playHistory.length === 0) {
+          container.innerHTML = `
+            <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
+              <i data-lucide="history" style="width: 38px; height: 38px; margin-bottom: 12px; color: var(--primary); opacity: 0.85;"></i>
+              <p style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 4px;">No History Yet</p>
+              <p style="font-size: 12px;">Episodes you listen to will appear here automatically.</p>
+            </div>
+          `;
+          refreshIcons();
+          return;
+        }
+
         container.innerHTML = `
-          <div style="text-align:center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;">
-            <i data-lucide="bookmark" style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--accent);"></i>
-            <p>No unlocked episodes yet. Click "Unlock" on any episode to listen!</p>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Recently Played (${playHistory.length})</span>
+            <button onclick="clearPlayHistory()" style="background: none; border: none; color: #f87171; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: var(--radius-sm);">
+              <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i> Clear All
+            </button>
+          </div>
+          <div class="episodes-list">
+            ${playHistory.map(item => {
+              const isCurrent = currentPlayingStory && currentPlayingStory.storyId === item.storyId;
+              const isThisPlaying = isCurrent && isPlaying;
+              return `
+                <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border);">
+                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(item.mediaUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}')">
+                    <div class="ep-play-btn"><i data-lucide="${isThisPlaying ? 'pause' : 'play'}"></i></div>
+                    <div class="ep-info">
+                      <div class="ep-title">${escapeHtml(item.title)}</div>
+                      <div class="ep-duration" style="color: var(--primary); font-weight: 600;"><i data-lucide="headphones" style="width: 12px; height: 12px;"></i> ${escapeHtml(item.showTitle)}</div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
           </div>
         `;
         refreshIcons();
-        return;
-      }
-
-      container.innerHTML = unlockedKeys.map((key, idx) => {
-        const isCurrent = currentPlayingStory && currentPlayingStory.storyId === key;
-        const isThisPlaying = isCurrent && isPlaying;
-        return `
-        <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(key)}">
-          <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(key)}', 'Unlocked Episode ${idx + 1}', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', 'Unlocked Library', '')">
-            <div class="ep-play-btn"><i data-lucide="${isThisPlaying ? 'pause' : 'play'}"></i></div>
-            <div class="ep-info">
-              <div class="ep-title">Unlocked Episode ${idx + 1}</div>
-              <div class="ep-duration"><i data-lucide="check"></i> Ready to Stream</div>
+      } else {
+        const favKeys = Object.keys(favoriteShowsMap);
+        if (favKeys.length === 0) {
+          container.innerHTML = `
+            <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
+              <i data-lucide="heart" style="width: 38px; height: 38px; margin-bottom: 12px; color: var(--primary); opacity: 0.85;"></i>
+              <p style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 4px;">No Favorites Yet</p>
+              <p style="font-size: 12px;">Tap the heart icon on any show details page to add it to your favorites.</p>
             </div>
+          `;
+          refreshIcons();
+          return;
+        }
+
+        container.innerHTML = `
+          <div style="margin-bottom: 10px; padding: 0 4px;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Favorite Shows (${favKeys.length})</span>
           </div>
-        </div>
-      `;
-      }).join('');
-      refreshIcons();
+          <div class="grid-container">
+            ${favKeys.map(key => {
+              const show = favoriteShowsMap[key];
+              const showTitle = show.title || "Show";
+              const showImg = show.image_url || "";
+              const rating = show.rating || null;
+              return `
+                <div class="grid-card" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(showTitle)}', '${escapeAttr(showImg)}')">
+                  <div class="grid-poster-wrap">
+                    <img class="grid-poster" src="${escapeAttr(showImg || 'https://via.placeholder.com/130')}" alt="${escapeAttr(showTitle)}" loading="lazy">
+                    ${rating ? `<div class="card-tag card-tag-right"><i data-lucide="star"></i> ${rating}</div>` : ''}
+                    <div onclick="removeFavoriteShow(event, '${escapeAttr(show.show_id)}')" title="Remove" style="position: absolute; top: 6px; left: 6px; width: 26px; height: 26px; border-radius: 50%; background: rgba(15, 23, 42, 0.85); display: flex; align-items: center; justify-content: center; color: #f87171; border: 1px solid rgba(255,255,255,0.15); z-index: 5;">
+                      <i data-lucide="heart" style="width: 14px; height: 14px; fill: #f87171;"></i>
+                    </div>
+                  </div>
+                  <div class="grid-title">${escapeHtml(showTitle)}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+        refreshIcons();
+      }
+    }
+
+    function clearAllAppData() {
+      if (confirm("Are you sure you want to clear your listening history and favorites?")) {
+        playHistory = [];
+        favoriteShowsMap = {};
+        try {
+          localStorage.removeItem('storygram_history');
+          localStorage.removeItem('storygram_favorites');
+        } catch (e) { }
+        updateFavoriteButtonState();
+        renderLibraryTab();
+        showToast("App data and cache cleared");
+      }
     }
 
     function formatTime(seconds) {
@@ -2987,6 +3315,23 @@
 
     function playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl) {
       currentPlayingStory = { storyId, title, mediaUrl, showTitle, thumbUrl };
+
+      const historyItem = {
+        storyId,
+        title: title || "Now Playing",
+        mediaUrl: mediaUrl || "",
+        showTitle: showTitle || "Story Gram",
+        thumbUrl: thumbUrl || "",
+        playedAt: Date.now()
+      };
+      playHistory = [historyItem, ...playHistory.filter(h => h.storyId !== storyId)].slice(0, 50);
+      try {
+        localStorage.setItem('storygram_history', JSON.stringify(playHistory));
+      } catch (e) { }
+
+      if (currentTabName === 'library') {
+        renderLibraryTab();
+      }
 
       updateEpisodeListIcons();
 
