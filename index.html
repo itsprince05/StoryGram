@@ -1243,30 +1243,46 @@
       transform: scale(0.92);
     }
 
-    /* FULLSCREEN AUDIO PLAYER */
-    .fs-player-modal {
+    /* EXPANDED AUDIO PLAYER MODAL / SHEET */
+    .fs-player-backdrop {
       position: fixed;
       inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 350;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .fs-player-backdrop.show {
+      display: flex;
+      opacity: 1;
+    }
+
+    .fs-player-sheet {
+      position: relative;
       width: 100%;
       max-width: 480px;
-      height: 100vh;
-      height: 100dvh;
-      left: 50%;
-      transform: translateX(-50%) translateY(100%);
-      background: #070a12;
-      z-index: 350;
+      max-height: 88vh;
+      background: #090d16;
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      box-shadow: 0 -15px 50px rgba(0, 0, 0, 0.85);
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      opacity: 0;
-      visibility: hidden;
-      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, visibility 0.35s;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .fs-player-modal.show {
-      transform: translateX(-50%) translateY(0);
-      opacity: 1;
-      visibility: visible;
+    .fs-player-backdrop.show .fs-player-sheet {
+      transform: translateY(0);
     }
 
     .fs-bg-glow {
@@ -1279,7 +1295,7 @@
       z-index: 0;
       overflow: hidden;
       filter: blur(60px);
-      opacity: 0.25;
+      opacity: 0.22;
     }
 
     .fs-bg-glow img {
@@ -1292,26 +1308,26 @@
     .fs-header {
       position: relative;
       z-index: 2;
-      height: 56px;
+      height: 52px;
       padding: 0 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       flex-shrink: 0;
     }
 
     .fs-header-title {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px;
       text-transform: uppercase;
       color: var(--text-muted);
     }
 
     .fs-icon-btn {
-      width: 38px;
-      height: 38px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       background: var(--bg-surface);
       border: 1px solid var(--border);
@@ -1329,8 +1345,8 @@
     }
 
     .fs-icon-btn svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
     }
 
     .fs-body {
@@ -1341,21 +1357,19 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px 24px;
-      gap: 16px;
+      padding: 14px 20px 22px;
+      gap: 12px;
     }
 
     .fs-poster-wrap {
       width: 100%;
-      max-width: 260px;
+      max-width: 160px;
       aspect-ratio: 1 / 1;
       border-radius: var(--radius-lg);
       overflow: hidden;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 51, 102, 0.2);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 51, 102, 0.18);
       border: 1px solid rgba(255, 255, 255, 0.12);
       flex-shrink: 0;
-      margin-top: 2px;
     }
 
     .fs-poster-img {
@@ -1369,12 +1383,11 @@
       text-align: center;
       display: flex;
       flex-direction: column;
-      gap: 5px;
-      margin-top: 2px;
+      gap: 3px;
     }
 
     .fs-episode-title {
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 800;
       color: #fff;
       line-height: 1.3;
@@ -1385,9 +1398,9 @@
     }
 
     .fs-show-title {
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 600;
-      color: var(--primary);
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -1973,76 +1986,76 @@
       </div>
     </div>
 
-    <!-- FULLSCREEN AUDIO PLAYER MODAL / SHEET -->
-    <div id="fullscreen-player-modal" class="fs-player-modal">
-      <div class="fs-bg-glow">
-        <img id="fs-bg-img" src="" alt="Background">
-      </div>
-
-      <div class="fs-header">
-        <button class="fs-icon-btn" onclick="closeFullscreenPlayer()" title="Minimize Player">
-          <i data-lucide="chevron-down"></i>
-        </button>
-        <div class="fs-header-title">Now Playing</div>
-        <button id="fs-fav-btn" class="fs-icon-btn" onclick="toggleFavoriteCurrentShow()" title="Save to Library">
-          <i data-lucide="heart"></i>
-        </button>
-      </div>
-
-      <div class="fs-body">
-        <div class="fs-poster-wrap">
-          <img id="fs-poster-img" class="fs-poster-img" src="" alt="Show Poster">
+    <!-- EXPANDED AUDIO PLAYER MODAL / SHEET -->
+    <div id="player-modal-backdrop" class="fs-player-backdrop" onclick="closeFullscreenPlayerOnBackdrop(event)">
+      <div id="fullscreen-player-modal" class="fs-player-sheet">
+        <div class="fs-bg-glow">
+          <img id="fs-bg-img" src="" alt="Background">
         </div>
 
-        <div class="fs-info-wrap">
-          <div id="fs-episode-title" class="fs-episode-title">Episode Title</div>
-          <div id="fs-show-title" class="fs-show-title">Story Gram</div>
+        <div class="fs-header">
+          <button class="fs-icon-btn" onclick="closeFullscreenPlayer()" title="Minimize Player">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="fs-header-title">Now Playing</div>
+          <div style="width: 36px;"></div>
         </div>
 
-        <div class="fs-progress-block">
-          <div class="fs-progress-track" onclick="seekAudioFs(event)">
-            <div id="fs-progress-bar" class="fs-progress-bar">
-              <div class="fs-progress-handle"></div>
+        <div class="fs-body">
+          <div class="fs-poster-wrap">
+            <img id="fs-poster-img" class="fs-poster-img" src="" alt="Show Poster">
+          </div>
+
+          <div class="fs-info-wrap">
+            <div id="fs-episode-title" class="fs-episode-title">Episode Title</div>
+            <div id="fs-show-title" class="fs-show-title">Story Gram</div>
+          </div>
+
+          <div class="fs-progress-block">
+            <div class="fs-progress-track" onclick="seekAudioFs(event)">
+              <div id="fs-progress-bar" class="fs-progress-bar">
+                <div class="fs-progress-handle"></div>
+              </div>
+            </div>
+            <div class="fs-time-row">
+              <span id="fs-current-time">00:00</span>
+              <span id="fs-duration-time">00:00</span>
             </div>
           </div>
-          <div class="fs-time-row">
-            <span id="fs-current-time">00:00</span>
-            <span id="fs-duration-time">00:00</span>
-          </div>
-        </div>
 
-        <div class="fs-controls-row">
-          <button class="fs-skip-btn" onclick="skipAudio(-15)" title="Rewind 15s">
-            <i data-lucide="rotate-ccw"></i>
-            <span class="fs-skip-label">15s</span>
-          </button>
-          <button class="fs-nav-ctrl-btn" onclick="playPrevEpisode()" title="Previous Episode">
-            <i data-lucide="skip-back"></i>
-          </button>
-          <button id="fs-play-pause-btn" class="fs-play-btn" onclick="togglePlayPause()" title="Play/Pause">
-            <i data-lucide="play"></i>
-          </button>
-          <button class="fs-nav-ctrl-btn" onclick="playNextEpisode()" title="Next Episode">
-            <i data-lucide="skip-forward"></i>
-          </button>
-          <button class="fs-skip-btn" onclick="skipAudio(15)" title="Forward 15s">
-            <i data-lucide="rotate-cw"></i>
-            <span class="fs-skip-label">15s</span>
-          </button>
-        </div>
-
-        <div class="fs-speed-section">
-          <div class="fs-speed-header">
-            <span class="fs-speed-label"><i data-lucide="gauge" style="width: 14px; height: 14px; color: var(--primary);"></i> Speed</span>
-            <span id="fs-current-speed-text" style="color: var(--primary); font-weight: 700; font-size: 12px;">1.0x</span>
+          <div class="fs-controls-row">
+            <button class="fs-skip-btn" onclick="skipAudio(-15)" title="Rewind 15s">
+              <i data-lucide="rotate-ccw"></i>
+              <span class="fs-skip-label">15s</span>
+            </button>
+            <button class="fs-nav-ctrl-btn" onclick="playPrevEpisode()" title="Previous Episode">
+              <i data-lucide="skip-back"></i>
+            </button>
+            <button id="fs-play-pause-btn" class="fs-play-btn" onclick="togglePlayPause()" title="Play/Pause">
+              <i data-lucide="play"></i>
+            </button>
+            <button class="fs-nav-ctrl-btn" onclick="playNextEpisode()" title="Next Episode">
+              <i data-lucide="skip-forward"></i>
+            </button>
+            <button class="fs-skip-btn" onclick="skipAudio(15)" title="Forward 15s">
+              <i data-lucide="rotate-cw"></i>
+              <span class="fs-skip-label">15s</span>
+            </button>
           </div>
-          <div class="fs-speed-pills">
-            <button class="speed-pill" data-speed="0.75" onclick="setPlaybackSpeed(0.75)">0.75x</button>
-            <button class="speed-pill active" data-speed="1" onclick="setPlaybackSpeed(1)">1x</button>
-            <button class="speed-pill" data-speed="1.25" onclick="setPlaybackSpeed(1.25)">1.25x</button>
-            <button class="speed-pill" data-speed="1.5" onclick="setPlaybackSpeed(1.5)">1.5x</button>
-            <button class="speed-pill" data-speed="1.75" onclick="setPlaybackSpeed(1.75)">1.75x</button>
-            <button class="speed-pill" data-speed="2" onclick="setPlaybackSpeed(2)">2x</button>
+
+          <div class="fs-speed-section">
+            <div class="fs-speed-header">
+              <span class="fs-speed-label"><i data-lucide="gauge" style="width: 14px; height: 14px; color: var(--primary);"></i> Speed</span>
+              <span id="fs-current-speed-text" style="color: var(--primary); font-weight: 700; font-size: 11px;">1.0x</span>
+            </div>
+            <div class="fs-speed-pills">
+              <button class="speed-pill" data-speed="0.75" onclick="setPlaybackSpeed(0.75)">0.75x</button>
+              <button class="speed-pill active" data-speed="1" onclick="setPlaybackSpeed(1)">1x</button>
+              <button class="speed-pill" data-speed="1.25" onclick="setPlaybackSpeed(1.25)">1.25x</button>
+              <button class="speed-pill" data-speed="1.5" onclick="setPlaybackSpeed(1.5)">1.5x</button>
+              <button class="speed-pill" data-speed="1.75" onclick="setPlaybackSpeed(1.75)">1.75x</button>
+              <button class="speed-pill" data-speed="2" onclick="setPlaybackSpeed(2)">2x</button>
+            </div>
           </div>
         </div>
       </div>
@@ -3022,7 +3035,7 @@
     function openFullscreenPlayer() {
       if (!currentPlayingStory) return;
 
-      const modal = document.getElementById('fullscreen-player-modal');
+      const backdrop = document.getElementById('player-modal-backdrop');
       const posterImg = document.getElementById('fs-poster-img');
       const bgImg = document.getElementById('fs-bg-img');
       const epTitle = document.getElementById('fs-episode-title');
@@ -3035,13 +3048,19 @@
       if (showTitle) showTitle.innerText = currentPlayingStory.showTitle || "Story Gram";
 
       updateFullscreenPlayerUI();
-      if (modal) modal.classList.add('show');
+      if (backdrop) backdrop.classList.add('show');
       refreshIcons();
     }
 
     function closeFullscreenPlayer() {
-      const modal = document.getElementById('fullscreen-player-modal');
-      if (modal) modal.classList.remove('show');
+      const backdrop = document.getElementById('player-modal-backdrop');
+      if (backdrop) backdrop.classList.remove('show');
+    }
+
+    function closeFullscreenPlayerOnBackdrop(e) {
+      if (e.target.id === 'player-modal-backdrop') {
+        closeFullscreenPlayer();
+      }
     }
 
     function updateFullscreenPlayerUI() {
@@ -3050,20 +3069,11 @@
       const showTitle = document.getElementById('fs-show-title');
       const posterImg = document.getElementById('fs-poster-img');
       const bgImg = document.getElementById('fs-bg-img');
-      const favBtn = document.getElementById('fs-fav-btn');
 
       if (epTitle) epTitle.innerText = currentPlayingStory.title || "Episode";
       if (showTitle) showTitle.innerText = currentPlayingStory.showTitle || "Story Gram";
       if (posterImg && currentPlayingStory.thumbUrl) posterImg.src = currentPlayingStory.thumbUrl;
       if (bgImg && currentPlayingStory.thumbUrl) bgImg.src = currentPlayingStory.thumbUrl;
-
-      if (favBtn && currentShowId) {
-        if (favoritesList.has(currentShowId)) {
-          favBtn.innerHTML = '<i data-lucide="heart" style="fill: var(--primary); color: var(--primary);"></i>';
-        } else {
-          favBtn.innerHTML = '<i data-lucide="heart"></i>';
-        }
-      }
 
       const fsPlayBtn = document.getElementById('fs-play-pause-btn');
       if (fsPlayBtn) {
