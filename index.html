@@ -3250,12 +3250,17 @@
         epDiv.className = `episode-item ${isCurrent ? 'playing' : ''}`;
         epDiv.id = `ep-item-${story.story_id}`;
 
-        const hasVideo = Boolean(story.video_url);
+        const hasAudio = Boolean(story.audio_url);
+        const hasEnc = Boolean(story.media_url_enc);
+        const isDrm = !hasAudio && hasEnc;
+        const hasVideo = !isDrm && Boolean(story.video_url);
         const durationText = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
         const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
-        const audioUrl = story.audio_url || story.media_url_enc || story.media_url || "";
-        const videoUrl = story.video_url || "";
-        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo);
+        const audioUrl = hasAudio ? story.audio_url : (story.media_url_enc || story.media_url || "");
+        const videoUrl = hasAudio ? (story.video_url || "") : "";
+        const storyShowId = story.show_id || currentShowId;
+
+        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo, isDrm, storyShowId);
 
         const iconHtml = (isCurrent && isAudioBuffering)
           ? '<span class="btn-spinner"></span>'
@@ -3440,11 +3445,13 @@
               const isCurrent = currentPlayingStory && currentPlayingStory.storyId === item.storyId;
               const isThisPlaying = isCurrent && isPlaying;
               const hasVid = Boolean(item.hasVideo && item.videoUrl);
+              const isDrm = Boolean(item.isDrm);
               const audioUrl = item.audioUrl || item.mediaUrl || "";
               const videoUrl = item.videoUrl || "";
+              const showId = item.showId || "";
               return `
                 <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border);">
-                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(audioUrl)}', '${escapeAttr(videoUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid})">
+                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(audioUrl)}', '${escapeAttr(videoUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid}, ${isDrm}, '${escapeAttr(showId)}')">
                     <div class="ep-play-btn" data-has-video="${hasVid ? 'true' : 'false'}">
                       <i data-lucide="${isThisPlaying ? 'pause' : (hasVid ? 'video' : 'headphones')}"></i>
                     </div>
@@ -3718,10 +3725,14 @@
         const prevStory = loadedEpisodesList[currentIndex - 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const audioUrl = prevStory.audio_url || prevStory.media_url_enc || prevStory.media_url || "";
-        const videoUrl = prevStory.video_url || "";
+        const hasAudio = Boolean(prevStory.audio_url);
+        const hasEnc = Boolean(prevStory.media_url_enc);
+        const isDrm = !hasAudio && hasEnc;
+        const audioUrl = hasAudio ? prevStory.audio_url : (prevStory.media_url_enc || prevStory.media_url || "");
+        const videoUrl = hasAudio ? (prevStory.video_url || "") : "";
         const hasVid = Boolean(videoUrl);
-        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
+        const storyShowId = prevStory.show_id || currentShowId;
+        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid, isDrm, storyShowId);
       }
     }
 
@@ -3732,23 +3743,28 @@
         const nextStory = loadedEpisodesList[currentIndex + 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const audioUrl = nextStory.audio_url || nextStory.media_url_enc || nextStory.media_url || "";
-        const videoUrl = nextStory.video_url || "";
+        const hasAudio = Boolean(nextStory.audio_url);
+        const hasEnc = Boolean(nextStory.media_url_enc);
+        const isDrm = !hasAudio && hasEnc;
+        const audioUrl = hasAudio ? nextStory.audio_url : (nextStory.media_url_enc || nextStory.media_url || "");
+        const videoUrl = hasAudio ? (nextStory.video_url || "") : "";
         const hasVid = Boolean(videoUrl);
-        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
+        const storyShowId = nextStory.show_id || currentShowId;
+        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid, isDrm, storyShowId);
       }
     }
 
-    function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
+    function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, isDrm = false, showId = null) {
       if (currentPlayingStory && currentPlayingStory.storyId === storyId) {
         togglePlayPause();
       } else {
-        playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo);
+        playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, isDrm, showId);
       }
     }
 
-    async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
+    async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, isDrm = false, showId = null) {
       const isVid = Boolean(hasVideo || videoUrl);
+      const targetShowId = showId || currentShowId || "";
       currentPlayingStory = {
         storyId,
         title,
@@ -3757,7 +3773,9 @@
         mediaUrl: audioUrl || "",
         showTitle,
         thumbUrl,
-        hasVideo: isVid
+        hasVideo: isVid,
+        isDrm: Boolean(isDrm),
+        showId: targetShowId
       };
 
       currentMediaMode = 'audio';
@@ -3787,6 +3805,8 @@
         showTitle: showTitle || "Story Gram",
         thumbUrl: thumbUrl || "",
         hasVideo: isVid,
+        isDrm: Boolean(isDrm),
+        showId: targetShowId,
         playedAt: Date.now()
       };
       playHistory = [historyItem, ...playHistory.filter(h => h.storyId !== storyId)].slice(0, 50);
@@ -3811,32 +3831,77 @@
 
       const streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
-      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash'))) {
+      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash') || isDrm)) {
         try {
           await shakaPlayer.unload();
+
+          if (isDrm) {
+            let licenseUrl = '';
+            try {
+              const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}`);
+              if (licRes.ok) {
+                const licData = await licRes.json();
+                if (licData && licData.license_url) {
+                  licenseUrl = licData.license_url;
+                }
+              }
+            } catch (licErr) {
+              console.warn("Failed to fetch DRM license URL:", licErr);
+            }
+
+            if (licenseUrl) {
+              shakaPlayer.configure({
+                drm: {
+                  servers: {
+                    'com.widevine.alpha': licenseUrl
+                  },
+                  clearKeys: {},
+                  advanced: {}
+                }
+              });
+            } else {
+              console.warn("No DRM license configured for show:", targetShowId);
+            }
+          } else {
+            shakaPlayer.configure({
+              drm: {
+                servers: {},
+                clearKeys: {},
+                advanced: {}
+              }
+            });
+          }
+
           await shakaPlayer.load(streamUrl);
           audioElement.playbackRate = currentPlaybackSpeed;
           await audioElement.play();
           isAudioBuffering = false;
           isPlaying = true;
           updatePlayPauseButton();
-          showToast("Playing");
+          showToast(isDrm ? "Playing" : "Playing");
         } catch (err) {
           console.error("Shaka player error:", err);
-          try {
-            audioElement.src = streamUrl;
-            audioElement.playbackRate = currentPlaybackSpeed;
-            await audioElement.play();
-            isAudioBuffering = false;
-            isPlaying = true;
-            updatePlayPauseButton();
-            showToast("Playing");
-          } catch (audioErr) {
-            console.error("Audio playback error:", audioErr);
+          if (isDrm) {
             isAudioBuffering = false;
             isPlaying = false;
             updatePlayPauseButton();
-            showToast("Playback error", true);
+            showToast("DRM playback active in Android WebView", true);
+          } else {
+            try {
+              audioElement.src = streamUrl;
+              audioElement.playbackRate = currentPlaybackSpeed;
+              await audioElement.play();
+              isAudioBuffering = false;
+              isPlaying = true;
+              updatePlayPauseButton();
+              showToast("Playing");
+            } catch (audioErr) {
+              console.error("Audio playback error:", audioErr);
+              isAudioBuffering = false;
+              isPlaying = false;
+              updatePlayPauseButton();
+              showToast("Playback error", true);
+            }
           }
         }
       } else {
