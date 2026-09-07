@@ -1432,8 +1432,7 @@
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      margin: 4px 0 2px;
+      gap: 15px;
     }
 
     .fs-progress-track {
@@ -1497,14 +1496,13 @@
     }
 
     .fs-skip-btn {
-      background: var(--bg-surface);
+      background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--border);
       color: #fff;
       width: 50px;
       height: 50px;
       border-radius: 50%;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       cursor: pointer;
@@ -1514,23 +1512,17 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
     }
 
-    .fs-skip-btn svg,
-    .fs-skip-btn .lucide,
-    .fs-skip-btn [data-lucide] {
-      width: 26px !important;
-      height: 26px !important;
-      stroke-width: 2.2 !important;
-      color: #fff;
+    .fs-skip-btn:hover {
+      background: var(--bg-surface-hover);
+      border-color: rgba(255, 51, 102, 0.4);
+      color: var(--primary);
     }
 
-    .fs-skip-label {
-      font-size: 8px;
-      font-weight: 900;
-      position: absolute;
-      bottom: 5px;
-      color: var(--primary);
-      line-height: 1;
-      letter-spacing: -0.2px;
+    .fs-skip-btn svg {
+      width: 28px !important;
+      height: 28px !important;
+      stroke-width: 2 !important;
+      color: currentColor;
     }
 
     .fs-skip-btn:active,
@@ -1599,10 +1591,11 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 10px 12px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
+      font-size: 14px;
     }
 
     .fs-speed-header {
@@ -1612,7 +1605,7 @@
     }
 
     .fs-speed-label {
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       color: var(--text-muted);
       display: flex;
@@ -1634,7 +1627,7 @@
       color: var(--text-muted);
       padding: 6px 0;
       border-radius: var(--radius-sm);
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       cursor: pointer;
       text-align: center;
@@ -2018,15 +2011,9 @@
           </div>
         </div>
         <div class="player-controls" onclick="event.stopPropagation();">
-          <button class="control-btn" onclick="skipAudio(-10); event.stopPropagation();" title="Rewind 10s">
-            <i data-lucide="rotate-ccw"></i>
-          </button>
           <button id="play-pause-btn" class="play-pause-btn" onclick="togglePlayPause(); event.stopPropagation();"
             title="Play/Pause">
             <i data-lucide="play"></i>
-          </button>
-          <button class="control-btn" onclick="skipAudio(10); event.stopPropagation();" title="Forward 10s">
-            <i data-lucide="rotate-cw"></i>
           </button>
           <button class="player-close-btn" onclick="closePlayerBar(); event.stopPropagation();" title="Close Player">
             <i data-lucide="x"></i>
@@ -2077,9 +2064,12 @@
           </div>
 
           <div class="fs-controls-row">
-            <button class="fs-skip-btn" onclick="skipAudio(-15)" title="Rewind 15s">
-              <i data-lucide="rotate-ccw"></i>
-              <span class="fs-skip-label">15s</span>
+            <button class="fs-skip-btn" onclick="skipAudio(-15)" title="Rewind 15 seconds">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+                <text x="12" y="15.2" font-size="7.5" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" text-anchor="middle" fill="currentColor" stroke="none">15</text>
+              </svg>
             </button>
             <button class="fs-nav-ctrl-btn" onclick="playPrevEpisode()" title="Previous Episode">
               <i data-lucide="skip-back"></i>
@@ -2090,18 +2080,21 @@
             <button class="fs-nav-ctrl-btn" onclick="playNextEpisode()" title="Next Episode">
               <i data-lucide="skip-forward"></i>
             </button>
-            <button class="fs-skip-btn" onclick="skipAudio(15)" title="Forward 15s">
-              <i data-lucide="rotate-cw"></i>
-              <span class="fs-skip-label">15s</span>
+            <button class="fs-skip-btn" onclick="skipAudio(15)" title="Forward 15 seconds">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.74 2.74L21 8"/>
+                <path d="M21 3v5h-5"/>
+                <text x="12" y="15.2" font-size="7.5" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" text-anchor="middle" fill="currentColor" stroke="none">15</text>
+              </svg>
             </button>
           </div>
 
           <div class="fs-speed-section">
             <div class="fs-speed-header">
               <span class="fs-speed-label"><i data-lucide="gauge"
-                  style="width: 14px; height: 14px; color: var(--primary);"></i> Speed</span>
+                  style="width: 16px; height: 16px; color: var(--primary);"></i> Speed</span>
               <span id="fs-current-speed-text"
-                style="color: var(--primary); font-weight: 700; font-size: 11px;">1.0x</span>
+                style="color: var(--primary); font-weight: 700; font-size: 14px;">1.0x</span>
             </div>
             <div class="fs-speed-pills">
               <button class="speed-pill" data-speed="0.75" onclick="setPlaybackSpeed(0.75)">0.75x</button>
@@ -3110,11 +3103,6 @@
       }
     }
 
-    function searchTag(keyword) {
-      document.getElementById('search-input').value = keyword;
-      performSearch(keyword);
-    }
-
     let searchTimeout = null;
     document.getElementById('search-input')?.addEventListener('input', (e) => {
       clearTimeout(searchTimeout);
@@ -3122,69 +3110,97 @@
       if (query.length > 0) {
         searchTimeout = setTimeout(() => performSearch(query), 300);
       } else {
-        renderSearchGrid();
+        renderSearchEmptyState();
       }
     });
 
-    function renderSearchGrid(filterQuery = "") {
+    function renderSearchEmptyState() {
       const container = document.getElementById('search-results-container');
-      const allShows = getAllSampleShows();
-
-      const filtered = filterQuery ? allShows.filter(s => s.title.toLowerCase().includes(filterQuery.toLowerCase()) || (s.synopsis && s.synopsis.toLowerCase().includes(filterQuery.toLowerCase()))) : allShows;
-
-      if (filtered.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted);">No shows found for "${escapeHtml(filterQuery)}"</div>`;
-        return;
-      }
-
+      if (!container) return;
       container.innerHTML = `
-        <div class="grid-container">
-          ${filtered.map(show => `
-            <div class="grid-card" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
-              <div class="grid-poster-wrap">
-                <img class="grid-poster" src="${escapeAttr(show.image_url || 'https://via.placeholder.com/130')}" alt="${escapeAttr(show.title)}" loading="lazy">
-              </div>
-              <div class="grid-title">${escapeHtml(show.title)}</div>
-            </div>
-          `).join('')}
+        <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
+          <i data-lucide="search" style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--primary); opacity: 0.8;"></i>
+          <p style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px;">Search Shows</p>
+          <p style="font-size: 12px;">Type above to search Pocket FM shows and episodes</p>
         </div>
       `;
+      refreshIcons();
     }
 
     async function performSearch(queryText) {
       const input = document.getElementById('search-input');
-      const query = queryText || input.value.trim();
+      const query = queryText !== undefined ? queryText : (input ? input.value.trim() : '');
+      const container = document.getElementById('search-results-container');
+      if (!container) return;
+
       if (!query) {
-        renderSearchGrid();
+        renderSearchEmptyState();
         return;
       }
 
-      const container = document.getElementById('search-results-container');
       container.innerHTML = `<div class="loader" style="min-height: 40vh;"><div class="spinner"></div></div>`;
 
       try {
         const res = await fetch(`/search?query=${encodeURIComponent(query)}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.result && data.result.shows && data.result.shows.length > 0) {
+          let shows = [];
+          if (data.result) {
+            if (Array.isArray(data.result.shows)) {
+              shows = data.result.shows;
+            } else if (Array.isArray(data.result.entities)) {
+              shows = data.result.entities.map(e => e.value || e);
+            } else if (Array.isArray(data.result)) {
+              shows = data.result;
+            }
+          }
+
+          if (shows && shows.length > 0) {
             container.innerHTML = `
               <div class="grid-container">
-                ${data.result.shows.map(show => `
-                  <div class="grid-card" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
-                    <div class="grid-poster-wrap">
-                      <img class="grid-poster" src="${escapeAttr(show.image_url || 'https://via.placeholder.com/130')}" alt="${escapeAttr(show.title)}" loading="lazy">
+                ${shows.map(show => {
+              const showId = show.show_id || show.entity_id || show.id || '';
+              const showTitle = show.title || show.show_title || 'Untitled';
+              const showImg = show.image_url || show.cover_url || '';
+              const rawRating = show.avg_rating !== undefined ? show.avg_rating : (show.rating !== undefined ? show.rating : (show.stats?.avg_rating || null));
+              const ratingVal = rawRating ? (typeof rawRating === 'number' ? rawRating.toFixed(1) : parseFloat(rawRating).toFixed(1)) : null;
+              return `
+                    <div class="grid-card" onclick="openShowPage('${escapeAttr(showId)}', '${escapeAttr(showTitle)}', '${escapeAttr(showImg)}')">
+                      <div class="grid-poster-wrap">
+                        <img class="grid-poster" src="${escapeAttr(showImg || 'https://via.placeholder.com/130')}" alt="${escapeAttr(showTitle)}" loading="lazy">
+                        ${ratingVal ? `<div class="card-tag card-tag-right"><i data-lucide="star"></i> ${ratingVal}</div>` : ''}
+                      </div>
+                      <div class="grid-title">${escapeHtml(showTitle)}</div>
                     </div>
-                    <div class="grid-title">${escapeHtml(show.title)}</div>
-                  </div>
-                `).join('')}
+                  `;
+            }).join('')}
               </div>
             `;
+            refreshIcons();
+            return;
+          } else {
+            container.innerHTML = `
+              <div style="text-align:center; padding: 50px 20px; color: var(--text-muted); font-size: 13px;">
+                <i data-lucide="help-circle" style="width: 32px; height: 32px; margin-bottom: 10px; color: var(--text-muted);"></i>
+                <p>No shows found for "<strong>${escapeHtml(query)}</strong>"</p>
+              </div>
+            `;
+            refreshIcons();
             return;
           }
         }
-      } catch (err) { }
-
-      renderSearchGrid(query);
+        throw new Error("Search API failed");
+      } catch (err) {
+        container.innerHTML = `
+          <div style="text-align:center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <i data-lucide="alert-circle" style="width: 32px; height: 32px; color: #f87171;"></i>
+            <p style="color: #fff; font-weight: 700;">Search failed</p>
+            <p style="font-size: 11px;">Unable to fetch results from Pocket FM API</p>
+            <button class="range-btn-item active" onclick="performSearch('${escapeAttr(query)}')" style="padding: 6px 16px; border-radius: var(--radius-full); font-size: 11px; margin-top: 4px;">Retry</button>
+          </div>
+        `;
+        refreshIcons();
+      }
     }
 
     function escapeHtml(str) {
