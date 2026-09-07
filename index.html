@@ -3811,10 +3811,98 @@
 
       const streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
-      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash'))) {
+      const isDrmOrDash = Boolean(
+        streamUrl.includes('.mpd') ||
+        streamUrl.includes('manifest') ||
+        streamUrl.includes('dash') ||
+        streamUrl.includes('drm-aac') ||
+        streamUrl.includes('.m4s') ||
+        streamUrl.includes('audio_enc') ||
+        streamUrl.includes('cloudfront.net') ||
+        (currentPlayingStory && (currentPlayingStory.audioUrl?.includes('.mpd') || currentPlayingStory.mediaUrl?.includes('.mpd')))
+      );
+
+      if (shakaPlayer && isDrmOrDash) {
         try {
           await shakaPlayer.unload();
-          await shakaPlayer.load(streamUrl);
+
+          // 1. Resolve Show ID for PocketFM DRM License
+          let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
+          if (!targetShowId && streamUrl) {
+            const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || streamUrl.match(/\/([a-f0-9]{24,32})\//);
+            if (match) targetShowId = match[1];
+          }
+
+          // 2. Fetch Widevine DRM License URL from backend
+          let licenseUrl = "";
+          if (targetShowId) {
+            try {
+              const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}`);
+              if (licRes.ok) {
+                const licData = await licRes.json();
+                if (licData.success && licData.license_url) {
+                  licenseUrl = licData.license_url;
+                }
+              }
+            } catch (licErr) {
+              console.warn("DRM license fetch warning:", licErr);
+            }
+          }
+
+          // 3. Configure Shaka Request Filters to route segments & license via backend proxy to eliminate CORS
+          const netEngine = shakaPlayer.getNetworkingEngine();
+          netEngine.clearAllRequestFilters();
+
+          netEngine.registerRequestFilter((type, request) => {
+            if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST || 
+                type === shaka.net.NetworkingEngine.RequestType.SEGMENT) {
+              request.uris = request.uris.map(u => {
+                if (u.startsWith('http') && !u.includes('/api/dash-proxy') && !u.includes('/api/proxy-stream')) {
+                  return `/api/dash-proxy?url=${encodeURIComponent(u)}`;
+                }
+                return u;
+              });
+            }
+            if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
+              request.uris = request.uris.map(u => {
+                if (u.startsWith('http') && !u.includes('/api/license-proxy')) {
+                  return `/api/license-proxy?url=${encodeURIComponent(u)}`;
+                }
+                return u;
+              });
+            }
+          });
+
+          // 4. Configure Shaka Player DRM
+          const drmConfig = {
+            drm: {
+              servers: {},
+              advanced: {
+                'com.widevine.alpha': {
+                  videoRobustness: '',
+                  audioRobustness: '',
+                  distinctiveIdentifierRequired: false,
+                  persistentStateRequired: false
+                }
+              }
+            }
+          };
+
+          if (licenseUrl) {
+            drmConfig.drm.servers['com.widevine.alpha'] = `/api/license-proxy?url=${encodeURIComponent(licenseUrl)}`;
+          }
+
+          shakaPlayer.configure(drmConfig);
+
+          // 5. Load the stream via CORS-friendly DASH proxy
+          const proxiedUrl = `/api/dash-proxy?url=${encodeURIComponent(streamUrl)}`;
+          try {
+            await shakaPlayer.load(proxiedUrl);
+          } catch (proxLoadErr) {
+            console.warn("Proxied stream load failed, attempting direct stream...", proxLoadErr);
+            await shakaPlayer.load(streamUrl);
+          }
+
           audioElement.playbackRate = currentPlaybackSpeed;
           await audioElement.play();
           isAudioBuffering = false;
