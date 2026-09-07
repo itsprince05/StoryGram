@@ -3854,7 +3854,13 @@
 
           shakaPlayer.configure(playerConfig);
 
-          await shakaPlayer.load(streamUrl);
+          const loadUrl = `/api/stream_proxy?url=${encodeURIComponent(streamUrl)}`;
+          try {
+            await shakaPlayer.load(loadUrl);
+          } catch (loadErr) {
+            console.warn("Proxy load failed, trying direct streamUrl...", loadErr);
+            await shakaPlayer.load(streamUrl);
+          }
 
           // By default, select 128k quality track (128000 bps / protected_audio_mpd_128k.mp4)
           try {
