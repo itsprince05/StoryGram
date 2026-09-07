@@ -354,10 +354,13 @@ app.get(['/search', '/api/search'], async (req, res) => {
 
     const query = req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
     const genre = req.headers['genre'] || req.query.genre || '';
+    const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
 
     const queryParams = new URLSearchParams({
       query: query,
       genre: genre,
+      selected_language: language,
+      language: language,
       ...req.query
     }).toString();
 
