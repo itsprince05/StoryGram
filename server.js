@@ -473,7 +473,42 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               story_id: story.story_id || "",
               media_url: story.media_url_enc || story.media_url || ""
             };
-            const videoUrl = story.video_url || story.video_info?.android?.video_url || "";
+            let videoUrl = "";
+            if (story.video_info) {
+              let vInfo = story.video_info;
+              if (typeof vInfo === 'string') {
+                try {
+                  vInfo = JSON.parse(vInfo);
+                } catch (e) {}
+              }
+              if (vInfo && typeof vInfo === 'object') {
+                if (vInfo.web) {
+                  videoUrl = typeof vInfo.web === 'object' ? (vInfo.web.video_url || "") : vInfo.web;
+                }
+              }
+            }
+            if (!videoUrl && story.video_urls && typeof story.video_urls === 'object' && story.video_urls.web) {
+              videoUrl = typeof story.video_urls.web === 'object' ? (story.video_urls.web.video_url || "") : story.video_urls.web;
+            }
+            if (!videoUrl && typeof story.video_url === 'object' && story.video_url !== null && story.video_url.web) {
+              videoUrl = typeof story.video_url.web === 'object' ? (story.video_url.web.video_url || "") : story.video_url.web;
+            }
+            if (!videoUrl && typeof story.video_url === 'string' && story.video_url) {
+              try {
+                const parsed = JSON.parse(story.video_url);
+                if (parsed && typeof parsed === 'object' && parsed.web) {
+                  videoUrl = typeof parsed.web === 'object' ? (parsed.web.video_url || "") : parsed.web;
+                }
+              } catch (e) {}
+            }
+            if (!videoUrl && story.web) {
+              videoUrl = typeof story.web === 'object' ? (story.web.video_url || "") : story.web;
+            }
+            if (!videoUrl && typeof story.video_url === 'string' && story.video_url) {
+              videoUrl = story.video_url;
+            } else if (!videoUrl && story.video_info?.android?.video_url) {
+              videoUrl = story.video_info.android.video_url;
+            }
             if (videoUrl) {
               storyObj.video_url = videoUrl;
             }
