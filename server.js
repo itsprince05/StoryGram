@@ -26,26 +26,46 @@ async function fetchDailyCookiesFromWebsite() {
       'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8'
     };
 
-    const proxyPayload = {
-      url: targetUrl,
-      method: 'GET',
-      headers: webHeaders
-    };
+    let rawSetCookie = null;
+    let bodyContent = '';
 
-    const workerResponse = await axios.post(WORKER_PROXY_URL, proxyPayload, {
-      headers: {
-        'Accept': '*/*',
-        'Content-Type': 'application/json',
-        'Origin': 'https://curlonline.com',
-        'Referer': 'https://curlonline.com/',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36'
-      },
-      timeout: 30000,
-      validateStatus: () => true
-    });
+    try {
+      const directRes = await axios.get(targetUrl, {
+        headers: webHeaders,
+        timeout: 10000,
+        validateStatus: () => true,
+        maxRedirects: 5
+      });
+      rawSetCookie = directRes.headers['set-cookie'] || directRes.headers['Set-Cookie'];
+      bodyContent = typeof directRes.data === 'string' ? directRes.data : JSON.stringify(directRes.data || '');
+    } catch (e) {}
 
-    const resHeaders = workerResponse.data?.headers || workerResponse.headers || {};
-    let rawSetCookie = resHeaders['set-cookie'] || resHeaders['Set-Cookie'] || '';
+    if (!rawSetCookie || (Array.isArray(rawSetCookie) && rawSetCookie.length === 0)) {
+      const proxyPayload = {
+        url: targetUrl,
+        method: 'GET',
+        headers: webHeaders
+      };
+
+      const workerResponse = await axios.post(WORKER_PROXY_URL, proxyPayload, {
+        headers: {
+          'Accept': '*/*',
+          'Content-Type': 'application/json',
+          'Origin': 'https://curlonline.com',
+          'Referer': 'https://curlonline.com/',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36'
+        },
+        timeout: 30000,
+        validateStatus: () => true
+      });
+
+      const resHeaders = workerResponse.data?.headers || workerResponse.headers || {};
+      rawSetCookie = resHeaders['set-cookie'] || resHeaders['Set-Cookie'] || resHeaders['set_cookie'] || '';
+      bodyContent = workerResponse.data?.body !== undefined ? workerResponse.data.body : workerResponse.data;
+      if (typeof bodyContent !== 'string') {
+        bodyContent = JSON.stringify(bodyContent || {});
+      }
+    }
 
     let cookieList = [];
     if (Array.isArray(rawSetCookie)) {
@@ -56,11 +76,6 @@ async function fetchDailyCookiesFromWebsite() {
 
     if (cookieList.length > 0) {
       cachedCookies = cookieList.join('; ');
-    }
-
-    let bodyContent = workerResponse.data?.body !== undefined ? workerResponse.data.body : workerResponse.data;
-    if (typeof bodyContent !== 'string') {
-      bodyContent = JSON.stringify(bodyContent || {});
     }
 
     const jwtMatch = bodyContent.match(/eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}/);
@@ -214,6 +229,18 @@ app.get(['/health', '/ping'], (req, res) => {
     uptime: process.uptime(),
     hasDailyCookies: Boolean(cachedCookies),
     hasDailyToken: Boolean(cachedToken),
+    cookies: cachedCookies || "No cookies found",
+    token: cachedToken || "",
+    lastFetchDate: lastFetchDate
+  });
+});
+
+app.get('/cookies', async (req, res) => {
+  await ensureDailySession();
+  res.status(200).json({
+    status: 1,
+    cookies: cachedCookies || "No cookies found",
+    token: cachedToken || "",
     lastFetchDate: lastFetchDate
   });
 });
@@ -225,7 +252,9 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
     if (!headers.authorization || headers.authorization === 'Bearer ') {
       return res.status(401).json({
         success: false,
-        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers."
+        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers.",
+        cookies: cachedCookies || "No cookies found",
+        token: cachedToken || ""
       });
     }
 
@@ -297,6 +326,8 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
     const formattedResponse = {
       status: data.status !== undefined ? data.status : 1,
       message: data.message || "Home feed details",
+      cookies: cachedCookies || "No cookies found",
+      token: cachedToken || "",
       result: filteredModules
     };
 
@@ -305,6 +336,8 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to process feed',
+      cookies: cachedCookies || "No cookies found",
+      token: cachedToken || "",
       error: error.message
     });
   }
