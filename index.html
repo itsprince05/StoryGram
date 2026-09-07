@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Story Gram - Audio Series & Shows</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -163,8 +165,17 @@
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.3); }
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.5;
+        transform: scale(1.3);
+      }
     }
 
     .lang-pills {
@@ -211,8 +222,15 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     /* HERO SLIDER */
@@ -1100,7 +1118,9 @@
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .toast {
@@ -1129,6 +1149,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <div class="app-frame">
@@ -1186,7 +1207,9 @@
           <button class="back-btn" onclick="goBack()">
             <i class="fa-solid fa-arrow-left"></i> Back
           </button>
-          <div id="show-page-bar-title" style="font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">Show Details</div>
+          <div id="show-page-bar-title"
+            style="font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">
+            Show Details</div>
           <div class="icon-btn" onclick="showToast('Link copied to clipboard!')">
             <i class="fa-solid fa-share-nodes"></i>
           </div>
@@ -1198,11 +1221,16 @@
           <h1 id="show-page-title" class="show-page-title">Series Title</h1>
           <div class="show-page-badges">
             <div class="status-badge"><i class="fa-solid fa-fire"></i> Top Series</div>
-            <div class="status-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);"><i class="fa-solid fa-star"></i> 4.9 (1.8M Plays)</div>
-            <div id="show-page-ep-count" class="status-badge" style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border-color: rgba(139, 92, 246, 0.3);">Episodes: ...</div>
+            <div class="status-badge"
+              style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);"><i
+                class="fa-solid fa-star"></i> 4.9 (1.8M Plays)</div>
+            <div id="show-page-ep-count" class="status-badge"
+              style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border-color: rgba(139, 92, 246, 0.3);">
+              Episodes: ...</div>
           </div>
           <div id="show-page-synopsis" class="show-synopsis-box">
-            An extraordinary tale of destiny, love, betrayal, and power. Experience the thrilling audio journey crafted with immersive sound effects.
+            An extraordinary tale of destiny, love, betrayal, and power. Experience the thrilling audio journey crafted
+            with immersive sound effects.
           </div>
           <div class="show-action-btns">
             <button id="show-page-play-first-btn" class="show-play-all-btn" onclick="playFirstEpisode()">
@@ -1219,10 +1247,13 @@
             <div class="section-title">
               <i class="fa-solid fa-list-ol"></i> All Episodes
             </div>
-            <span id="episodes-counter-badge" style="font-size: 12px; color: var(--text-muted); font-weight: 700;">20 Episodes</span>
+            <span id="episodes-counter-badge" style="font-size: 12px; color: var(--text-muted); font-weight: 700;">20
+              Episodes</span>
           </div>
           <div id="show-page-episodes-container" class="episodes-list">
-            <div class="loader"><div class="spinner"></div><span>Loading episodes...</span></div>
+            <div class="loader">
+              <div class="spinner"></div><span>Loading episodes...</span>
+            </div>
           </div>
           <button id="show-page-load-more-btn" class="load-more-btn" onclick="loadNextEpisodeBatch()">
             <i class="fa-solid fa-plus"></i> Load Next Episodes
@@ -1275,14 +1306,17 @@
           <div class="section-header">
             <div class="section-title"><i class="fa-solid fa-gear"></i> App & API Status</div>
           </div>
-          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 14px; font-size: 13px;">
+          <div
+            style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 14px; font-size: 13px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: var(--text-muted);">App Name:</span>
               <span style="font-weight: 700; color: var(--primary);">Story Gram</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: var(--text-muted);">Daily Auto Cookie:</span>
-              <span class="status-badge"><div class="status-dot"></div> Active (24h Auto)</span>
+              <span class="status-badge">
+                <div class="status-dot"></div> Active (24h Auto)
+              </span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: var(--text-muted);">Audio Stream:</span>
@@ -1290,9 +1324,11 @@
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: var(--text-muted);">Current Language:</span>
-              <span id="settings-current-lang" style="font-weight: 700; text-transform: capitalize; color: #fff;">Hindi</span>
+              <span id="settings-current-lang"
+                style="font-weight: 700; text-transform: capitalize; color: #fff;">Hindi</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 12px;">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 12px;">
               <span style="color: var(--text-muted);">Server URL:</span>
               <span style="font-size: 11px; color: var(--text-muted);">api-3ua1.onrender.com</span>
             </div>
@@ -1678,7 +1714,7 @@
         <div class="hero-slide" onclick="openShowDetailsFromData('${escapeAttr(show.show_id)}')">
           <img class="hero-img" src="${escapeAttr(show.image_url || 'https://via.placeholder.com/480x220')}" alt="${escapeAttr(show.title)}" loading="lazy">
           <div class="hero-gradient">
-            <div class="hero-tag"><i class="fa-solid fa-fire"></i> Popular on Story Gram</div>
+            <div class="hero-tag"><i class="fa-solid fa-fire"></i> Trending Story</div>
             <div class="hero-title">${escapeHtml(show.title)}</div>
             <div class="hero-btn"><i class="fa-solid fa-play"></i> Play Series</div>
           </div>
@@ -1767,7 +1803,7 @@
             modulesToRender = data.result;
           }
         }
-      } catch (err) {}
+      } catch (err) { }
 
       renderFeedModules(modulesToRender);
     }
@@ -1965,14 +2001,16 @@
         const epNumber = (loadedEpisodesList.length - stories.length) + idx + 1;
         const isUnlocked = story.is_unlocked || unlockedStoriesMap[story.story_id] || epNumber <= 3;
 
+        const mediaStreamUrl = story.media_url_enc || story.media_url || "";
+
         epDiv.innerHTML = `
-          <div class="ep-left" onclick="playEpisode('${escapeAttr(story.story_id)}', '${escapeAttr(story.story_title)}', '${escapeAttr(story.media_url)}', '${escapeAttr(showTitle)}', '${escapeAttr(showImg)}')">
+          <div class="ep-left" onclick="playEpisode('${escapeAttr(story.story_id)}', '${escapeAttr(story.story_title)}', '${escapeAttr(mediaStreamUrl)}', '${escapeAttr(showTitle)}', '${escapeAttr(showImg)}')">
             <span class="ep-num">#${epNumber}</span>
             <div class="ep-play-btn"><i class="fa-solid fa-play"></i></div>
             <div class="ep-info">
               <div class="ep-title">${escapeHtml(story.story_title || `Episode ${epNumber}`)}</div>
               <div class="ep-duration">
-                <i class="fa-regular fa-clock"></i> ${durationMin} • <i class="fa-solid fa-volume-high"></i> HD Audio
+                <i class="fa-regular fa-clock"></i> ${durationMin} • <i class="fa-solid fa-headphones"></i> ${story.stats?.total_plays_display || 'HD Audio'}
               </div>
             </div>
           </div>
@@ -2005,6 +2043,9 @@
               document.getElementById('show-page-img').src = showData.image_url;
               document.getElementById('show-hero-bg').src = showData.image_url;
             }
+            if (showData.show_desc_en || showData.show_desc) {
+              document.getElementById('show-page-synopsis').innerText = showData.show_desc_en || showData.show_desc;
+            }
             if (showData.episodes_count) {
               document.getElementById('show-page-ep-count').innerText = `Episodes: ${showData.episodes_count}`;
               document.getElementById('episodes-counter-badge').innerText = `${showData.episodes_count} Episodes`;
@@ -2015,7 +2056,7 @@
             }
           }
         }
-      } catch (err) {}
+      } catch (err) { }
     }
 
     function loadNextEpisodeBatch() {
@@ -2042,7 +2083,7 @@
         await fetch(`/unlock?show_id=${encodeURIComponent(showId)}&story_id=${encodeURIComponent(storyId)}`, {
           method: 'POST'
         });
-      } catch (e) {}
+      } catch (e) { }
 
       showToast("✨ Episode unlocked successfully!");
       if (currentShowObj && currentShowObj.stories) {
@@ -2110,7 +2151,7 @@
 
     function togglePlayPause() {
       if (audioElement.paused) {
-        audioElement.play().catch(e => {});
+        audioElement.play().catch(e => { });
         isPlaying = true;
       } else {
         audioElement.pause();
@@ -2218,7 +2259,7 @@
             return;
           }
         }
-      } catch (err) {}
+      } catch (err) { }
 
       renderSearchGrid(query);
     }
@@ -2257,4 +2298,5 @@
     });
   </script>
 </body>
+
 </html>
