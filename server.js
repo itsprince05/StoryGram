@@ -8,12 +8,105 @@ const PORT = process.env.PORT || 3000;
 const BASE_URL = 'https://api.pocketfm.com';
 const WORKER_PROXY_URL = 'https://curl-proxy.bruceliu-dev.workers.dev/';
 
+let cachedCookies = '';
+let cachedToken = '';
+let lastFetchDate = '';
+let isRefreshing = false;
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+async function fetchDailyCookiesFromWebsite() {
+  try {
+    const targetUrl = 'https://www.pocketfm.com/';
+    const webHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8'
+    };
+
+    const proxyPayload = {
+      url: targetUrl,
+      method: 'GET',
+      headers: webHeaders
+    };
+
+    const workerResponse = await axios.post(WORKER_PROXY_URL, proxyPayload, {
+      headers: {
+        'Accept': '*/*',
+        'Content-Type': 'application/json',
+        'Origin': 'https://curlonline.com',
+        'Referer': 'https://curlonline.com/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36'
+      },
+      timeout: 30000,
+      validateStatus: () => true
+    });
+
+    const resHeaders = workerResponse.data?.headers || workerResponse.headers || {};
+    let rawSetCookie = resHeaders['set-cookie'] || resHeaders['Set-Cookie'] || '';
+
+    let cookieList = [];
+    if (Array.isArray(rawSetCookie)) {
+      cookieList = rawSetCookie.map(c => c.split(';')[0].trim());
+    } else if (typeof rawSetCookie === 'string' && rawSetCookie) {
+      cookieList = rawSetCookie.split(/,(?=[^;]+=[^;]+)/).map(c => c.split(';')[0].trim());
+    }
+
+    if (cookieList.length > 0) {
+      cachedCookies = cookieList.join('; ');
+    }
+
+    let bodyContent = workerResponse.data?.body !== undefined ? workerResponse.data.body : workerResponse.data;
+    if (typeof bodyContent !== 'string') {
+      bodyContent = JSON.stringify(bodyContent || {});
+    }
+
+    const jwtMatch = bodyContent.match(/eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}/);
+    if (jwtMatch && jwtMatch[0]) {
+      cachedToken = jwtMatch[0];
+    }
+
+    for (const cookieItem of cookieList) {
+      const parts = cookieItem.split('=');
+      if (parts.length >= 2) {
+        const val = parts.slice(1).join('=');
+        if (val.startsWith('eyJ') && val.includes('.')) {
+          cachedToken = val;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching daily cookies:', err.message);
+  }
+}
+
+async function ensureDailySession() {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+  if (lastFetchDate !== today || (!cachedCookies && !cachedToken)) {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      try {
+        await fetchDailyCookiesFromWebsite();
+        lastFetchDate = today;
+      } finally {
+        isRefreshing = false;
+      }
+    }
+  }
+}
+
+app.use(async (req, res, next) => {
+  if (req.path === '/health' || req.path === '/ping') {
+    return next();
+  }
+  await ensureDailySession();
+  next();
+});
+
 function buildPocketHeaders(req) {
-  let token = req.headers['authorization'] || req.headers['auth'] || req.headers['x-auth-token'] || process.env.DEFAULT_BEARER_TOKEN || '';
+  let token = req.headers['authorization'] || req.headers['auth'] || req.headers['x-auth-token'] || cachedToken || process.env.DEFAULT_BEARER_TOKEN || '';
 
   if (token && !token.toLowerCase().startsWith('bearer ')) {
     token = `Bearer ${token.trim()}`;
@@ -21,7 +114,7 @@ function buildPocketHeaders(req) {
 
   const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
 
-  return {
+  const headers = {
     'Host': 'api.pocketfm.com',
     'app-name': 'pocket_fm',
     'platform': 'android',
@@ -35,6 +128,12 @@ function buildPocketHeaders(req) {
     'accept-encoding': 'gzip',
     'User-Agent': 'com.radio.pocketfm'
   };
+
+  if (cachedCookies) {
+    headers['Cookie'] = cachedCookies;
+  }
+
+  return headers;
 }
 
 async function fetchViaWorkerProxy(targetUrl, headers, method = 'GET', body = null) {
@@ -112,7 +211,10 @@ app.get(['/health', '/ping'], (req, res) => {
     status: 'online',
     message: 'API Proxy is running',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    hasDailyCookies: Boolean(cachedCookies),
+    hasDailyToken: Boolean(cachedToken),
+    lastFetchDate: lastFetchDate
   });
 });
 
