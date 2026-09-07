@@ -2491,37 +2491,47 @@
       }
     }
 
-    let homeFeedRetryTimer = null;
-
-    async function fetchHomeFeed() {
+    async function fetchHomeFeed(isRetry = false) {
       clearTimeout(homeFeedRetryTimer);
       const container = document.getElementById('home-feed-container');
       const sliderContainer = document.getElementById('hero-slider-container');
       if (sliderContainer) sliderContainer.style.display = 'none';
 
-      container.innerHTML = `
-        <div class="loader">
-          <div class="spinner"></div>
-        </div>
-      `;
+      if (!isRetry) {
+        homeFeedRetryCount = 0;
+        container.innerHTML = `
+          <div class="loader" style="flex-direction: column; gap: 12px; min-height: 50vh;">
+            <div class="spinner"></div>
+            <p style="font-size: 12px; color: var(--text-muted);">Loading shows from Pocket FM API...</p>
+          </div>
+        `;
+      }
 
       try {
         const response = await fetch(`/home?language=${encodeURIComponent(currentLanguage)}`);
         if (response.ok) {
           const data = await response.json();
           if (data && data.result && data.result.length > 0) {
+            homeFeedRetryCount = 0;
             renderFeedModules(data.result);
             return;
           }
         }
         throw new Error("Empty or invalid API response");
       } catch (err) {
+        homeFeedRetryCount++;
         container.innerHTML = `
-          <div class="loader">
+          <div class="loader" style="flex-direction: column; gap: 12px; min-height: 50vh;">
             <div class="spinner"></div>
+            <div style="text-align: center; color: var(--text-muted); font-size: 13px;">
+              <p style="color: #fff; font-weight: 700; margin-bottom: 4px;">Connecting to Pocket FM API...</p>
+              <p style="font-size: 11px; color: var(--text-muted);">Retrying in 3 seconds (Attempt ${homeFeedRetryCount})</p>
+            </div>
+            <button class="range-btn-item active" onclick="fetchHomeFeed()" style="padding: 8px 18px; border-radius: var(--radius-full); font-size: 12px; margin-top: 6px;">Retry Now</button>
           </div>
         `;
-        homeFeedRetryTimer = setTimeout(() => fetchHomeFeed(), 3000);
+        refreshIcons();
+        homeFeedRetryTimer = setTimeout(() => fetchHomeFeed(true), 3000);
       }
     }
 
@@ -2792,9 +2802,23 @@
         }
         throw new Error("Failed to load show details");
       } catch (err) {
+        const sampleShow = findShowById(showId);
+        if (sampleShow && sampleShow.stories) {
+          const totalCount = sampleShow.episodes_count || sampleShow.stories.length;
+          currentShowTotalEpisodes = totalCount;
+          document.getElementById('show-page-ep-header-title').innerText = `${totalCount} Episodes`;
+          const batchStories = sampleShow.stories.slice(currPtr, currPtr + 20);
+          const activeStories = batchStories.length > 0 ? batchStories : sampleShow.stories;
+          renderEpisodesList(activeStories, append, startEpisodeNum);
+          const startNum = currPtr + 1;
+          const endNum = Math.min(currPtr + activeStories.length, totalCount);
+          document.getElementById('episodes-counter-badge').innerHTML = `<span>Ep ${startNum}-${endNum}</span> <i data-lucide="chevron-down"></i>`;
+          refreshIcons();
+          return;
+        }
         if (!append) {
-          document.getElementById('show-page-episodes-container').innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"></div></div>';
-          setTimeout(() => fetchShowEpisodes(showId, currPtr, append, startEpisodeNum), 3000);
+          document.getElementById('show-page-episodes-container').innerHTML = `<div style="text-align:center; padding: 40px; color: #f87171;"><i data-lucide="alert-circle" style="width: 24px; height: 24px; margin-bottom: 8px;"></i><p>Failed to load episodes from API.</p></div>`;
+          refreshIcons();
         }
       }
     }
