@@ -3950,11 +3950,14 @@
 
           shakaPlayer.configure(playerConfig);
 
-          // Direct CDN stream for Android WebView (Zero server bandwidth), proxy fallback for PC browser testing
+          // Direct CDN stream for Android WebView with clean retry
           try {
             await shakaPlayer.load(streamUrl);
           } catch (directErr) {
-            console.warn("Direct CDN load blocked by browser CORS, falling back to proxy...", directErr);
+            console.warn("Direct CDN load failed, resetting player and attempting proxy:", directErr);
+            try {
+              await shakaPlayer.unload();
+            } catch (uErr) {}
             const loadUrl = `/api/stream_proxy?url=${encodeURIComponent(streamUrl)}`;
             await shakaPlayer.load(loadUrl);
           }
@@ -3983,21 +3986,15 @@
           showToast("Playing (128 kbps)");
         } catch (err) {
           console.error("Shaka player error:", err);
-          try {
-            audioElement.src = streamUrl;
-            audioElement.playbackRate = currentPlaybackSpeed;
-            await audioElement.play();
-            isAudioBuffering = false;
-            isPlaying = true;
-            updatePlayPauseButton();
-            showToast("Playing");
-          } catch (audioErr) {
-            console.error("Audio playback error:", audioErr);
-            isAudioBuffering = false;
-            isPlaying = false;
-            updatePlayPauseButton();
-            showToast("Playback error: " + (err.message || "DRM Error"), true);
+          let errMsg = "Playback error";
+          if (err && typeof err === 'object') {
+            if (err.code) errMsg = `Error ${err.code}: ${err.message || 'DRM failure'}`;
+            else if (err.message) errMsg = err.message;
           }
+          isAudioBuffering = false;
+          isPlaying = false;
+          updatePlayPauseButton();
+          showToast(errMsg, true);
         }
       } else {
         if (shakaPlayer) {
