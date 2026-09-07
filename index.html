@@ -1218,19 +1218,20 @@
         <div class="show-page-hero">
           <img id="show-hero-bg" class="show-hero-bg" src="" alt="Background">
           <img id="show-page-img" class="show-page-poster" src="" alt="Show Poster">
-          <h1 id="show-page-title" class="show-page-title">Series Title</h1>
-          <div class="show-page-badges">
-            <div class="status-badge"><i class="fa-solid fa-fire"></i> Top Series</div>
-            <div class="status-badge"
-              style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);"><i
-                class="fa-solid fa-star"></i> 4.9 (1.8M Plays)</div>
-            <div id="show-page-ep-count" class="status-badge"
-              style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border-color: rgba(139, 92, 246, 0.3);">
-              Episodes: ...</div>
-          </div>
-          <div id="show-page-synopsis" class="show-synopsis-box">
-            An extraordinary tale of destiny, love, betrayal, and power. Experience the thrilling audio journey crafted
-            with immersive sound effects.
+          <h1 id="show-page-title" class="show-page-title">Loading Show...</h1>
+          <div id="show-page-badges" class="show-page-badges">
+            <div id="show-badge-rank" class="status-badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); display: none;">
+              <i class="fa-solid fa-trophy"></i> <span id="show-badge-rank-text">#1</span>
+            </div>
+            <div id="show-badge-rating" class="status-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); display: none;">
+              <i class="fa-solid fa-star"></i> <span id="show-badge-rating-text">4.6</span>
+            </div>
+            <div id="show-badge-plays" class="status-badge" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); display: none;">
+              <i class="fa-solid fa-headphones"></i> <span id="show-badge-plays-text">55.6M</span>
+            </div>
+            <div id="show-page-ep-count" class="status-badge" style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border-color: rgba(139, 92, 246, 0.3); display: none;">
+              <i class="fa-solid fa-list-ol"></i> <span id="show-badge-ep-text">Episodes</span>
+            </div>
           </div>
           <div class="show-action-btns">
             <button id="show-page-play-first-btn" class="show-play-all-btn" onclick="playFirstEpisode()">
@@ -1247,16 +1248,15 @@
             <div class="section-title">
               <i class="fa-solid fa-list-ol"></i> All Episodes
             </div>
-            <span id="episodes-counter-badge" style="font-size: 12px; color: var(--text-muted); font-weight: 700;">20
-              Episodes</span>
+            <span id="episodes-counter-badge" style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Episodes</span>
           </div>
           <div id="show-page-episodes-container" class="episodes-list">
             <div class="loader">
               <div class="spinner"></div><span>Loading episodes...</span>
             </div>
           </div>
-          <button id="show-page-load-more-btn" class="load-more-btn" onclick="loadNextEpisodeBatch()">
-            <i class="fa-solid fa-plus"></i> Load Next Episodes
+          <button id="show-page-load-more-btn" class="load-more-btn" style="display: none;" onclick="loadNextEpisodeBatch()">
+            <i class="fa-solid fa-plus"></i> Load Next 20 Episodes
           </button>
         </div>
       </div>
@@ -1881,12 +1881,7 @@
     }
 
     function openShowDetailsFromData(showId) {
-      const show = findShowById(showId);
-      if (show) {
-        openShowPage(show.show_id, show.title, show.image_url);
-      } else {
-        openShowPage(showId, "Series Title", "");
-      }
+      openShowPage(showId, "Show Details", "");
     }
 
     function openShowPage(showId, title, imageUrl) {
@@ -1896,38 +1891,22 @@
       currentNextPtr = 0;
       loadedEpisodesList = [];
 
-      let sampleShow = findShowById(showId);
-      if (!sampleShow) {
-        sampleShow = {
-          show_id: showId,
-          title: title || "Series Title",
-          image_url: imageUrl || "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=500&auto=format&fit=crop&q=80",
-          rating: "4.9",
-          plays: "1.5M",
-          episodes_count: 50,
-          synopsis: "An extraordinary audio drama capturing mystery, ambition, love, and destiny. Follow every thrilling episode with high quality stereo sound.",
-          stories: Array.from({ length: 20 }, (_, i) => ({
-            story_id: `${showId}_ep_${i + 1}`,
-            story_title: `Episode ${i + 1}: Part ${i + 1}`,
-            duration: 700 + (i * 20),
-            media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-            is_unlocked: i < 3
-          }))
-        };
-      }
-      currentShowObj = sampleShow;
+      document.getElementById('show-page-bar-title').innerText = title || "Show Details";
+      document.getElementById('show-page-title').innerText = title || "Loading Show...";
+      document.getElementById('show-page-img').src = imageUrl || 'https://via.placeholder.com/140';
+      document.getElementById('show-hero-bg').src = imageUrl || '';
 
-      document.getElementById('show-page-bar-title').innerText = title || sampleShow.title;
-      document.getElementById('show-page-title').innerText = title || sampleShow.title;
-      document.getElementById('show-page-img').src = imageUrl || sampleShow.image_url;
-      document.getElementById('show-hero-bg').src = imageUrl || sampleShow.image_url;
-      document.getElementById('show-page-synopsis').innerText = sampleShow.synopsis || "An extraordinary tale of destiny, love, betrayal, and power. Experience the thrilling audio journey.";
-      document.getElementById('show-page-ep-count').innerText = `Episodes: ${sampleShow.episodes_count || 50}`;
-      document.getElementById('episodes-counter-badge').innerText = `${sampleShow.episodes_count || 50} Episodes`;
+      document.getElementById('show-badge-rank').style.display = 'none';
+      document.getElementById('show-badge-rating').style.display = 'none';
+      document.getElementById('show-badge-plays').style.display = 'none';
+      document.getElementById('show-page-ep-count').style.display = 'none';
+      document.getElementById('episodes-counter-badge').innerText = 'Loading...';
 
       updateFavoriteButtonState();
 
-      renderEpisodesList(sampleShow.stories, false);
+      const epContainer = document.getElementById('show-page-episodes-container');
+      epContainer.innerHTML = '<div class="loader"><div class="spinner"></div><span>Loading episodes from Pocket FM...</span></div>';
+      document.getElementById('show-page-load-more-btn').style.display = 'none';
 
       switchTab('show-detail', false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1969,9 +1948,10 @@
         const ep = loadedEpisodesList[0];
         const showTitle = document.getElementById('show-page-title').innerText;
         const showImg = document.getElementById('show-page-img').src;
-        playEpisode(ep.story_id, ep.story_title, ep.media_url, showTitle, showImg);
+        const mediaStreamUrl = ep.media_url_enc || ep.media_url || "";
+        playEpisode(ep.story_id, ep.story_title, mediaStreamUrl, showTitle, showImg);
       } else {
-        showToast("Episode loading...");
+        showToast("Loading episode...");
       }
     }
 
@@ -1983,7 +1963,7 @@
       }
 
       if (!stories || stories.length === 0) {
-        if (!append) epContainer.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-muted);">No episodes found.</div>`;
+        if (!append) epContainer.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted);"><i class="fa-solid fa-list" style="font-size: 24px; margin-bottom: 8px;"></i><p>No episodes found for this show.</p></div>`;
         return;
       }
 
@@ -1997,20 +1977,20 @@
         epDiv.className = `episode-item ${isCurrentPlaying ? 'playing' : ''}`;
         epDiv.id = `ep-item-${story.story_id}`;
 
-        const durationMin = story.duration ? Math.ceil(story.duration / 60) + ' min' : '12 min';
+        const durationMin = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
         const epNumber = (loadedEpisodesList.length - stories.length) + idx + 1;
         const isUnlocked = story.is_unlocked || unlockedStoriesMap[story.story_id] || epNumber <= 3;
 
         const mediaStreamUrl = story.media_url_enc || story.media_url || "";
 
         epDiv.innerHTML = `
-          <div class="ep-left" onclick="playEpisode('${escapeAttr(story.story_id)}', '${escapeAttr(story.story_title)}', '${escapeAttr(mediaStreamUrl)}', '${escapeAttr(showTitle)}', '${escapeAttr(showImg)}')">
+          <div class="ep-left" onclick="playEpisode('${escapeAttr(story.story_id)}', '${escapeAttr(story.story_title || `Episode ${epNumber}`)}', '${escapeAttr(mediaStreamUrl)}', '${escapeAttr(showTitle)}', '${escapeAttr(showImg)}')">
             <span class="ep-num">#${epNumber}</span>
             <div class="ep-play-btn"><i class="fa-solid fa-play"></i></div>
             <div class="ep-info">
               <div class="ep-title">${escapeHtml(story.story_title || `Episode ${epNumber}`)}</div>
               <div class="ep-duration">
-                <i class="fa-regular fa-clock"></i> ${durationMin} • <i class="fa-solid fa-headphones"></i> ${story.stats?.total_plays_display || 'HD Audio'}
+                <i class="fa-regular fa-clock"></i> ${durationMin} • <i class="fa-solid fa-volume-high"></i> HD Audio
               </div>
             </div>
           </div>
@@ -2024,8 +2004,6 @@
         `;
         epContainer.appendChild(epDiv);
       });
-
-      document.getElementById('show-page-load-more-btn').style.display = 'flex';
     }
 
     async function fetchShowEpisodes(showId, currPtr = 0, append = false) {
@@ -2043,36 +2021,67 @@
               document.getElementById('show-page-img').src = showData.image_url;
               document.getElementById('show-hero-bg').src = showData.image_url;
             }
-            if (showData.show_desc_en || showData.show_desc) {
-              document.getElementById('show-page-synopsis').innerText = showData.show_desc_en || showData.show_desc;
+
+            if (showData.rank_text) {
+              document.getElementById('show-badge-rank-text').innerText = showData.rank_text;
+              document.getElementById('show-badge-rank').style.display = 'inline-flex';
+            } else {
+              document.getElementById('show-badge-rank').style.display = 'none';
             }
+
+            if (showData.stats && showData.stats.avg_rating) {
+              document.getElementById('show-badge-rating-text').innerText = showData.stats.avg_rating;
+              document.getElementById('show-badge-rating').style.display = 'inline-flex';
+            } else {
+              document.getElementById('show-badge-rating').style.display = 'none';
+            }
+
+            if (showData.stats && showData.stats.total_plays_display) {
+              document.getElementById('show-badge-plays-text').innerText = `${showData.stats.total_plays_display} Plays`;
+              document.getElementById('show-badge-plays').style.display = 'inline-flex';
+            } else {
+              document.getElementById('show-badge-plays').style.display = 'none';
+            }
+
             if (showData.episodes_count) {
-              document.getElementById('show-page-ep-count').innerText = `Episodes: ${showData.episodes_count}`;
+              document.getElementById('show-badge-ep-text').innerText = `${showData.episodes_count} Episodes`;
+              document.getElementById('show-page-ep-count').style.display = 'inline-flex';
               document.getElementById('episodes-counter-badge').innerText = `${showData.episodes_count} Episodes`;
             }
+
             if (showData.stories && showData.stories.length > 0) {
               renderEpisodesList(showData.stories, append);
               currentNextPtr = showData.next_ptr || (currPtr + showData.stories.length);
+              if (showData.stories.length >= 20 || (showData.episodes_count && currentNextPtr < showData.episodes_count)) {
+                document.getElementById('show-page-load-more-btn').style.display = 'flex';
+              } else {
+                document.getElementById('show-page-load-more-btn').style.display = 'none';
+              }
+            } else {
+              if (!append) {
+                document.getElementById('show-page-episodes-container').innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted);"><i class="fa-solid fa-list" style="font-size: 24px; margin-bottom: 8px;"></i><p>No episodes found for this show.</p></div>';
+              }
+              document.getElementById('show-page-load-more-btn').style.display = 'none';
             }
+            return;
           }
         }
-      } catch (err) { }
+        throw new Error("Failed to load show details");
+      } catch (err) {
+        if (!append) {
+          document.getElementById('show-page-episodes-container').innerHTML = `<div style="text-align:center; padding: 40px; color: #f87171;"><i class="fa-solid fa-circle-exclamation" style="font-size: 24px; margin-bottom: 8px;"></i><p>Failed to load episodes from API.</p></div>`;
+          document.getElementById('show-page-load-more-btn').style.display = 'none';
+        }
+      }
     }
 
     function loadNextEpisodeBatch() {
       if (!currentShowId) return;
-      const extraStories = Array.from({ length: 15 }, (_, i) => {
-        const epIndex = loadedEpisodesList.length + i + 1;
-        return {
-          story_id: `${currentShowId}_ep_${epIndex}`,
-          story_title: `Episode ${epIndex}: Continued Storyline`,
-          duration: 720 + (epIndex * 10),
-          media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-          is_unlocked: false
-        };
+      const btn = document.getElementById('show-page-load-more-btn');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+      fetchShowEpisodes(currentShowId, currentNextPtr, true).finally(() => {
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Load Next 20 Episodes';
       });
-      renderEpisodesList(extraStories, true);
-      showToast("Loaded 15 more episodes");
     }
 
     async function unlockEpisode(showId, storyId, storyTitle) {
