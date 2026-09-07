@@ -760,6 +760,58 @@ app.get(['/api/license', '/license', '/api/license_url', '/api/get_license'], as
   }
 });
 
+app.post(['/api/drm_license', '/api/license_proxy'], express.raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
+  try {
+    const showId = req.headers['show_id'] || req.headers['show-id'] || req.query.show_id || req.query.showId;
+    if (!showId) {
+      return res.status(400).send("Missing show_id parameter");
+    }
+
+    let licenseUrl = licenseCache.get(showId);
+    if (!licenseUrl) {
+      const deviceId = req.headers['device-id'] || req.headers['device_id'] || req.query.device_id || 'mobile-web';
+      const clientTs = 1770000000;
+      const headers = buildPocketHeaders(req);
+      headers['device-id'] = deviceId;
+      headers['device_id'] = deviceId;
+      headers['client-ts'] = String(clientTs);
+
+      const targetUrl = `${BASE_URL}/v2/content_api/show.play_details?show_id=${encodeURIComponent(showId)}&device_id=${encodeURIComponent(deviceId)}&client_ts=${clientTs}`;
+      let { data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
+      if (data && data.blob) {
+        licenseUrl = decryptPfmBlob(clientTs, deviceId, data.blob);
+      }
+      if (!licenseUrl && data && (data.license_url || data.licenseUrl)) {
+        licenseUrl = data.license_url || data.licenseUrl;
+      }
+      if (licenseUrl) {
+        licenseCache.set(showId, licenseUrl);
+      }
+    }
+
+    if (!licenseUrl) {
+      return res.status(500).send("Could not resolve Widevine license URL");
+    }
+
+    // Forward the Widevine challenge to Gumlet license server
+    const challengeBuffer = req.body;
+    const gumletRes = await axios.post(licenseUrl, challengeBuffer, {
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'User-Agent': 'Mozilla/5.0'
+      },
+      responseType: 'arraybuffer',
+      timeout: 15000
+    });
+
+    res.set('Content-Type', 'application/octet-stream');
+    return res.send(Buffer.from(gumletRes.data));
+  } catch (err) {
+    console.error("DRM License proxy error:", err.message);
+    return res.status(500).send(err.message);
+  }
+});
+
 app.all('/api/proxy/*', (req, res) => {
   const endpointPath = req.params[0];
   const queryParams = new URLSearchParams(req.query).toString();
