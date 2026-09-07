@@ -31,7 +31,7 @@
       --radius-md: 14px;
       --radius-lg: 20px;
       --radius-full: 9999px;
-      --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      --header-height: 56px;
       --player-height: 72px;
       --nav-height: 64px;
     }
@@ -89,7 +89,7 @@
       display: flex;
       flex-direction: column;
       box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
-      overflow-x: hidden;
+      padding-top: var(--header-height);
       padding-bottom: calc(var(--nav-height) + 0px);
       flex: 1 1 480px;
     }
@@ -101,17 +101,20 @@
     /* ACTION BAR */
     .action-bar {
       width: 100%;
-      position: sticky;
+      max-width: 480px;
+      height: var(--header-height);
+      position: fixed;
       top: 0;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 100;
       background: var(--bg-glass);
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
       border-bottom: 1px solid var(--border);
-      padding: 10px;
+      padding: 0 10px;
       display: flex;
-      flex-direction: column;
-      gap: 10px;
+      align-items: center;
     }
 
     .action-bar-top {
@@ -840,14 +843,19 @@
 
     /* SHOW DETAIL PAGE */
     .show-page-header {
-      position: sticky;
+      width: 100%;
+      max-width: 480px;
+      height: var(--header-height);
+      position: fixed;
       top: 0;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 100;
       background: var(--bg-glass);
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
       border-bottom: 1px solid var(--border);
-      padding: 10px;
+      padding: 0 10px;
       display: flex;
       align-items: center;
       gap: 10px;
