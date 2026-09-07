@@ -273,11 +273,63 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
     const url = `${BASE_URL}/v2/feed_api/get_feed_data?${queryParams}`;
     const { statusCode, data } = await fetchViaWorkerProxy(url, headers, 'GET');
 
-    if (typeof data === 'object' && data !== null) {
-      return res.status(statusCode).json(data);
-    } else {
+    if (!data || typeof data !== 'object') {
       return res.status(statusCode).send(data);
     }
+
+    const rawModules = Array.isArray(data.result) ? data.result : [];
+    const filteredResult = [];
+
+    for (const mod of rawModules) {
+      if (!mod) continue;
+
+      const rawEntities = Array.isArray(mod.entities) ? mod.entities : [];
+      const entities = [];
+
+      for (const ent of rawEntities) {
+        if (!ent || !ent.value) continue;
+
+        const info = ent.value.show_info || ent.value;
+        const showId = ent.value.show_id || info.show_id || info.entity_id || "";
+        const showTitle = info.show_title || info.title || "";
+        const imageUrl = info.image_url || info.cover_url || info.gift_url || "";
+        const categoryRank = info.show_category_rank !== undefined ? info.show_category_rank : (info.rank !== undefined ? info.rank : null);
+
+        const statsObj = info.stats || {};
+        const avgRating = statsObj.avg_rating !== undefined ? statsObj.avg_rating : (statsObj.rating !== undefined ? statsObj.rating : null);
+        const totalPlaysDisplay = statsObj.total_plays_display || (statsObj.total_plays ? String(statsObj.total_plays) : "");
+
+        if (showTitle || showId) {
+          entities.push({
+            value: {
+              show_title: showTitle,
+              image_url: imageUrl,
+              show_category_rank: categoryRank,
+              show_id: showId,
+              stats: {
+                avg_rating: avgRating,
+                total_plays_display: totalPlaysDisplay
+              }
+            }
+          });
+        }
+      }
+
+      if (entities.length > 0 || mod.module_name) {
+        filteredResult.push({
+          module_name: mod.module_name || "",
+          entities: entities
+        });
+      }
+    }
+
+    const formattedResponse = {
+      status: data.status !== undefined ? data.status : 1,
+      message: data.message || "Home feed details",
+      result: filteredResult
+    };
+
+    return res.status(200).json(formattedResponse);
   } catch (error) {
     return res.status(500).json({
       success: false,
