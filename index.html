@@ -1186,12 +1186,20 @@
       background: none;
       border: none;
       color: var(--text-main);
-      font-size: 16px;
       cursor: pointer;
       transition: color 0.2s;
       display: flex;
       align-items: center;
       justify-content: center;
+      width: 34px;
+      height: 34px;
+    }
+
+    .control-btn svg,
+    .control-btn .lucide {
+      width: 22px !important;
+      height: 22px !important;
+      stroke-width: 2.2 !important;
     }
 
     .control-btn:hover {
@@ -1199,19 +1207,27 @@
     }
 
     .play-pause-btn {
-      width: 40px;
-      height: 40px;
+      width: 42px;
+      height: 42px;
       border-radius: 50%;
       background: var(--primary-gradient);
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 15px;
-      box-shadow: 0 4px 14px rgba(255, 51, 102, 0.45);
+      box-shadow: 0 4px 14px rgba(255, 51, 102, 0.55);
       border: none;
       cursor: pointer;
       transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    .play-pause-btn svg,
+    .play-pause-btn .lucide {
+      width: 22px !important;
+      height: 22px !important;
+      stroke-width: 2.4 !important;
+      fill: #fff;
     }
 
     .play-pause-btn:active {
@@ -1222,8 +1238,8 @@
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--border);
       color: var(--text-muted);
-      width: 30px;
-      height: 30px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -1232,6 +1248,12 @@
       margin-left: 2px;
       transition: all 0.2s;
       flex-shrink: 0;
+    }
+
+    .player-close-btn svg,
+    .player-close-btn .lucide {
+      width: 18px !important;
+      height: 18px !important;
     }
 
     .player-close-btn:hover {
@@ -1410,48 +1432,58 @@
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
+      margin: 4px 0 2px;
     }
 
     .fs-progress-track {
       width: 100%;
-      height: 6px;
-      background: rgba(255, 255, 255, 0.12);
+      height: 8px;
+      background: rgba(255, 255, 255, 0.16);
       border-radius: var(--radius-full);
       position: relative;
       cursor: pointer;
-      padding: 4px 0;
-      background-clip: content-box;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: visible;
     }
 
     .fs-progress-bar {
-      height: 6px;
-      background: var(--primary-gradient);
+      height: 100%;
+      background: linear-gradient(90deg, #ff3366 0%, #ff527b 100%);
       border-radius: var(--radius-full);
       width: 0%;
       position: relative;
       pointer-events: none;
+      box-shadow: 0 0 10px rgba(255, 51, 102, 0.7);
     }
 
     .fs-progress-handle {
       position: absolute;
-      right: -6px;
+      right: -8px;
       top: 50%;
       transform: translateY(-50%);
-      width: 14px;
-      height: 14px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 0 10px rgba(255, 51, 102, 0.8);
+      background: #ffffff;
+      border: 3px solid #ff3366;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 12px #ff3366;
+      transition: transform 0.15s ease;
+    }
+
+    .fs-progress-track:hover .fs-progress-handle,
+    .fs-progress-track:active .fs-progress-handle {
+      transform: translateY(-50%) scale(1.2);
     }
 
     .fs-time-row {
       display: flex;
       justify-content: space-between;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
-      color: var(--text-muted);
+      color: rgba(255, 255, 255, 0.75);
       font-variant-numeric: tabular-nums;
+      padding: 0 2px;
     }
 
     .fs-controls-row {
@@ -1459,16 +1491,17 @@
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      max-width: 360px;
-      gap: 8px;
+      max-width: 380px;
+      gap: 10px;
+      margin: 2px 0;
     }
 
     .fs-skip-btn {
       background: var(--bg-surface);
       border: 1px solid var(--border);
-      color: var(--text-main);
-      width: 44px;
-      height: 44px;
+      color: #fff;
+      width: 50px;
+      height: 50px;
       border-radius: 50%;
       display: flex;
       flex-direction: column;
@@ -1477,20 +1510,27 @@
       cursor: pointer;
       position: relative;
       transition: all 0.2s;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
     }
 
-    .fs-skip-btn svg {
-      width: 18px;
-      height: 18px;
+    .fs-skip-btn svg,
+    .fs-skip-btn .lucide,
+    .fs-skip-btn [data-lucide] {
+      width: 26px !important;
+      height: 26px !important;
+      stroke-width: 2.2 !important;
+      color: #fff;
     }
 
     .fs-skip-label {
       font-size: 8px;
-      font-weight: 800;
+      font-weight: 900;
       position: absolute;
       bottom: 5px;
-      color: var(--text-muted);
+      color: var(--primary);
       line-height: 1;
+      letter-spacing: -0.2px;
     }
 
     .fs-skip-btn:active,
@@ -1500,26 +1540,33 @@
     }
 
     .fs-nav-ctrl-btn {
-      background: none;
-      border: none;
-      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: #fff;
       cursor: pointer;
-      width: 44px;
-      height: 44px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       transition: all 0.2s;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
     }
 
-    .fs-nav-ctrl-btn svg {
-      width: 24px;
-      height: 24px;
+    .fs-nav-ctrl-btn svg,
+    .fs-nav-ctrl-btn .lucide,
+    .fs-nav-ctrl-btn [data-lucide] {
+      width: 28px !important;
+      height: 28px !important;
+      stroke-width: 2.2 !important;
+      color: #fff;
     }
 
     .fs-play-btn {
-      width: 60px;
-      height: 60px;
+      width: 66px;
+      height: 66px;
       border-radius: 50%;
       background: var(--primary-gradient);
       color: #fff;
@@ -1528,17 +1575,23 @@
       justify-content: center;
       border: none;
       cursor: pointer;
-      box-shadow: 0 8px 25px rgba(255, 51, 102, 0.5);
+      box-shadow: 0 8px 28px rgba(255, 51, 102, 0.65);
       transition: transform 0.2s;
+      flex-shrink: 0;
     }
 
     .fs-play-btn:active {
       transform: scale(0.92);
     }
 
-    .fs-play-btn svg {
-      width: 26px;
-      height: 26px;
+    .fs-play-btn svg,
+    .fs-play-btn .lucide,
+    .fs-play-btn [data-lucide] {
+      width: 32px !important;
+      height: 32px !important;
+      stroke-width: 2.4 !important;
+      color: #fff;
+      fill: #fff;
     }
 
     .fs-speed-section {
