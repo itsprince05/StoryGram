@@ -7,9 +7,8 @@
   <title>Story Gram - Audio Series & Shows</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     :root {
       --bg-main: #070a12;
@@ -303,7 +302,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 12px 6px;
+      padding: 10px;
       background: var(--bg-surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
@@ -585,7 +584,6 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 10px;
     }
 
     .section-title {
@@ -980,7 +978,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 2px;
+      padding: 5px 0px;
       border-bottom: 1px solid var(--border);
       cursor: pointer;
       transition: background 0.2s;
@@ -1030,9 +1028,8 @@
       flex-shrink: 0;
       cursor: pointer;
       font-size: 12px;
-      padding-left: 2px;
       box-shadow: 0 3px 8px rgba(255, 51, 102, 0.35);
-      transition: transform 0.2s;
+      transition: all 0.2s;
     }
 
     .episode-item:active .ep-play-btn {
@@ -1040,8 +1037,8 @@
     }
 
     .episode-item.playing .ep-play-btn {
-      background: #22c55e;
-      box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
     }
 
     .ep-info {
@@ -1181,7 +1178,7 @@
     .player-controls {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .control-btn {
@@ -1191,6 +1188,9 @@
       font-size: 16px;
       cursor: pointer;
       transition: color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .control-btn:hover {
@@ -1210,6 +1210,37 @@
       box-shadow: 0 4px 14px rgba(255, 51, 102, 0.45);
       border: none;
       cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .play-pause-btn:active {
+      transform: scale(0.92);
+    }
+
+    .player-close-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin-left: 2px;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .player-close-btn:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
+    .player-close-btn:active {
+      transform: scale(0.92);
     }
 
     /* BOTTOM NAV */
@@ -1307,6 +1338,84 @@
     .toast.show {
       transform: translateX(-50%) translateY(0);
     }
+
+    /* LUCIDE ICONS STYLING */
+    .lucide,
+    svg.lucide,
+    [data-lucide] {
+      width: 1em;
+      height: 1em;
+      stroke-width: 2.2;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .brand-logo svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .icon-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .play-circle svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .ep-play-btn svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .play-pause-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .control-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .nav-item svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .status-badge svg,
+    .hero-badge svg,
+    .card-tag svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .ep-range-select-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .modal-close-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .toast svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .search-btn-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .player-close-btn svg {
+      width: 16px;
+      height: 16px;
+    }
   </style>
 </head>
 
@@ -1318,19 +1427,19 @@
       <div class="action-bar-top">
         <a href="#" class="brand" onclick="switchTab('home')">
           <div class="brand-logo">
-            <i class="fa-solid fa-headphones-simple"></i>
+            <i data-lucide="headphones"></i>
           </div>
           <span class="brand-name">Story Gram</span>
         </a>
 
         <div class="action-bar-icons">
           <button class="lang-selector-btn" onclick="openLanguageModal()" title="Select Language">
-            <i class="fa-solid fa-globe"></i>
+            <i data-lucide="globe"></i>
             <span id="current-lang-label">Hindi</span>
-            <i class="fa-solid fa-chevron-down" style="font-size: 8px; opacity: 0.7;"></i>
+            <i data-lucide="chevron-down" style="width: 12px; height: 12px; opacity: 0.7;"></i>
           </button>
           <div class="icon-btn" onclick="switchTab('search')" title="Search">
-            <i class="fa-solid fa-magnifying-glass"></i>
+            <i data-lucide="search"></i>
           </div>
         </div>
       </div>
@@ -1356,13 +1465,13 @@
       <div id="tab-show-detail" class="tab-content">
         <div class="show-page-header">
           <div class="icon-btn" onclick="goBack()" title="Back">
-            <i class="fa-solid fa-arrow-left"></i>
+            <i data-lucide="arrow-left"></i>
           </div>
           <div id="show-page-bar-title"
             style="font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;">
             Show Details</div>
           <div id="show-page-fav-btn" class="icon-btn" onclick="toggleFavoriteCurrentShow()" title="Save to Library">
-            <i class="fa-regular fa-heart"></i>
+            <i data-lucide="heart"></i>
           </div>
         </div>
 
@@ -1373,19 +1482,19 @@
           <div id="show-page-badges" class="show-page-badges">
             <div id="show-badge-rank" class="status-badge"
               style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); display: none;">
-              <i class="fa-solid fa-trophy"></i> <span id="show-badge-rank-text">#1</span>
+              <i data-lucide="trophy"></i> <span id="show-badge-rank-text">#1</span>
             </div>
             <div id="show-badge-rating" class="status-badge"
               style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); display: none;">
-              <i class="fa-solid fa-star"></i> <span id="show-badge-rating-text">4.6</span>
+              <i data-lucide="star"></i> <span id="show-badge-rating-text">4.6</span>
             </div>
             <div id="show-badge-plays" class="status-badge"
               style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); display: none;">
-              <i class="fa-solid fa-headphones"></i> <span id="show-badge-plays-text">55.6M</span>
+              <i data-lucide="headphones"></i> <span id="show-badge-plays-text">55.6M</span>
             </div>
             <div id="show-page-ep-count" class="status-badge"
               style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border-color: rgba(139, 92, 246, 0.3); display: none;">
-              <i class="fa-solid fa-list-ol"></i> <span id="show-badge-ep-text">Episodes</span>
+              <i data-lucide="list-ordered"></i> <span id="show-badge-ep-text">Episodes</span>
             </div>
           </div>
         </div>
@@ -1393,12 +1502,12 @@
         <div class="show-page-episodes-wrap">
           <div class="section-header" style="align-items: center;">
             <div class="section-title" style="font-size: 16px; font-weight: 800;">
-              <i class="fa-solid fa-list-ol"></i> <span id="show-page-ep-header-title">Episodes</span>
+              <i data-lucide="list-ordered"></i> <span id="show-page-ep-header-title">Episodes</span>
             </div>
             <button class="ep-range-select-btn" id="episodes-counter-badge" onclick="openEpisodeRangeModal()"
               title="Select Episodes">
               <span>Ep 1-20</span>
-              <i class="fa-solid fa-chevron-down"></i>
+              <i data-lucide="chevron-down"></i>
             </button>
           </div>
           <div id="show-page-episodes-container" class="episodes-list"></div>
@@ -1409,7 +1518,7 @@
       <div id="tab-search" class="tab-content">
         <div class="search-box">
           <input type="text" id="search-input" class="search-input" placeholder="Search shows, characters, stories...">
-          <i class="fa-solid fa-magnifying-glass search-btn-icon" onclick="performSearch()"></i>
+          <i data-lucide="search" class="search-btn-icon" onclick="performSearch()"></i>
         </div>
 
         <div class="search-tags">
@@ -1423,7 +1532,7 @@
 
         <div id="search-results-container">
           <div style="text-align:center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;">
-            <i class="fa-solid fa-wave-square" style="font-size: 32px; margin-bottom: 12px; color: var(--primary);"></i>
+            <i data-lucide="audio-lines" style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--primary);"></i>
             <p>Type above to search top Pocket FM shows</p>
           </div>
         </div>
@@ -1433,11 +1542,11 @@
       <div id="tab-unlocked" class="tab-content">
         <div class="section">
           <div class="section-header">
-            <div class="section-title"><i class="fa-solid fa-lock-open"></i> Unlocked Audio Episodes</div>
+            <div class="section-title"><i data-lucide="bookmark-check"></i> Unlocked Audio Episodes</div>
           </div>
           <div id="unlocked-container" class="episodes-list">
             <div style="text-align:center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;">
-              <i class="fa-solid fa-bookmark" style="font-size: 32px; margin-bottom: 12px; color: var(--accent);"></i>
+              <i data-lucide="bookmark" style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--accent);"></i>
               <p>Episodes you unlock will appear here for instant playback.</p>
             </div>
           </div>
@@ -1448,7 +1557,7 @@
       <div id="tab-settings" class="tab-content">
         <div class="section">
           <div class="section-header">
-            <div class="section-title"><i class="fa-solid fa-gear"></i> App & API Status</div>
+            <div class="section-title"><i data-lucide="settings"></i> App & API Status</div>
           </div>
           <div
             style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 14px; font-size: 13px;">
@@ -1496,13 +1605,16 @@
         </div>
         <div class="player-controls">
           <button class="control-btn" onclick="skipAudio(-10)" title="Rewind 10s">
-            <i class="fa-solid fa-rotate-left"></i>
+            <i data-lucide="rotate-ccw"></i>
           </button>
-          <button id="play-pause-btn" class="play-pause-btn" onclick="togglePlayPause()">
-            <i class="fa-solid fa-play"></i>
+          <button id="play-pause-btn" class="play-pause-btn" onclick="togglePlayPause()" title="Play/Pause">
+            <i data-lucide="play"></i>
           </button>
           <button class="control-btn" onclick="skipAudio(10)" title="Forward 10s">
-            <i class="fa-solid fa-rotate-right"></i>
+            <i data-lucide="rotate-cw"></i>
+          </button>
+          <button class="player-close-btn" onclick="closePlayerBar()" title="Close Player">
+            <i data-lucide="x"></i>
           </button>
         </div>
       </div>
@@ -1511,19 +1623,19 @@
     <!-- BOTTOM NAVIGATION -->
     <nav class="bottom-nav">
       <div class="nav-item active" onclick="switchTab('home')">
-        <i class="fa-solid fa-house"></i>
+        <i data-lucide="home"></i>
         <span>Home</span>
       </div>
       <div class="nav-item" onclick="switchTab('search')">
-        <i class="fa-solid fa-magnifying-glass"></i>
+        <i data-lucide="search"></i>
         <span>Search</span>
       </div>
       <div class="nav-item" onclick="switchTab('unlocked')">
-        <i class="fa-solid fa-bookmark"></i>
+        <i data-lucide="bookmark"></i>
         <span>Unlocked</span>
       </div>
       <div class="nav-item" onclick="switchTab('settings')">
-        <i class="fa-solid fa-gear"></i>
+        <i data-lucide="settings"></i>
         <span>Settings</span>
       </div>
     </nav>
@@ -1533,9 +1645,9 @@
   <div id="language-modal" class="modal-backdrop" onclick="closeLanguageModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
-        <div class="modal-title"><i class="fa-solid fa-language" style="color: var(--primary);"></i> Select Language
+        <div class="modal-title"><i data-lucide="languages" style="color: var(--primary);"></i> Select Language
         </div>
-        <button class="modal-close-btn" onclick="closeLanguageModal()"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close-btn" onclick="closeLanguageModal()"><i data-lucide="x"></i></button>
       </div>
       <div class="lang-grid" id="language-options-grid"></div>
     </div>
@@ -1545,9 +1657,9 @@
   <div id="episodes-range-modal" class="modal-backdrop" onclick="closeEpisodeRangeModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
-        <div class="modal-title"><i class="fa-solid fa-list-ol" style="color: var(--primary);"></i> Select Episodes
+        <div class="modal-title"><i data-lucide="list-ordered" style="color: var(--primary);"></i> Select Episodes
         </div>
-        <button class="modal-close-btn" onclick="closeEpisodeRangeModal()"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close-btn" onclick="closeEpisodeRangeModal()"><i data-lucide="x"></i></button>
       </div>
       <div class="range-grid" id="episodes-range-grid"></div>
     </div>
@@ -1555,7 +1667,7 @@
 
   <!-- TOAST NOTIFICATION -->
   <div id="toast" class="toast">
-    <i class="fa-solid fa-circle-check" style="color: #4ade80;"></i>
+    <i data-lucide="check-circle-2" style="color: #4ade80;"></i>
     <span id="toast-message">Notification</span>
   </div>
 
@@ -1823,11 +1935,18 @@
       updatePlayPauseButton();
     });
 
+    function refreshIcons() {
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    }
+
     function showToast(msg, isError = false) {
       const toast = document.getElementById('toast');
       const text = document.getElementById('toast-message');
       text.innerText = msg;
       toast.classList.add('show');
+      refreshIcons();
       setTimeout(() => {
         toast.classList.remove('show');
       }, 3000);
@@ -1861,6 +1980,7 @@
       } else if (tabName === 'unlocked') {
         renderUnlockedTab();
       }
+      refreshIcons();
     }
 
     const AVAILABLE_LANGUAGES = [
@@ -1882,6 +2002,7 @@
       renderLanguageGrid();
       const modal = document.getElementById('language-modal');
       if (modal) modal.classList.add('show');
+      refreshIcons();
     }
 
     function closeLanguageModal() {
@@ -1928,6 +2049,7 @@
       renderEpisodeRangesGrid();
       const modal = document.getElementById('episodes-range-modal');
       if (modal) modal.classList.add('show');
+      refreshIcons();
     }
 
     function closeEpisodeRangeModal() {
@@ -1967,7 +2089,10 @@
       currentBatchStartPtr = startPtr;
       closeEpisodeRangeModal();
       const badge = document.getElementById('episodes-counter-badge');
-      if (badge) badge.innerHTML = `<span>Ep ${startNum}-${endNum}</span> <i class="fa-solid fa-chevron-down"></i>`;
+      if (badge) {
+        badge.innerHTML = `<span>Ep ${startNum}-${endNum}</span> <i data-lucide="chevron-down"></i>`;
+        refreshIcons();
+      }
 
       const epContainer = document.getElementById('show-page-episodes-container');
       if (epContainer) {
@@ -2003,11 +2128,11 @@
           <div class="hero-gradient">
             <div class="hero-badges-row">
               ${hasRank ? `<div class="hero-badge hero-badge-rank">#${show.category_rank}</div>` : ''}
-              ${hasRating ? `<div class="hero-badge hero-badge-rating"><i class="fa-solid fa-star"></i> ${show.rating}</div>` : ''}
-              ${hasPlays ? `<div class="hero-badge hero-badge-plays"><i class="fa-solid fa-headphones"></i> ${playsText}</div>` : ''}
+              ${hasRating ? `<div class="hero-badge hero-badge-rating"><i data-lucide="star"></i> ${show.rating}</div>` : ''}
+              ${hasPlays ? `<div class="hero-badge hero-badge-plays"><i data-lucide="headphones"></i> ${playsText}</div>` : ''}
             </div>
             <div class="hero-title">${escapeHtml(show.title)}</div>
-            <div class="hero-btn"><i class="fa-solid fa-play"></i> Play Series</div>
+            <div class="hero-btn"><i data-lucide="play"></i> Play Series</div>
           </div>
         </div>
       `;
@@ -2020,6 +2145,7 @@
       sliderContainer.style.display = 'block';
       updateSlidePosition();
       startAutoSlide();
+      refreshIcons();
     }
 
     function updateSlidePosition() {
@@ -2158,7 +2284,7 @@
         section.innerHTML = `
           <div class="section-header">
             <div class="section-title">
-              <i class="fa-solid fa-fire"></i> ${escapeHtml(titleText)}
+              <i data-lucide="flame"></i> ${escapeHtml(titleText)}
             </div>
           </div>
           <div class="horizontal-rail">
@@ -2167,19 +2293,20 @@
                 <div class="card-poster-wrap">
                   <img class="card-poster" src="${escapeAttr(show.image_url || 'https://via.placeholder.com/130')}" alt="${escapeAttr(show.title)}" loading="lazy">
                   ${show.category_rank ? `<div class="card-tag card-tag-left">#${show.category_rank}</div>` : ''}
-                  ${show.rating ? `<div class="card-tag card-tag-right"><i class="fa-solid fa-star"></i> ${show.rating}</div>` : ''}
+                  ${show.rating ? `<div class="card-tag card-tag-right"><i data-lucide="star"></i> ${show.rating}</div>` : ''}
                   <div class="card-play-overlay">
-                    <div class="play-circle"><i class="fa-solid fa-play"></i></div>
+                    <div class="play-circle"><i data-lucide="play"></i></div>
                   </div>
                 </div>
                 <div class="card-title">${escapeHtml(show.title || 'Untitled')}</div>
-                <div class="card-meta"><i class="fa-solid fa-headphones"></i> ${show.plays || '1M+'} plays</div>
+                <div class="card-meta"><i data-lucide="headphones"></i> ${show.plays || '1M+'} plays</div>
               </div>
             `).join('')}
           </div>
         `;
         container.appendChild(section);
       });
+      refreshIcons();
     }
 
     function openShowDetailsFromData(showId) {
@@ -2208,7 +2335,7 @@
       document.getElementById('show-page-ep-count').style.display = 'none';
 
       document.getElementById('show-page-ep-header-title').innerText = "Episodes";
-      document.getElementById('episodes-counter-badge').innerHTML = `<span>Ep 1-20</span> <i class="fa-solid fa-chevron-down"></i>`;
+      document.getElementById('episodes-counter-badge').innerHTML = `<span>Ep 1-20</span> <i data-lucide="chevron-down"></i>`;
 
       const epContainer = document.getElementById('show-page-episodes-container');
       if (epContainer) {
@@ -2218,6 +2345,7 @@
       updateFavoriteButtonState();
       switchTab('show-detail', false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      refreshIcons();
 
       fetchShowEpisodes(showId, 0, false, 1);
     }
@@ -2244,11 +2372,12 @@
       if (!favBtn || !currentShowId) return;
       if (favoritesList.has(currentShowId)) {
         favBtn.classList.add('active');
-        favBtn.innerHTML = '<i class="fa-solid fa-heart"></i>';
+        favBtn.innerHTML = '<i data-lucide="heart" style="fill: var(--primary); color: var(--primary);"></i>';
       } else {
         favBtn.classList.remove('active');
-        favBtn.innerHTML = '<i class="fa-regular fa-heart"></i>';
+        favBtn.innerHTML = '<i data-lucide="heart"></i>';
       }
+      refreshIcons();
     }
 
     function renderEpisodesList(stories, append = false, startEpisodeNum = 1) {
@@ -2259,7 +2388,8 @@
       }
 
       if (!stories || stories.length === 0) {
-        if (!append) epContainer.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted);"><i class="fa-solid fa-list" style="font-size: 24px; margin-bottom: 8px;"></i><p>No episodes found for this show.</p></div>`;
+        if (!append) epContainer.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted);"><i data-lucide="list-ordered" style="width: 24px; height: 24px; margin-bottom: 8px;"></i><p>No episodes found for this show.</p></div>`;
+        refreshIcons();
         return;
       }
 
@@ -2269,20 +2399,21 @@
 
       stories.forEach((story, idx) => {
         const epDiv = document.createElement('div');
-        const isCurrentPlaying = currentPlayingStory && currentPlayingStory.storyId === story.story_id;
-        epDiv.className = `episode-item ${isCurrentPlaying ? 'playing' : ''}`;
+        const isCurrent = currentPlayingStory && currentPlayingStory.storyId === story.story_id;
+        const isThisPlaying = isCurrent && isPlaying;
+        epDiv.className = `episode-item ${isCurrent ? 'playing' : ''}`;
         epDiv.id = `ep-item-${story.story_id}`;
 
         const durationText = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
         const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
         const mediaStreamUrl = story.media_url || story.media_url_enc || "";
 
-        epDiv.onclick = () => playEpisode(story.story_id, story.story_title || `Episode ${epNumber}`, mediaStreamUrl, showTitle, showImg);
+        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, mediaStreamUrl, showTitle, showImg);
 
         epDiv.innerHTML = `
           <div class="ep-left">
             <span class="ep-num">#${epNumber}</span>
-            <div class="ep-play-btn"><i class="fa-solid fa-play"></i></div>
+            <div class="ep-play-btn"><i data-lucide="${isThisPlaying ? 'pause' : 'play'}"></i></div>
             <div class="ep-info">
               <div class="ep-title">${escapeHtml(story.story_title || `Episode ${epNumber}`)}</div>
               <div class="ep-duration">${durationText}</div>
@@ -2291,6 +2422,7 @@
         `;
         epContainer.appendChild(epDiv);
       });
+      refreshIcons();
     }
 
     async function fetchShowEpisodes(showId, currPtr = 0, append = false, startEpisodeNum = 1) {
@@ -2342,10 +2474,12 @@
               currentNextPtr = showData.next_ptr || (currPtr + showData.stories.length);
               const startNum = currPtr + 1;
               const endNum = Math.min(currPtr + showData.stories.length, totalCount || (currPtr + showData.stories.length));
-              document.getElementById('episodes-counter-badge').innerHTML = `<span>Ep ${startNum}-${endNum}</span> <i class="fa-solid fa-chevron-down"></i>`;
+              document.getElementById('episodes-counter-badge').innerHTML = `<span>Ep ${startNum}-${endNum}</span> <i data-lucide="chevron-down"></i>`;
+              refreshIcons();
             } else {
               if (!append) {
-                document.getElementById('show-page-episodes-container').innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted);"><i class="fa-solid fa-list" style="font-size: 24px; margin-bottom: 8px;"></i><p>No episodes found for this show.</p></div>';
+                document.getElementById('show-page-episodes-container').innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted);"><i data-lucide="list-ordered" style="width: 24px; height: 24px; margin-bottom: 8px;"></i><p>No episodes found for this show.</p></div>';
+                refreshIcons();
               }
             }
             return;
@@ -2363,11 +2497,13 @@
           renderEpisodesList(activeStories, append, startEpisodeNum);
           const startNum = currPtr + 1;
           const endNum = Math.min(currPtr + activeStories.length, totalCount);
-          document.getElementById('episodes-counter-badge').innerHTML = `<span>Ep ${startNum}-${endNum}</span> <i class="fa-solid fa-chevron-down"></i>`;
+          document.getElementById('episodes-counter-badge').innerHTML = `<span>Ep ${startNum}-${endNum}</span> <i data-lucide="chevron-down"></i>`;
+          refreshIcons();
           return;
         }
         if (!append) {
-          document.getElementById('show-page-episodes-container').innerHTML = `<div style="text-align:center; padding: 40px; color: #f87171;"><i class="fa-solid fa-circle-exclamation" style="font-size: 24px; margin-bottom: 8px;"></i><p>Failed to load episodes from API.</p></div>`;
+          document.getElementById('show-page-episodes-container').innerHTML = `<div style="text-align:center; padding: 40px; color: #f87171;"><i data-lucide="alert-circle" style="width: 24px; height: 24px; margin-bottom: 8px;"></i><p>Failed to load episodes from API.</p></div>`;
+          refreshIcons();
         }
       }
     }
@@ -2375,10 +2511,14 @@
     function loadNextEpisodeBatch() {
       if (!currentShowId) return;
       const btn = document.getElementById('show-page-load-more-btn');
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
-      fetchShowEpisodes(currentShowId, currentNextPtr, true).finally(() => {
-        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Load Next 20 Episodes';
-      });
+      if (btn) {
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin-animation"></i> Loading...';
+        refreshIcons();
+        fetchShowEpisodes(currentShowId, currentNextPtr, true).finally(() => {
+          btn.innerHTML = '<i data-lucide="plus"></i> Load Next 20 Episodes';
+          refreshIcons();
+        });
+      }
     }
 
     async function unlockEpisode(showId, storyId, storyTitle) {
@@ -2404,32 +2544,44 @@
       if (unlockedKeys.length === 0) {
         container.innerHTML = `
           <div style="text-align:center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;">
-            <i class="fa-solid fa-bookmark" style="font-size: 32px; margin-bottom: 12px; color: var(--accent);"></i>
+            <i data-lucide="bookmark" style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--accent);"></i>
             <p>No unlocked episodes yet. Click "Unlock" on any episode to listen!</p>
           </div>
         `;
+        refreshIcons();
         return;
       }
 
-      container.innerHTML = unlockedKeys.map((key, idx) => `
-        <div class="episode-item">
-          <div class="ep-left" onclick="playEpisode('${escapeAttr(key)}', 'Unlocked Episode ${idx + 1}', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', 'Unlocked Library', '')">
-            <div class="ep-play-btn"><i class="fa-solid fa-play"></i></div>
+      container.innerHTML = unlockedKeys.map((key, idx) => {
+        const isCurrent = currentPlayingStory && currentPlayingStory.storyId === key;
+        const isThisPlaying = isCurrent && isPlaying;
+        return `
+        <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(key)}">
+          <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(key)}', 'Unlocked Episode ${idx + 1}', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', 'Unlocked Library', '')">
+            <div class="ep-play-btn"><i data-lucide="${isThisPlaying ? 'pause' : 'play'}"></i></div>
             <div class="ep-info">
               <div class="ep-title">Unlocked Episode ${idx + 1}</div>
-              <div class="ep-duration"><i class="fa-solid fa-check"></i> Ready to Stream</div>
+              <div class="ep-duration"><i data-lucide="check"></i> Ready to Stream</div>
             </div>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
+      refreshIcons();
+    }
+
+    function handleEpisodeClick(storyId, title, mediaUrl, showTitle, thumbUrl) {
+      if (currentPlayingStory && currentPlayingStory.storyId === storyId) {
+        togglePlayPause();
+      } else {
+        playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl);
+      }
     }
 
     function playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl) {
       currentPlayingStory = { storyId, title, mediaUrl, showTitle, thumbUrl };
 
-      document.querySelectorAll('.episode-item').forEach(el => el.classList.remove('playing'));
-      const activeEpItem = document.getElementById(`ep-item-${storyId}`);
-      if (activeEpItem) activeEpItem.classList.add('playing');
+      updateEpisodeListIcons();
 
       document.getElementById('player-title').innerText = title || "Now Playing";
       document.getElementById('player-subtitle').innerText = showTitle || "Story Gram";
@@ -2447,6 +2599,8 @@
         showToast(`▶ Playing: ${title}`);
       }).catch(err => {
         console.log("Audio autoplay fallback:", err);
+        isPlaying = false;
+        updatePlayPauseButton();
       });
     }
 
@@ -2467,9 +2621,52 @@
       updatePlayPauseButton();
     }
 
+    function updateEpisodeListIcons() {
+      document.querySelectorAll('.episode-item').forEach(el => {
+        const isCurrent = currentPlayingStory && el.id === `ep-item-${currentPlayingStory.storyId}`;
+        const playBtn = el.querySelector('.ep-play-btn');
+        if (isCurrent) {
+          el.classList.add('playing');
+          if (playBtn) {
+            playBtn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
+          }
+        } else {
+          el.classList.remove('playing');
+          if (playBtn) {
+            playBtn.innerHTML = '<i data-lucide="play"></i>';
+          }
+        }
+      });
+    }
+
     function updatePlayPauseButton() {
       const btn = document.getElementById('play-pause-btn');
-      btn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+      if (btn) {
+        btn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
+      }
+      updateEpisodeListIcons();
+      refreshIcons();
+    }
+
+    function closePlayerBar() {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      audioElement.removeAttribute('src');
+      audioElement.load();
+      isPlaying = false;
+      currentPlayingStory = null;
+
+      const playerBar = document.getElementById('player-bar');
+      if (playerBar) playerBar.classList.add('hidden');
+
+      const appFrame = document.getElementById('app-frame');
+      if (appFrame) appFrame.classList.remove('has-player');
+
+      const progressBar = document.getElementById('player-progress-bar');
+      if (progressBar) progressBar.style.width = '0%';
+
+      updatePlayPauseButton();
+      showToast("Player closed");
     }
 
     function skipAudio(seconds) {
@@ -2582,6 +2779,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      refreshIcons();
       fetchHomeFeed();
 
       const sliderElem = document.getElementById('hero-slider-container');
