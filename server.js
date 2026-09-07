@@ -481,8 +481,9 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
 
             const androidVideoUrl = (videoInfoObj && videoInfoObj.android && videoInfoObj.android.video_url) || (story.android && story.android.video_url) || "";
             const webVideoUrl = (videoInfoObj && videoInfoObj.web && videoInfoObj.web.video_url) || (story.web && story.web.video_url) || "";
-            const realMediaUrlEnc = story.media_url_enc || story.media_url || "";
-            const videoDashUrl = story.video_url || androidVideoUrl || realMediaUrlEnc || "";
+            const realMediaUrlEnc = story.media_url_enc || (story.media_url && story.media_url.includes('drm-aac') ? story.media_url : "");
+            const unencAudioUrl = story.audio_url || (story.media_url && !story.media_url.includes('drm-aac') ? story.media_url : "");
+            const videoDashUrl = story.video_url || androidVideoUrl || "";
 
             const storyObj = {
               story_title: story.story_title || story.title || "",
@@ -494,11 +495,18 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
 
             const finalVideoUrl = webVideoUrl || (story.video_url && !story.video_url.includes('.mpd') && story.video_url.includes('.m3u8') ? story.video_url : "");
 
-            if (finalVideoUrl) {
+            // Priority: Unencrypted audio_url first, video_url next, media_url_enc as DRM fallback
+            if (unencAudioUrl) {
+              storyObj.audio_url = unencAudioUrl;
+            } else if (videoDashUrl && !videoDashUrl.includes('drm-aac')) {
               storyObj.audio_url = videoDashUrl;
+            }
+
+            if (finalVideoUrl) {
               storyObj.video_url = finalVideoUrl;
-              storyObj.media_url_enc = realMediaUrlEnc;
-            } else {
+            }
+
+            if (realMediaUrlEnc) {
               storyObj.media_url_enc = realMediaUrlEnc;
             }
 
