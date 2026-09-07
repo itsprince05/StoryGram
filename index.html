@@ -56,15 +56,25 @@
       background: transparent !important;
     }
 
-    html,
+    html {
+      width: 100%;
+      min-height: 100%;
+      background-color: #020617;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: #020617;
       color: var(--text-main);
       display: flex;
       justify-content: center;
+      width: 100%;
       min-height: 100vh;
       overflow-x: hidden;
+      margin: 0;
+      padding: 0;
       scrollbar-width: none !important;
       -ms-overflow-style: none !important;
     }
@@ -72,6 +82,7 @@
     .app-frame {
       width: 100%;
       max-width: 480px;
+      min-width: 0;
       min-height: 100vh;
       background-color: var(--bg-main);
       position: relative;
@@ -80,6 +91,7 @@
       box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
       overflow-x: hidden;
       padding-bottom: calc(var(--nav-height) + 0px);
+      flex: 1 1 480px;
     }
 
     .app-frame.has-player {
@@ -88,6 +100,7 @@
 
     /* ACTION BAR */
     .action-bar {
+      width: 100%;
       position: sticky;
       top: 0;
       z-index: 100;
@@ -102,6 +115,7 @@
     }
 
     .action-bar-top {
+      width: 100%;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -227,7 +241,7 @@
       border-top-right-radius: var(--radius-lg);
       border: 1px solid var(--border);
       border-bottom: none;
-      padding: 16px 16px calc(var(--nav-height) + 16px);
+      padding: 10px;
       box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
       transform: translateY(100%);
       transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -243,7 +257,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
       padding-bottom: 10px;
       border-bottom: 1px solid var(--border);
     }
@@ -826,17 +840,11 @@
 
     /* SHOW DETAIL PAGE */
     .show-page-header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: var(--bg-glass);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border-bottom: 1px solid var(--border);
       padding: 10px;
       display: flex;
       align-items: center;
       gap: 10px;
+      border-bottom: 1px solid var(--border);
     }
 
     .back-btn {
@@ -992,7 +1000,6 @@
       font-size: 12px;
       font-weight: 800;
       color: var(--text-muted);
-      width: 24px;
       text-align: center;
       flex-shrink: 0;
     }
@@ -1815,9 +1822,6 @@
     function switchTab(tabName, updateNav = true) {
       if (tabName !== 'show-detail') {
         currentTabName = tabName;
-        document.querySelector('.action-bar').style.display = 'flex';
-      } else {
-        document.querySelector('.action-bar').style.display = 'none';
       }
 
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
