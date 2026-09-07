@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,500;1,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
   <style>
     :root {
       --bg-main: #070a12;
@@ -1453,6 +1454,47 @@
       gap: 15px;
     }
 
+    .fs-media-type-toggle {
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      padding: 3px;
+      border-radius: var(--radius-full);
+      gap: 4px;
+      margin-bottom: 2px;
+      z-index: 5;
+    }
+
+    .media-type-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 18px;
+      border-radius: var(--radius-full);
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .media-type-btn svg,
+    .media-type-btn .lucide,
+    .media-type-btn [data-lucide] {
+      width: 15px !important;
+      height: 15px !important;
+    }
+
+    .media-type-btn.active {
+      background: var(--primary-gradient);
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(255, 51, 102, 0.45);
+    }
+
     .fs-poster-wrap {
       width: 100%;
       max-width: 160px;
@@ -1462,12 +1504,28 @@
       box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 51, 102, 0.18);
       border: 1px solid rgba(255, 255, 255, 0.12);
       flex-shrink: 0;
+      position: relative;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .fs-poster-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      display: block;
+    }
+
+    .fs-video-player {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      display: none;
+      outline: none;
+      border: none;
     }
 
     .fs-info-wrap {
@@ -2326,8 +2384,18 @@
         </div>
 
         <div class="fs-body">
+          <div id="fs-media-type-toggle" class="fs-media-type-toggle" style="display: none;">
+            <button id="btn-mode-audio" class="media-type-btn active" onclick="switchMediaMode('audio')">
+              <i data-lucide="headphones"></i> Audio
+            </button>
+            <button id="btn-mode-video" class="media-type-btn" onclick="switchMediaMode('video')">
+              <i data-lucide="video"></i> Video
+            </button>
+          </div>
+
           <div class="fs-poster-wrap">
             <img id="fs-poster-img" class="fs-poster-img" src="" alt="Show Poster">
+            <video id="fs-video-element" class="fs-video-player" playsinline webkit-playsinline preload="auto" disablePictureInPicture></video>
           </div>
 
           <div class="fs-info-wrap">
@@ -2481,7 +2549,15 @@
     } catch(e) { favoriteShowsMap = {}; }
 
     const audioElement = document.getElementById('audio-element');
+    const videoElement = document.getElementById('fs-video-element');
     let shakaPlayer = null;
+    let hlsVideoPlayer = null;
+    let currentMediaMode = 'audio';
+    let currentLoadedVideoUrl = '';
+
+    function getActiveMediaElement() {
+      return (currentMediaMode === 'video' && videoElement) ? videoElement : audioElement;
+    }
 
     async function initShakaPlayer() {
       try {
@@ -2501,13 +2577,17 @@
               }
             });
             shakaPlayer.addEventListener('buffering', (event) => {
-              isAudioBuffering = Boolean(event.buffering);
-              updatePlayPauseButton();
+              if (currentMediaMode === 'audio') {
+                isAudioBuffering = Boolean(event.buffering);
+                updatePlayPauseButton();
+              }
             });
             shakaPlayer.addEventListener('error', (event) => {
               console.error('Shaka Player error:', event.detail);
-              isAudioBuffering = false;
-              updatePlayPauseButton();
+              if (currentMediaMode === 'audio') {
+                isAudioBuffering = false;
+                updatePlayPauseButton();
+              }
             });
           } else {
             console.warn('Browser does not support Shaka Player');
@@ -2518,63 +2598,89 @@
       }
     }
 
-    audioElement.addEventListener('timeupdate', updateProgress);
-    
-    audioElement.addEventListener('loadstart', () => {
-      isAudioBuffering = true;
-      updatePlayPauseButton();
-    });
+    [audioElement, videoElement].forEach(el => {
+      if (!el) return;
+      el.addEventListener('timeupdate', () => {
+        if (getActiveMediaElement() === el) updateProgress();
+      });
 
-    audioElement.addEventListener('waiting', () => {
-      isAudioBuffering = true;
-      updatePlayPauseButton();
-    });
+      el.addEventListener('loadstart', () => {
+        if (getActiveMediaElement() === el) {
+          isAudioBuffering = true;
+          updatePlayPauseButton();
+        }
+      });
 
-    audioElement.addEventListener('seeking', () => {
-      isAudioBuffering = true;
-      updatePlayPauseButton();
-    });
+      el.addEventListener('waiting', () => {
+        if (getActiveMediaElement() === el) {
+          isAudioBuffering = true;
+          updatePlayPauseButton();
+        }
+      });
 
-    audioElement.addEventListener('canplay', () => {
-      isAudioBuffering = false;
-      updatePlayPauseButton();
-    });
+      el.addEventListener('seeking', () => {
+        if (getActiveMediaElement() === el) {
+          isAudioBuffering = true;
+          updatePlayPauseButton();
+        }
+      });
 
-    audioElement.addEventListener('canplaythrough', () => {
-      isAudioBuffering = false;
-      updatePlayPauseButton();
-    });
+      el.addEventListener('canplay', () => {
+        if (getActiveMediaElement() === el) {
+          isAudioBuffering = false;
+          updatePlayPauseButton();
+        }
+      });
 
-    audioElement.addEventListener('playing', () => {
-      isAudioBuffering = false;
-      isPlaying = true;
-      updatePlayPauseButton();
-    });
+      el.addEventListener('canplaythrough', () => {
+        if (getActiveMediaElement() === el) {
+          isAudioBuffering = false;
+          updatePlayPauseButton();
+        }
+      });
 
-    audioElement.addEventListener('play', () => {
-      if (audioElement.readyState < 3) {
-        isAudioBuffering = true;
-      }
-      isPlaying = true;
-      updatePlayPauseButton();
-    });
+      el.addEventListener('playing', () => {
+        if (getActiveMediaElement() === el) {
+          isAudioBuffering = false;
+          isPlaying = true;
+          updatePlayPauseButton();
+        }
+      });
 
-    audioElement.addEventListener('pause', () => {
-      isAudioBuffering = false;
-      isPlaying = false;
-      updatePlayPauseButton();
-    });
+      el.addEventListener('play', () => {
+        if (getActiveMediaElement() === el) {
+          if (el.readyState < 3) {
+            isAudioBuffering = true;
+          }
+          isPlaying = true;
+          updatePlayPauseButton();
+        }
+      });
 
-    audioElement.addEventListener('ended', () => {
-      isAudioBuffering = false;
-      isPlaying = false;
-      updatePlayPauseButton();
-    });
+      el.addEventListener('pause', () => {
+        if (getActiveMediaElement() === el) {
+          isAudioBuffering = false;
+          isPlaying = false;
+          updatePlayPauseButton();
+        }
+      });
 
-    audioElement.addEventListener('error', () => {
-      isAudioBuffering = false;
-      isPlaying = false;
-      updatePlayPauseButton();
+      el.addEventListener('ended', () => {
+        if (getActiveMediaElement() === el) {
+          isAudioBuffering = false;
+          isPlaying = false;
+          updatePlayPauseButton();
+          playNextEpisode();
+        }
+      });
+
+      el.addEventListener('error', () => {
+        if (getActiveMediaElement() === el) {
+          isAudioBuffering = false;
+          isPlaying = false;
+          updatePlayPauseButton();
+        }
+      });
     });
 
     function refreshIcons() {
@@ -3101,9 +3207,9 @@
         const hasVideo = Boolean(story.video_url);
         const durationText = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
         const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
-        const mediaStreamUrl = story.audio_url || story.media_url || story.video_url || story.media_url_enc || "";
-
-        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, mediaStreamUrl, showTitle, showImg, hasVideo);
+        const audioUrl = story.audio_url || story.media_url_enc || story.media_url || "";
+        const videoUrl = story.video_url || "";
+        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo);
 
         const iconHtml = (isCurrent && isAudioBuffering)
           ? '<i data-lucide="loader-2" class="spin-animation"></i>'
@@ -3287,10 +3393,12 @@
             ${playHistory.map(item => {
               const isCurrent = currentPlayingStory && currentPlayingStory.storyId === item.storyId;
               const isThisPlaying = isCurrent && isPlaying;
-              const hasVid = Boolean(item.hasVideo || (item.mediaUrl && item.mediaUrl.includes('.mpd')));
+              const hasVid = Boolean(item.hasVideo && item.videoUrl);
+              const audioUrl = item.audioUrl || item.mediaUrl || "";
+              const videoUrl = item.videoUrl || "";
               return `
                 <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border);">
-                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(item.mediaUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid})">
+                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(audioUrl)}', '${escapeAttr(videoUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid})">
                     <div class="ep-play-btn" data-has-video="${hasVid ? 'true' : 'false'}">
                       <i data-lucide="${isThisPlaying ? 'pause' : (hasVid ? 'video' : 'headphones')}"></i>
                     </div>
@@ -3374,7 +3482,8 @@
 
     function setPlaybackSpeed(speed) {
       currentPlaybackSpeed = speed;
-      audioElement.playbackRate = speed;
+      if (audioElement) audioElement.playbackRate = speed;
+      if (videoElement) videoElement.playbackRate = speed;
       document.querySelectorAll('.speed-pill').forEach(btn => {
         btn.classList.toggle('active', parseFloat(btn.dataset.speed) === speed);
       });
@@ -3413,21 +3522,133 @@
       }
     }
 
+    async function loadVideoStream(videoUrl) {
+      if (!videoUrl || currentLoadedVideoUrl === videoUrl) return;
+      currentLoadedVideoUrl = videoUrl;
+
+      if (hlsVideoPlayer) {
+        hlsVideoPlayer.destroy();
+        hlsVideoPlayer = null;
+      }
+
+      if (window.Hls && Hls.isSupported() && (videoUrl.includes('.m3u8') || videoUrl.includes('hls') || videoUrl.includes('HLS') || videoUrl.includes('Default'))) {
+        hlsVideoPlayer = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true
+        });
+        hlsVideoPlayer.loadSource(videoUrl);
+        hlsVideoPlayer.attachMedia(videoElement);
+      } else if (videoElement && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+        videoElement.src = videoUrl;
+      } else if (videoElement) {
+        videoElement.src = videoUrl;
+      }
+    }
+
+    async function switchMediaMode(targetMode) {
+      if (!currentPlayingStory) return;
+      if (currentMediaMode === targetMode) return;
+      if (targetMode === 'video' && !currentPlayingStory.videoUrl) return;
+
+      const oldElem = getActiveMediaElement();
+      const currentTime = (oldElem && oldElem.currentTime) ? oldElem.currentTime : 0;
+      const wasPlaying = Boolean(oldElem && !oldElem.paused);
+
+      if (oldElem) oldElem.pause();
+      currentMediaMode = targetMode;
+
+      const posterImg = document.getElementById('fs-poster-img');
+      const btnAudio = document.getElementById('btn-mode-audio');
+      const btnVideo = document.getElementById('btn-mode-video');
+
+      if (btnAudio) btnAudio.classList.toggle('active', targetMode === 'audio');
+      if (btnVideo) btnVideo.classList.toggle('active', targetMode === 'video');
+
+      if (targetMode === 'video') {
+        if (posterImg) posterImg.style.display = 'none';
+        if (videoElement) videoElement.style.display = 'block';
+
+        await loadVideoStream(currentPlayingStory.videoUrl);
+        if (videoElement) {
+          videoElement.currentTime = currentTime;
+          videoElement.playbackRate = currentPlaybackSpeed;
+          if (wasPlaying) {
+            isAudioBuffering = true;
+            updatePlayPauseButton();
+            try {
+              await videoElement.play();
+              isAudioBuffering = false;
+              isPlaying = true;
+            } catch(e) {
+              isAudioBuffering = false;
+              isPlaying = false;
+            }
+          }
+        }
+      } else {
+        if (posterImg) posterImg.style.display = 'block';
+        if (videoElement) {
+          videoElement.style.display = 'none';
+          videoElement.pause();
+        }
+
+        audioElement.currentTime = currentTime;
+        audioElement.playbackRate = currentPlaybackSpeed;
+        if (wasPlaying) {
+          isAudioBuffering = true;
+          updatePlayPauseButton();
+          try {
+            await audioElement.play();
+            isAudioBuffering = false;
+            isPlaying = true;
+          } catch(e) {
+            isAudioBuffering = false;
+            isPlaying = false;
+          }
+        }
+      }
+
+      updatePlayPauseButton();
+      updateProgress();
+      refreshIcons();
+    }
+
     function updateFullscreenPlayerUI() {
       if (!currentPlayingStory) return;
       const epTitle = document.getElementById('fs-episode-title');
       const showTitle = document.getElementById('fs-show-title');
       const posterImg = document.getElementById('fs-poster-img');
       const bgImg = document.getElementById('fs-bg-img');
+      const toggleRow = document.getElementById('fs-media-type-toggle');
+      const btnAudio = document.getElementById('btn-mode-audio');
+      const btnVideo = document.getElementById('btn-mode-video');
 
       if (epTitle) epTitle.innerText = currentPlayingStory.title || "Episode";
       if (showTitle) showTitle.innerText = currentPlayingStory.showTitle || "Story Gram";
       if (posterImg && currentPlayingStory.thumbUrl) posterImg.src = currentPlayingStory.thumbUrl;
       if (bgImg && currentPlayingStory.thumbUrl) bgImg.src = currentPlayingStory.thumbUrl;
 
+      if (toggleRow) {
+        toggleRow.style.display = currentPlayingStory.videoUrl ? 'flex' : 'none';
+      }
+      if (btnAudio) btnAudio.classList.toggle('active', currentMediaMode === 'audio');
+      if (btnVideo) btnVideo.classList.toggle('active', currentMediaMode === 'video');
+
+      if (currentMediaMode === 'video' && currentPlayingStory.videoUrl) {
+        if (posterImg) posterImg.style.display = 'none';
+        if (videoElement) videoElement.style.display = 'block';
+      } else {
+        if (posterImg) posterImg.style.display = 'block';
+        if (videoElement) videoElement.style.display = 'none';
+      }
+
       const fsPlayBtn = document.getElementById('fs-play-pause-btn');
       if (fsPlayBtn) {
-        fsPlayBtn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
+        if (isAudioBuffering) {
+          fsPlayBtn.innerHTML = '<i data-lucide="loader-2" class="spin-animation"></i>';
+        } else {
+          fsPlayBtn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
+        }
       }
 
       updateProgress();
@@ -3437,8 +3658,10 @@
       const track = e.currentTarget;
       const rect = track.getBoundingClientRect();
       const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      if (audioElement.duration) {
-        audioElement.currentTime = pos * audioElement.duration;
+      const active = getActiveMediaElement();
+      if (active && active.duration) {
+        active.currentTime = pos * active.duration;
+        updateProgress();
       }
     }
 
@@ -3449,9 +3672,10 @@
         const prevStory = loadedEpisodesList[currentIndex - 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const mediaStreamUrl = prevStory.audio_url || prevStory.media_url || prevStory.video_url || prevStory.media_url_enc || "";
-        const hasVid = Boolean(prevStory.video_url);
-        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, mediaStreamUrl, showTitle, showImg, hasVid);
+        const audioUrl = prevStory.audio_url || prevStory.media_url_enc || prevStory.media_url || "";
+        const videoUrl = prevStory.video_url || "";
+        const hasVid = Boolean(videoUrl);
+        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
       }
     }
 
@@ -3462,30 +3686,58 @@
         const nextStory = loadedEpisodesList[currentIndex + 1];
         const showTitle = document.getElementById('show-page-title')?.innerText || currentPlayingStory.showTitle;
         const showImg = document.getElementById('show-page-img')?.src || currentPlayingStory.thumbUrl;
-        const mediaStreamUrl = nextStory.audio_url || nextStory.media_url || nextStory.video_url || nextStory.media_url_enc || "";
-        const hasVid = Boolean(nextStory.video_url);
-        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, mediaStreamUrl, showTitle, showImg, hasVid);
+        const audioUrl = nextStory.audio_url || nextStory.media_url_enc || nextStory.media_url || "";
+        const videoUrl = nextStory.video_url || "";
+        const hasVid = Boolean(videoUrl);
+        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
       }
     }
 
-    function handleEpisodeClick(storyId, title, mediaUrl, showTitle, thumbUrl, hasVideo) {
+    function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
       if (currentPlayingStory && currentPlayingStory.storyId === storyId) {
         togglePlayPause();
       } else {
-        playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl, hasVideo);
+        playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo);
       }
     }
 
-    async function playEpisode(storyId, title, mediaUrl, showTitle, thumbUrl, hasVideo) {
-      const isVid = Boolean(hasVideo !== undefined ? hasVideo : (mediaUrl && mediaUrl.includes('.mpd')));
-      currentPlayingStory = { storyId, title, mediaUrl, showTitle, thumbUrl, hasVideo: isVid };
+    async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
+      const isVid = Boolean(hasVideo || videoUrl);
+      currentPlayingStory = {
+        storyId,
+        title,
+        audioUrl: audioUrl || "",
+        videoUrl: videoUrl || "",
+        mediaUrl: audioUrl || "",
+        showTitle,
+        thumbUrl,
+        hasVideo: isVid
+      };
+
+      currentMediaMode = 'audio';
+      currentLoadedVideoUrl = '';
+
+      if (videoElement) {
+        videoElement.pause();
+        videoElement.removeAttribute('src');
+        videoElement.style.display = 'none';
+      }
+      if (hlsVideoPlayer) {
+        hlsVideoPlayer.destroy();
+        hlsVideoPlayer = null;
+      }
+      const posterImg = document.getElementById('fs-poster-img');
+      if (posterImg) posterImg.style.display = 'block';
+
       isAudioBuffering = true;
       updatePlayPauseButton();
 
       const historyItem = {
         storyId,
         title: title || "Now Playing",
-        mediaUrl: mediaUrl || "",
+        audioUrl: audioUrl || "",
+        videoUrl: videoUrl || "",
+        mediaUrl: audioUrl || "",
         showTitle: showTitle || "Story Gram",
         thumbUrl: thumbUrl || "",
         hasVideo: isVid,
@@ -3511,7 +3763,7 @@
 
       updateFullscreenPlayerUI();
 
-      const streamUrl = mediaUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+      const streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
       if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash'))) {
         try {
@@ -3570,10 +3822,11 @@
     }
 
     function togglePlayPause() {
-      if (audioElement.paused) {
+      const active = getActiveMediaElement();
+      if (active.paused) {
         isAudioBuffering = true;
         updatePlayPauseButton();
-        audioElement.play().then(() => {
+        active.play().then(() => {
           isAudioBuffering = false;
           isPlaying = true;
           updatePlayPauseButton();
@@ -3583,7 +3836,7 @@
           updatePlayPauseButton();
         });
       } else {
-        audioElement.pause();
+        active.pause();
         isAudioBuffering = false;
         isPlaying = false;
         updatePlayPauseButton();
@@ -3642,10 +3895,26 @@
           await shakaPlayer.unload();
         } catch (e) { }
       }
+      if (hlsVideoPlayer) {
+        hlsVideoPlayer.destroy();
+        hlsVideoPlayer = null;
+      }
       audioElement.pause();
       audioElement.currentTime = 0;
       audioElement.removeAttribute('src');
       audioElement.load();
+
+      if (videoElement) {
+        videoElement.pause();
+        videoElement.currentTime = 0;
+        videoElement.removeAttribute('src');
+        videoElement.style.display = 'none';
+      }
+      const posterImg = document.getElementById('fs-poster-img');
+      if (posterImg) posterImg.style.display = 'block';
+
+      currentMediaMode = 'audio';
+      currentLoadedVideoUrl = '';
       isAudioBuffering = false;
       isPlaying = false;
       currentPlayingStory = null;
@@ -3667,8 +3936,9 @@
     }
 
     function skipAudio(seconds) {
-      if (audioElement.duration) {
-        audioElement.currentTime = Math.max(0, Math.min(audioElement.duration, audioElement.currentTime + seconds));
+      const active = getActiveMediaElement();
+      if (active && active.duration) {
+        active.currentTime = Math.max(0, Math.min(active.duration, active.currentTime + seconds));
         updateProgress();
       }
     }
@@ -3677,15 +3947,17 @@
       const wrap = e.currentTarget;
       const rect = wrap.getBoundingClientRect();
       const pos = (e.clientX - rect.left) / rect.width;
-      if (audioElement.duration) {
-        audioElement.currentTime = pos * audioElement.duration;
+      const active = getActiveMediaElement();
+      if (active && active.duration) {
+        active.currentTime = pos * active.duration;
         updateProgress();
       }
     }
 
     function updateProgress() {
-      if (audioElement.duration) {
-        const percent = (audioElement.currentTime / audioElement.duration) * 100;
+      const active = getActiveMediaElement();
+      if (active && active.duration) {
+        const percent = (active.currentTime / active.duration) * 100;
         const miniBar = document.getElementById('player-progress-bar');
         if (miniBar) miniBar.style.width = percent + '%';
 
@@ -3693,10 +3965,10 @@
         if (fsBar) fsBar.style.width = percent + '%';
 
         const curTime = document.getElementById('fs-current-time');
-        if (curTime) curTime.innerText = formatTime(audioElement.currentTime);
+        if (curTime) curTime.innerText = formatTime(active.currentTime);
 
         const durTime = document.getElementById('fs-duration-time');
-        if (durTime) durTime.innerText = formatTime(audioElement.duration);
+        if (durTime) durTime.innerText = formatTime(active.duration);
       }
     }
 
