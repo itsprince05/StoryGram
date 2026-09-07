@@ -398,30 +398,108 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       });
     }
 
-    const currPtr = req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0';
+    const startPtr = parseInt(req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
     const pageSource = req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
-    const infoLevel = req.headers['info_level'] || req.headers['info-level'] || req.query.info_level || currPtr;
+    const batchSize = Math.min(Math.max(parseInt(req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
 
-    const queryParams = new URLSearchParams({
-      show_id: showId,
-      curr_ptr: currPtr,
-      info_level: infoLevel,
-      page_source: pageSource,
-      ...req.query
-    }).toString();
-
-    const targetUrl = `${BASE_URL}/v2/content_api/show.get_details?${queryParams}`;
-    const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
-
-    if (typeof data === 'object' && data !== null) {
-      return res.status(statusCode).json(data);
-    } else {
-      return res.status(statusCode).send(data);
+    const ptrList = [];
+    for (let i = 0; i < batchSize; i++) {
+      ptrList.push(startPtr + i);
     }
+
+    const fetchPromises = ptrList.map(ptr => {
+      const queryParams = new URLSearchParams({
+        show_id: showId,
+        curr_ptr: String(ptr),
+        info_level: String(ptr),
+        page_source: pageSource
+      }).toString();
+
+      const targetUrl = `${BASE_URL}/v2/content_api/show.get_details?${queryParams}`;
+      return fetchViaWorkerProxy(targetUrl, headers, 'GET')
+        .then(resObj => ({ ptr, resData: resObj }))
+        .catch(err => ({ ptr, error: err }));
+    });
+
+    const results = await Promise.all(fetchPromises);
+    results.sort((a, b) => a.ptr - b.ptr);
+
+    let baseShow = null;
+    const allStories = [];
+    const seenStoryIds = new Set();
+
+    for (const item of results) {
+      if (!item.resData || !item.resData.data) continue;
+      const json = item.resData.data;
+
+      if (!baseShow && json.result && Array.isArray(json.result) && json.result[0]) {
+        baseShow = json.result[0];
+      }
+
+      if (json.result && Array.isArray(json.result) && json.result[0] && Array.isArray(json.result[0].stories)) {
+        for (const story of json.result[0].stories) {
+          if (story && story.story_id) {
+            if (seenStoryIds.has(story.story_id)) continue;
+            seenStoryIds.add(story.story_id);
+
+            allStories.push({
+              story_title: story.story_title || story.title || "",
+              show_id: story.show_id || (baseShow && baseShow.show_id) || showId,
+              image_url: story.image_url || story.cover_url || (baseShow && baseShow.image_url) || "",
+              duration: typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0'),
+              video_url: story.video_url || story.video_info?.android?.video_url || "",
+              video_duration: story.video_duration !== undefined ? (typeof story.video_duration === 'number' ? story.video_duration : parseFloat(story.video_duration || '0')) : (typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0')),
+              story_id: story.story_id || "",
+              media_url_enc: story.media_url_enc || story.media_url || "",
+              stats: {
+                total_plays_display: story.stats?.total_plays_display || "",
+                comment_count: story.stats?.comment_count !== undefined ? story.stats.comment_count : 0
+              },
+              video_info: {
+                android: {
+                  video_url: story.video_info?.android?.video_url || story.video_url || ""
+                }
+              }
+            });
+          }
+        }
+      }
+    }
+
+    if (!baseShow) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch show details from Pocket FM'
+      });
+    }
+
+    const filteredResponse = {
+      status: 1,
+      message: "Result for show details page",
+      result: [
+        {
+          show_title: baseShow.show_title || baseShow.title || "",
+          image_url: baseShow.image_url || baseShow.cover_url || baseShow.gift_url || "",
+          show_desc_en: baseShow.show_desc_en || baseShow.show_desc || "",
+          show_category_rank: baseShow.show_category_rank !== undefined ? baseShow.show_category_rank : (baseShow.rank !== undefined ? baseShow.rank : null),
+          show_id: baseShow.show_id || showId,
+          episodes_count: typeof baseShow.episodes_count === 'number' ? baseShow.episodes_count : parseInt(baseShow.episodes_count || '0', 10),
+          stories: allStories,
+          next_ptr: startPtr + allStories.length,
+          stats: {
+            avg_rating: baseShow.stats?.avg_rating !== undefined ? baseShow.stats.avg_rating : null,
+            total_plays_display: baseShow.stats?.total_plays_display || ""
+          },
+          rank_text: baseShow.rank_text || (baseShow.show_category_rank ? `#${baseShow.show_category_rank}` : "")
+        }
+      ]
+    };
+
+    return res.status(200).json(filteredResponse);
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: 'Failed to process show details',
+      message: 'Failed to process show details batch',
       error: error.message
     });
   }
