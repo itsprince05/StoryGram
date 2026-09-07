@@ -484,15 +484,17 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               show_id: story.show_id || (baseShow && baseShow.show_id) || showId,
               image_url: story.image_url || story.cover_url || (baseShow && baseShow.image_url) || "",
               duration: typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0'),
-              story_id: story.story_id || "",
-              audio_url: audioUrl,
-              media_url: audioUrl
+              story_id: story.story_id || ""
             };
 
-            if (webVideoUrl) {
-              storyObj.video_url = webVideoUrl;
-            } else if (story.video_url && !story.video_url.includes('.mpd') && story.video_url.includes('.m3u8')) {
-              storyObj.video_url = story.video_url;
+            const finalVideoUrl = webVideoUrl || (story.video_url && !story.video_url.includes('.mpd') && story.video_url.includes('.m3u8') ? story.video_url : "");
+
+            if (finalVideoUrl) {
+              storyObj.audio_url = audioUrl;
+              storyObj.video_url = finalVideoUrl;
+              storyObj.media_url_enc = audioUrl;
+            } else {
+              storyObj.media_url_enc = audioUrl;
             }
 
             allStories.push(storyObj);
