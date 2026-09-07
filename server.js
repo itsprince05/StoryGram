@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
@@ -625,6 +626,139 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
       message: 'Failed to process saved stories',
       error: error.message
     });
+  }
+});
+
+function decryptPfmBlob(clientTs, deviceId, cipherBase64) {
+  try {
+    const rawData = `${deviceId}:${clientTs}`;
+    const encoded = Buffer.from(rawData, 'utf8').toString('base64');
+    const chars = encoded.split('');
+    for (let i = 0; i < chars.length - 1; i += 2) {
+      const temp = chars[i];
+      chars[i] = chars[i + 1];
+      chars[i + 1] = temp;
+    }
+    const keyStr = chars.join('');
+    const cipherBytes = Buffer.from(cipherBase64, 'base64');
+    if (cipherBytes.length < 28) return null;
+
+    const salt = cipherBytes.subarray(0, 16);
+    const iv = cipherBytes.subarray(16, 28);
+    const authTag = cipherBytes.subarray(cipherBytes.length - 16);
+    const encryptedData = cipherBytes.subarray(28, cipherBytes.length - 16);
+
+    const derivedKey = crypto.pbkdf2Sync(keyStr, salt, 10000, 32, 'sha256');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', derivedKey, iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encryptedData, null, 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted.trim();
+  } catch (err) {
+    console.error('Error decrypting PFM blob:', err.message);
+    return null;
+  }
+}
+
+app.get(['/api/license', '/license'], async (req, res) => {
+  try {
+    const showId = req.query.show_id || req.headers['show_id'] || req.headers['show-id'] || req.query.showId;
+    if (!showId) {
+      return res.status(400).json({ success: false, error: "Missing 'show_id' parameter" });
+    }
+
+    const headers = {
+      'user-agent': 'com.radio.pocketfm',
+      'platform': 'android',
+      'version-name': '9.1.3',
+      'platform-version': '29',
+      'app-version': '2013',
+      'device-id': 'mobile-web',
+      'device_id': 'mobile-web',
+      'client-ts': '1770000000',
+      'content-type': 'application/json;charset=utf-8'
+    };
+
+    if (cachedToken) {
+      headers['authorization'] = `Bearer ${cachedToken}`;
+      headers['auth-token'] = cachedToken;
+    }
+
+    const url = `${BASE_URL}/v2/content_api/show.play_details?show_id=${encodeURIComponent(showId)}`;
+    const { statusCode, data } = await fetchViaWorkerProxy(url, headers, 'GET');
+
+    if (data && data.blob) {
+      const licenseUrl = decryptPfmBlob(1770000000, 'mobile-web', data.blob);
+      if (licenseUrl) {
+        return res.status(200).json({
+          success: true,
+          license_url: licenseUrl
+        });
+      }
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: "Could not obtain DRM license URL",
+      details: data
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.all(['/api/dash-proxy', '/api/proxy-stream', '/api/license-proxy'], (req, res) => {
+  const targetUrl = req.query.url;
+  if (!targetUrl) return res.status(400).send("Missing 'url' query parameter");
+
+  try {
+    const parsed = new URL(targetUrl);
+    const isHttps = parsed.protocol === 'https:';
+    const httpLib = isHttps ? require('https') : require('http');
+
+    const headers = {};
+    if (req.headers['range']) headers['range'] = req.headers['range'];
+    if (req.headers['content-type']) headers['content-type'] = req.headers['content-type'];
+    if (req.headers['accept']) headers['accept'] = req.headers['accept'];
+    headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+    const proxyReq = httpLib.request(targetUrl, {
+      method: req.method,
+      headers: headers
+    }, (proxyRes) => {
+      res.status(proxyRes.statusCode || 200);
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
+      res.set('Access-Control-Allow-Headers', '*');
+
+      const passHeaders = ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control', 'etag', 'last-modified'];
+      passHeaders.forEach(h => {
+        if (proxyRes.headers[h]) {
+          res.set(h, proxyRes.headers[h]);
+        }
+      });
+
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (err) => {
+      if (!res.headersSent) {
+        res.status(500).send(err.message);
+      }
+    });
+
+    if (['POST', 'PUT', 'PATCH'].includes(req.method.toUpperCase())) {
+      req.pipe(proxyReq);
+    } else {
+      proxyReq.end();
+    }
+  } catch (err) {
+    if (!res.headersSent) {
+      res.status(400).send("Invalid target URL");
+    }
   }
 });
 
