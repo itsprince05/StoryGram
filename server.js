@@ -124,13 +124,15 @@ app.use(async (req, res, next) => {
 });
 
 function buildPocketHeaders(req) {
-  let token = req.headers['authorization'] || req.headers['auth'] || req.headers['x-auth-token'] || cachedToken || process.env.DEFAULT_BEARER_TOKEN || '';
+  let token = req?.headers?.['authorization'] || req?.headers?.['auth'] || req?.headers?.['x-auth-token'] || cachedToken || process.env.DEFAULT_BEARER_TOKEN || '';
 
   if (token && !token.toLowerCase().startsWith('bearer ')) {
     token = `Bearer ${token.trim()}`;
   }
 
-  const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+  const language = req?.headers?.['language'] || req?.headers?.['selected_language'] || req?.query?.language || req?.query?.selected_language || 'hindi';
+  const deviceId = req?.headers?.['device-id'] || req?.headers?.['device_id'] || req?.query?.device_id || req?.query?.deviceId || 'mobile-web';
+  const clientTs = req?.headers?.['client-ts'] || req?.headers?.['client_ts'] || req?.query?.client_ts || '1770000000';
 
   const headers = {
     'Host': 'api.pocketfm.com',
@@ -141,6 +143,9 @@ function buildPocketHeaders(req) {
     'version-name': '9.1.3',
     'platform-version': '29',
     'app-version': '2013',
+    'device-id': deviceId,
+    'device_id': deviceId,
+    'client-ts': String(clientTs),
     'language': language,
     'authorization': token,
     'accept-encoding': 'gzip',
@@ -673,12 +678,19 @@ app.get(['/api/license', '/license', '/api/license_url', '/api/get_license'], as
       return res.json({ success: true, license_url: licenseCache.get(showId), cached: true });
     }
 
+    const deviceId = req.headers['device-id'] || req.headers['device_id'] || req.query.device_id || req.query.deviceId || 'mobile-web';
+    const clientTs = parseInt(req.headers['client-ts'] || req.headers['client_ts'] || req.query.client_ts || '1770000000', 10);
+
     const headers = buildPocketHeaders(req);
-    const targetUrl = `${BASE_URL}/v2/content_api/show.play_details?show_id=${encodeURIComponent(showId)}`;
-    const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
+    headers['device-id'] = deviceId;
+    headers['device_id'] = deviceId;
+    headers['client-ts'] = String(clientTs);
+
+    const targetUrl = `${BASE_URL}/v2/content_api/show.play_details?show_id=${encodeURIComponent(showId)}&device_id=${encodeURIComponent(deviceId)}&client_ts=${clientTs}`;
+    let { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
 
     if (data && data.blob) {
-      const decryptedUrl = decryptPfmBlob(1770000000, "mobile-web", data.blob);
+      const decryptedUrl = decryptPfmBlob(clientTs, deviceId, data.blob);
       if (decryptedUrl) {
         licenseCache.set(showId, decryptedUrl);
         return res.json({ success: true, license_url: decryptedUrl });
@@ -691,10 +703,39 @@ app.get(['/api/license', '/license', '/api/license_url', '/api/get_license'], as
       return res.json({ success: true, license_url: directUrl });
     }
 
+    // Fallback attempt: Web platform headers
+    const webHeaders = {
+      'Host': 'api.pocketfm.com',
+      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'platform': 'web',
+      'device-id': deviceId,
+      'device_id': deviceId,
+      'client-ts': String(clientTs),
+      'content-type': 'application/json;charset=utf-8',
+      'accept': 'application/json',
+      'authorization': headers['authorization'] || ''
+    };
+    if (cachedCookies) webHeaders['Cookie'] = cachedCookies;
+
+    const webRes = await fetchViaWorkerProxy(targetUrl, webHeaders, 'GET');
+    if (webRes.data && webRes.data.blob) {
+      const decryptedUrl = decryptPfmBlob(clientTs, deviceId, webRes.data.blob);
+      if (decryptedUrl) {
+        licenseCache.set(showId, decryptedUrl);
+        return res.json({ success: true, license_url: decryptedUrl });
+      }
+    }
+
+    if (webRes.data && (webRes.data.license_url || webRes.data.licenseUrl)) {
+      const directUrl = webRes.data.license_url || webRes.data.licenseUrl;
+      licenseCache.set(showId, directUrl);
+      return res.json({ success: true, license_url: directUrl });
+    }
+
     return res.status(statusCode || 500).json({
       success: false,
       error: "Failed to obtain license blob from Pocket FM",
-      details: data
+      details: data || webRes.data
     });
   } catch (error) {
     return res.status(500).json({
