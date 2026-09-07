@@ -636,35 +636,49 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
 const licenseCache = new Map();
 
 function decryptPfmBlob(clientTs, deviceId, cipherBase64) {
-  try {
-    const rawData = `${deviceId}:${clientTs}`;
-    const encodedStr = Buffer.from(rawData).toString('base64');
-    const chars = encodedStr.split('');
-    for (let i = 0; i < chars.length - 1; i += 2) {
-      const temp = chars[i];
-      chars[i] = chars[i + 1];
-      chars[i + 1] = temp;
+  const tsCandidates = [1770000000, clientTs, "1770000000"].filter(Boolean);
+  const deviceCandidates = [deviceId, "mobile-web"].filter(Boolean);
+
+  for (const dev of deviceCandidates) {
+    for (const ts of tsCandidates) {
+      try {
+        const rawData = `${dev}:${ts}`;
+        const encodedStr = Buffer.from(rawData).toString('base64');
+        const chars = encodedStr.split('');
+        for (let i = 0; i < chars.length - 1; i += 2) {
+          const temp = chars[i];
+          chars[i] = chars[i + 1];
+          chars[i + 1] = temp;
+        }
+        const keyString = chars.join('');
+
+        const cipherBytes = Buffer.from(cipherBase64, 'base64');
+        if (cipherBytes.length < 28) continue;
+
+        const salt = cipherBytes.subarray(0, 16);
+        const iv = cipherBytes.subarray(16, 28);
+        const strData = cipherBytes.subarray(28, cipherBytes.length - 16);
+
+        const derivedKey = crypto.pbkdf2Sync(keyString, salt, 10000, 32, 'sha256');
+
+        // In AES-GCM (96-bit nonce), the ciphertext payload is encrypted using AES-CTR starting at counter 2:
+        const ctrIv = Buffer.alloc(16);
+        iv.copy(ctrIv, 0, 0, 12);
+        ctrIv[15] = 2;
+
+        const decipher = crypto.createDecipheriv('aes-256-ctr', derivedKey, ctrIv);
+        let decrypted = decipher.update(strData, null, 'utf8');
+        decrypted += decipher.final('utf8');
+        const result = decrypted.trim();
+        if (result && (result.startsWith('http://') || result.startsWith('https://'))) {
+          return result;
+        }
+      } catch (err) {
+        // try next candidate
+      }
     }
-    const keyString = chars.join('');
-
-    const cipherBytes = Buffer.from(cipherBase64, 'base64');
-    if (cipherBytes.length < 28) return null;
-
-    const salt = cipherBytes.subarray(0, 16);
-    const iv = cipherBytes.subarray(16, 28);
-    const strData = cipherBytes.subarray(28, cipherBytes.length - 16);
-    const authTag = cipherBytes.subarray(cipherBytes.length - 16);
-
-    const derivedKey = crypto.pbkdf2Sync(keyString, salt, 10000, 32, 'sha256');
-    const decipher = crypto.createDecipheriv('aes-256-gcm', derivedKey, iv);
-    decipher.setAuthTag(authTag);
-    let decrypted = decipher.update(strData, null, 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted.trim();
-  } catch (err) {
-    console.error('Blob decryption error:', err.message);
-    return null;
   }
+  return null;
 }
 
 app.get(['/api/license', '/license', '/api/license_url', '/api/get_license'], async (req, res) => {
