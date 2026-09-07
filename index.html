@@ -2458,8 +2458,6 @@
     let currentPlayingStory = null;
     let isPlaying = false;
     let isAudioBuffering = false;
-    let isLoadingMoreBottom = false;
-    let isLoadingMoreTop = false;
     let currentSlideIndex = 0;
     let totalSlides = 0;
     let bannerSliderTimer = null;
@@ -2697,7 +2695,6 @@
 
       renderLanguageGrid();
       closeLanguageModal();
-      showToast(`Language set to ${label}`);
       fetchHomeFeed();
     }
 
@@ -3019,7 +3016,6 @@
       if (!currentShowId) return;
       if (favoriteShowsMap[currentShowId]) {
         delete favoriteShowsMap[currentShowId];
-        showToast("Removed from Favorites");
       } else {
         const title = document.getElementById('show-page-title')?.innerText || "Show Details";
         const img = document.getElementById('show-page-img')?.src || "";
@@ -3032,7 +3028,6 @@
           rating: rating,
           plays: plays
         };
-        showToast("Added to Favorites ❤️");
       }
       try {
         localStorage.setItem('storygram_favorites', JSON.stringify(favoriteShowsMap));
@@ -3219,112 +3214,7 @@
       }
     }
 
-    async function loadMoreEpisodesBottom() {
-      if (isLoadingMoreBottom || isLoadingMoreTop || !currentShowId || currentTabName !== 'show-detail') return;
-      if (currentShowTotalEpisodes > 0 && currentNextPtr >= currentShowTotalEpisodes) return;
-
-      isLoadingMoreBottom = true;
-      const epContainer = document.getElementById('show-page-episodes-container');
-
-      let bottomLoader = document.getElementById('ep-bottom-loader');
-      if (!bottomLoader && epContainer) {
-        bottomLoader = document.createElement('div');
-        bottomLoader.id = 'ep-bottom-loader';
-        bottomLoader.className = 'inline-batch-loader';
-        bottomLoader.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 24px; height: 24px;"></i>';
-        epContainer.appendChild(bottomLoader);
-        refreshIcons();
-      }
-
-      try {
-        const response = await fetch('/show', {
-          headers: {
-            'show_id': currentShowId,
-            'curr_ptr': String(currentNextPtr),
-            'language': currentLanguage
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const showData = data.result && data.result[0];
-          if (showData && showData.stories && showData.stories.length > 0) {
-            const newStories = showData.stories.filter(s => !loadedEpisodesList.some(existing => existing.story_id === s.story_id));
-            if (newStories.length > 0) {
-              const startEpNum = currentNextPtr + 1;
-              renderEpisodesList(newStories, 'append', startEpNum);
-              currentNextPtr = showData.next_ptr || (currentNextPtr + newStories.length);
-              updateEpisodeCounterBadge();
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Bottom pagination error:", e);
-      } finally {
-        const bl = document.getElementById('ep-bottom-loader');
-        if (bl) bl.remove();
-        isLoadingMoreBottom = false;
-      }
-    }
-
-    async function loadMoreEpisodesTop() {
-      if (isLoadingMoreTop || isLoadingMoreBottom || !currentShowId || currentTabName !== 'show-detail') return;
-      if (currentTopPtr <= 0) return;
-
-      isLoadingMoreTop = true;
-      const epContainer = document.getElementById('show-page-episodes-container');
-
-      let topLoader = document.getElementById('ep-top-loader');
-      if (!topLoader && epContainer) {
-        topLoader = document.createElement('div');
-        topLoader.id = 'ep-top-loader';
-        topLoader.className = 'inline-batch-loader';
-        topLoader.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 22px; height: 22px;"></i>';
-        epContainer.insertBefore(topLoader, epContainer.firstChild);
-        refreshIcons();
-      }
-
-      const prevStartPtr = Math.max(0, currentTopPtr - 20);
-      const prevBatchCount = currentTopPtr - prevStartPtr;
-      const prevStartNum = prevStartPtr + 1;
-
-      try {
-        const response = await fetch('/show', {
-          headers: {
-            'show_id': currentShowId,
-            'curr_ptr': String(prevStartPtr),
-            'limit': String(prevBatchCount),
-            'language': currentLanguage
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const showData = data.result && data.result[0];
-          if (showData && showData.stories && showData.stories.length > 0) {
-            const newStories = showData.stories.filter(s => !loadedEpisodesList.some(existing => existing.story_id === s.story_id));
-            if (newStories.length > 0) {
-              const oldScrollHeight = document.documentElement.scrollHeight;
-              const oldScrollTop = window.scrollY;
-
-              renderEpisodesList(newStories, 'prepend', prevStartNum);
-              currentTopPtr = prevStartPtr;
-              updateEpisodeCounterBadge();
-
-              const newScrollHeight = document.documentElement.scrollHeight;
-              window.scrollTo({ top: oldScrollTop + (newScrollHeight - oldScrollHeight), behavior: 'instant' });
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Top pagination error:", e);
-      } finally {
-        const tl = document.getElementById('ep-top-loader');
-        if (tl) tl.remove();
-        isLoadingMoreTop = false;
-      }
-    }
-
     async function unlockEpisode(showId, storyId, storyTitle) {
-      showToast("Unlocking episode...");
       unlockedStoriesMap[storyId] = true;
 
       try {
@@ -3338,7 +3228,6 @@
         });
       } catch (e) { }
 
-      showToast("✨ Episode unlocked successfully!");
       if (currentShowObj && currentShowObj.stories) {
         renderEpisodesList(loadedEpisodesList, false);
       }
@@ -3357,7 +3246,6 @@
       try {
         localStorage.removeItem('storygram_history');
       } catch (e) { }
-      showToast("History cleared");
       renderLibraryTab();
     }
 
@@ -3369,7 +3257,6 @@
       } catch (e) { }
       updateFavoriteButtonState();
       renderLibraryTab();
-      showToast("Removed from Favorites");
     }
 
     function renderLibraryTab() {
@@ -3471,7 +3358,7 @@
         } catch (e) { }
         updateFavoriteButtonState();
         renderLibraryTab();
-        showToast("App data and cache cleared");
+        showToast("App data cleared");
       }
     }
 
@@ -3493,7 +3380,6 @@
       });
       const speedText = document.getElementById('fs-current-speed-text');
       if (speedText) speedText.innerText = `${speed}x`;
-      showToast(`Speed set to ${speed}x`);
     }
 
     function openFullscreenPlayer() {
@@ -3566,8 +3452,6 @@
         const mediaStreamUrl = prevStory.video_url || prevStory.media_url_enc || prevStory.media_url || "";
         const hasVid = Boolean(prevStory.video_url);
         playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, mediaStreamUrl, showTitle, showImg, hasVid);
-      } else {
-        showToast("First episode in list");
       }
     }
 
@@ -3581,8 +3465,6 @@
         const mediaStreamUrl = nextStory.video_url || nextStory.media_url_enc || nextStory.media_url || "";
         const hasVid = Boolean(nextStory.video_url);
         playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, mediaStreamUrl, showTitle, showImg, hasVid);
-      } else {
-        showToast("Last episode in current batch");
       }
     }
 
@@ -3640,7 +3522,7 @@
           isAudioBuffering = false;
           isPlaying = true;
           updatePlayPauseButton();
-          showToast(`▶ Playing: ${title}`);
+          showToast("Playing");
         } catch (err) {
           console.error("Shaka player error:", err);
           try {
@@ -3650,7 +3532,7 @@
             isAudioBuffering = false;
             isPlaying = true;
             updatePlayPauseButton();
-            showToast(`▶ Playing: ${title}`);
+            showToast("Playing");
           } catch (audioErr) {
             console.error("Audio playback error:", audioErr);
             isAudioBuffering = false;
@@ -3671,7 +3553,7 @@
           isAudioBuffering = false;
           isPlaying = true;
           updatePlayPauseButton();
-          showToast(`▶ Playing: ${title}`);
+          showToast("Playing");
         }).catch(err => {
           console.log("Audio autoplay fallback:", err);
           isAudioBuffering = false;
@@ -3782,7 +3664,6 @@
       if (fsProgressBar) fsProgressBar.style.width = '0%';
 
       updatePlayPauseButton();
-      showToast("Player closed");
     }
 
     function skipAudio(seconds) {
@@ -3954,32 +3835,10 @@
       return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
-    let scrollThrottleTimer = null;
-    function handleWindowScroll() {
-      if (scrollThrottleTimer) return;
-      scrollThrottleTimer = setTimeout(() => {
-        scrollThrottleTimer = null;
-        if (currentTabName !== 'show-detail' || !currentShowId) return;
-
-        const scrollY = window.scrollY || document.documentElement.scrollTop;
-        const windowHeight = window.innerHeight;
-        const docHeight = document.documentElement.scrollHeight;
-
-        if (docHeight - (scrollY + windowHeight) < 450) {
-          loadMoreEpisodesBottom();
-        }
-
-        if (scrollY < 80 && currentTopPtr > 0) {
-          loadMoreEpisodesTop();
-        }
-      }, 120);
-    }
-
     window.addEventListener('DOMContentLoaded', () => {
       initShakaPlayer();
       refreshIcons();
       fetchHomeFeed();
-      window.addEventListener('scroll', handleWindowScroll, { passive: true });
 
       const sliderElem = document.getElementById('hero-slider-container');
       if (sliderElem) {
