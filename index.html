@@ -2626,14 +2626,6 @@
                 }
               }
             });
-
-            // Register request filter to send PocketFM Origin & Referer headers on all requests
-            shakaPlayer.getNetworkingEngine().registerRequestFilter((type, request) => {
-              try {
-                request.headers['Origin'] = 'https://pocketfm.com';
-                request.headers['Referer'] = 'https://pocketfm.com/';
-              } catch (filterErr) {}
-            });
             shakaPlayer.addEventListener('buffering', (event) => {
               if (currentMediaMode === 'audio') {
                 isAudioBuffering = Boolean(event.buffering);
@@ -3903,16 +3895,18 @@
 
       const streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
-      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash') || streamUrl.includes('drm-aac'))) {
+      // Strictly detect if stream is DRM Encrypted (Never request license for unencrypted audio_url/video_url)
+      const isDrmStream = Boolean(
+        streamUrl && (
+          streamUrl.includes('drm-aac') ||
+          streamUrl.includes('protected_audio') ||
+          (!streamUrl.includes('vp9_output') && !streamUrl.includes('ddqs490ahjgsl') && streamUrl.includes('.mpd'))
+        )
+      );
+
+      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash') || isDrmStream)) {
         try {
           await shakaPlayer.unload();
-
-          // Auto-detect show ID for PocketFM DRM License resolution
-          let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
-          if (!targetShowId) {
-            const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//);
-            if (match) targetShowId = match[1];
-          }
 
           const playerConfig = {
             abr: {
@@ -3921,34 +3915,43 @@
             }
           };
 
-          if (targetShowId) {
-            let clientResolvedLicenseUrl = null;
-            try {
-              const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}&device_id=mobile-web&client_ts=1770000000`);
-              if (licRes.ok) {
-                const licData = await licRes.json();
-                if (licData.license_url) {
-                  clientResolvedLicenseUrl = licData.license_url;
-                } else if (licData.blob || (licData.details && licData.details.blob)) {
-                  const rawBlob = licData.blob || licData.details.blob;
-                  clientResolvedLicenseUrl = await decryptPfmBlobClient(rawBlob);
-                }
-              }
-            } catch (licErr) {
-              console.warn("Client license fetch warning:", licErr);
+          // ONLY resolve Widevine DRM license if stream is actually DRM protected
+          if (isDrmStream) {
+            let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
+            if (!targetShowId) {
+              const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//);
+              if (match) targetShowId = match[1];
             }
 
-            playerConfig.drm = {
-              servers: {
-                'com.widevine.alpha': clientResolvedLicenseUrl || `/api/drm_license?show_id=${encodeURIComponent(targetShowId)}`
-              },
-              advanced: {
-                'com.widevine.alpha': {
-                  videoRobustness: '',
-                  audioRobustness: ''
+            if (targetShowId) {
+              let clientResolvedLicenseUrl = null;
+              try {
+                const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}&device_id=mobile-web&client_ts=1770000000`);
+                if (licRes.ok) {
+                  const licData = await licRes.json();
+                  if (licData.license_url) {
+                    clientResolvedLicenseUrl = licData.license_url;
+                  } else if (licData.blob || (licData.details && licData.details.blob)) {
+                    const rawBlob = licData.blob || licData.details.blob;
+                    clientResolvedLicenseUrl = await decryptPfmBlobClient(rawBlob);
+                  }
                 }
+              } catch (licErr) {
+                console.warn("Client license fetch warning:", licErr);
               }
-            };
+
+              playerConfig.drm = {
+                servers: {
+                  'com.widevine.alpha': clientResolvedLicenseUrl || `/api/drm_license?show_id=${encodeURIComponent(targetShowId)}`
+                },
+                advanced: {
+                  'com.widevine.alpha': {
+                    videoRobustness: '',
+                    audioRobustness: ''
+                  }
+                }
+              };
+            }
           }
 
           shakaPlayer.configure(playerConfig);
