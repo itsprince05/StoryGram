@@ -7,7 +7,8 @@
   <title>Story Gram - Audio Series & Shows</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     :root {
@@ -1357,8 +1358,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 14px 20px 22px;
-      gap: 12px;
+      padding: 20px;
+      gap: 15px;
     }
 
     .fs-poster-wrap {
@@ -1887,19 +1888,12 @@
           <i data-lucide="search" class="search-btn-icon" onclick="performSearch()"></i>
         </div>
 
-        <div class="search-tags">
-          <div class="search-tag-chip" onclick="searchTag('Insta Millionaire')">🔥 Insta Millionaire</div>
-          <div class="search-tag-chip" onclick="searchTag('Devil Se Dhadkan')">💖 Devil Se Dhadkan</div>
-          <div class="search-tag-chip" onclick="searchTag('Super Yoddha')">⚡ Super Yoddha</div>
-          <div class="search-tag-chip" onclick="searchTag('Secret Ameerzada')">👑 Secret Ameerzada</div>
-          <div class="search-tag-chip" onclick="searchTag('Thriller')">🕵️ Thriller</div>
-          <div class="search-tag-chip" onclick="searchTag('Drama')">🎭 Drama</div>
-        </div>
-
         <div id="search-results-container">
-          <div style="text-align:center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;">
-            <i data-lucide="audio-lines" style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--primary);"></i>
-            <p>Type above to search top Pocket FM shows</p>
+          <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
+            <i data-lucide="search"
+              style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--primary); opacity: 0.8;"></i>
+            <p style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px;">Search Shows</p>
+            <p style="font-size: 12px;">Type above to search Pocket FM shows and episodes</p>
           </div>
         </div>
       </div>
@@ -1912,7 +1906,8 @@
           </div>
           <div id="unlocked-container" class="episodes-list">
             <div style="text-align:center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;">
-              <i data-lucide="bookmark" style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--accent);"></i>
+              <i data-lucide="bookmark"
+                style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--accent);"></i>
               <p>Episodes you unlock will appear here for instant playback.</p>
             </div>
           </div>
@@ -1973,7 +1968,8 @@
           <button class="control-btn" onclick="skipAudio(-10); event.stopPropagation();" title="Rewind 10s">
             <i data-lucide="rotate-ccw"></i>
           </button>
-          <button id="play-pause-btn" class="play-pause-btn" onclick="togglePlayPause(); event.stopPropagation();" title="Play/Pause">
+          <button id="play-pause-btn" class="play-pause-btn" onclick="togglePlayPause(); event.stopPropagation();"
+            title="Play/Pause">
             <i data-lucide="play"></i>
           </button>
           <button class="control-btn" onclick="skipAudio(10); event.stopPropagation();" title="Forward 10s">
@@ -1995,7 +1991,11 @@
 
         <div class="fs-header">
           <button class="fs-icon-btn" onclick="closeFullscreenPlayer()" title="Minimize Player">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="lucide lucide-chevron-down">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
           </button>
           <div class="fs-header-title">Now Playing</div>
           <div style="width: 36px;"></div>
@@ -2045,8 +2045,10 @@
 
           <div class="fs-speed-section">
             <div class="fs-speed-header">
-              <span class="fs-speed-label"><i data-lucide="gauge" style="width: 14px; height: 14px; color: var(--primary);"></i> Speed</span>
-              <span id="fs-current-speed-text" style="color: var(--primary); font-weight: 700; font-size: 11px;">1.0x</span>
+              <span class="fs-speed-label"><i data-lucide="gauge"
+                  style="width: 14px; height: 14px; color: var(--primary);"></i> Speed</span>
+              <span id="fs-current-speed-text"
+                style="color: var(--primary); font-weight: 700; font-size: 11px;">1.0x</span>
             </div>
             <div class="fs-speed-pills">
               <button class="speed-pill" data-speed="0.75" onclick="setPlaybackSpeed(0.75)">0.75x</button>
@@ -2116,231 +2118,6 @@
   <audio id="audio-element" preload="auto"></audio>
 
   <script>
-    // CURATED POCKET FM SAMPLE DATASET (Ensures instant UI render even standalone)
-    const SAMPLE_DATABASE = {
-      hindi: [
-        {
-          module_name: "Popular on Pocket FM",
-          shows: [
-            {
-              show_id: "insta_millionaire",
-              title: "Insta Millionaire",
-              image_url: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=500&auto=format&fit=crop&q=80",
-              show_category_rank: 1,
-              rating: "4.9",
-              plays: "2.4M",
-              episodes_count: 850,
-              synopsis: "Lucky was a poor college boy until overnight an unexpected bank deposit turned him into the wealthiest heir in the country. Now everyone who looked down upon him will see his true power.",
-              stories: Array.from({ length: 30 }, (_, i) => ({
-                story_id: `im_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: ${['The Rejection', 'A Billionaire Is Born', 'Return with Power', 'The Luxury Showdown', 'Golden Credit Card', 'Family Revenge', 'The Secret Heiress', 'Unexpected Ambush', 'The Ultimate Authority', 'Mask Unveiled'][i % 10]}`,
-                duration: 720 + (i * 35),
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-                is_unlocked: i < 3
-              }))
-            },
-            {
-              show_id: "devil_se_dhadkan",
-              title: "Devil Se Dhadkan Tak",
-              image_url: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80",
-              show_category_rank: 2,
-              rating: "4.9",
-              plays: "1.9M",
-              episodes_count: 620,
-              synopsis: "A dangerous, cold-hearted billionaire who fears no one meets a fearless girl who challenges his icy empire. A passionate rivalry turns into an unforgettable romance.",
-              stories: Array.from({ length: 25 }, (_, i) => ({
-                story_id: `dd_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: ${['Cold Encounters', 'The Contract Marriage', 'Heart of Steel', 'Dangerous Chemistry', 'Unspoken Promises', 'The Rival Emerges', 'Tangled Hearts', 'Confession Under Rain'][i % 8]}`,
-                duration: 680 + (i * 25),
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-                is_unlocked: i < 2
-              }))
-            },
-            {
-              show_id: "ek_ladki_ko_dekha",
-              title: "Ek Ladki Ko Dekha Toh",
-              image_url: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80",
-              show_category_rank: 3,
-              rating: "4.8",
-              plays: "1.5M",
-              episodes_count: 480,
-              synopsis: "An emotional rollercoaster of modern relationships, secrets, and second chances that touches every romantic heart.",
-              stories: Array.from({ length: 20 }, (_, i) => ({
-                story_id: `el_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: ${['First Glimpse', 'Whispers of Destiny', 'Hidden Tears', 'The Crossroads', 'A Second Chance', 'Love Against All Odds'][i % 6]}`,
-                duration: 600 + (i * 30),
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-                is_unlocked: i < 3
-              }))
-            },
-            {
-              show_id: "secret_ameerzada",
-              title: "Secret Ameerzada",
-              image_url: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=500&auto=format&fit=crop&q=80",
-              show_category_rank: 4,
-              rating: "4.8",
-              plays: "1.7M",
-              episodes_count: 510,
-              synopsis: "He lived as an ordinary delivery boy while holding the deed to the entire skyline. Watch him conquer the business underworld.",
-              stories: Array.from({ length: 22 }, (_, i) => ({
-                story_id: `sa_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: ${['Living in Shadows', 'The Mockery', 'A Small Warning', 'Buying The Whole Hotel', 'Chairman Revealed', 'No Mercy'][i % 6]}`,
-                duration: 750 + (i * 20),
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
-                is_unlocked: i < 2
-              }))
-            },
-            {
-              show_id: "super_yoddha",
-              title: "Super Yoddha",
-              image_url: "https://images.unsplash.com/photo-1514539079130-25950c84af65?w=500&auto=format&fit=crop&q=80",
-              show_category_rank: 5,
-              rating: "4.9",
-              plays: "2.1M",
-              episodes_count: 730,
-              synopsis: "In a world where ancient martial arts combine with modern superhuman powers, one forgotten warrior rises to save humanity.",
-              stories: Array.from({ length: 24 }, (_, i) => ({
-                story_id: `sy_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: ${['Awakening of Power', 'Trial of Fire', 'The Sacred Clan', 'Forbidden Technique', 'Battle of Titans', 'The Grand Master'][i % 6]}`,
-                duration: 810 + (i * 20),
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
-                is_unlocked: i < 3
-              }))
-            }
-          ]
-        },
-        {
-          module_name: "Trending Romantic Series",
-          shows: [
-            {
-              show_id: "mohabbat_ki_dastaan",
-              title: "Mohabbat Ki Dastaan",
-              image_url: "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=500&auto=format&fit=crop&q=80",
-              rating: "4.7",
-              plays: "950K",
-              episodes_count: 320,
-              synopsis: "A soulful love story crossing boundaries of time and societal expectations.",
-              stories: Array.from({ length: 15 }, (_, i) => ({
-                story_id: `md_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: Melody of Hearts`,
-                duration: 650,
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
-                is_unlocked: i < 2
-              }))
-            },
-            {
-              show_id: "ishq_aur_inteqaam",
-              title: "Ishq Aur Inteqaam",
-              image_url: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=500&auto=format&fit=crop&q=80",
-              rating: "4.8",
-              plays: "1.1M",
-              episodes_count: 400,
-              synopsis: "When love turns into betrayal, the sweet vengeance that follows will shake the foundation of two powerful families.",
-              stories: Array.from({ length: 18 }, (_, i) => ({
-                story_id: `ii_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: Sweet Vengeance`,
-                duration: 700,
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
-                is_unlocked: i < 2
-              }))
-            },
-            {
-              show_id: "pyaar_ka_safarnama",
-              title: "Pyaar Ka Safarnama",
-              image_url: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=500&auto=format&fit=crop&q=80",
-              rating: "4.7",
-              plays: "800K",
-              episodes_count: 290,
-              synopsis: "Two strangers stranded on a mountain highway uncover life-altering truths about each other.",
-              stories: Array.from({ length: 16 }, (_, i) => ({
-                story_id: `ps_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: Highway Destiny`,
-                duration: 620,
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
-                is_unlocked: i < 2
-              }))
-            }
-          ]
-        },
-        {
-          module_name: "Thriller & Suspense Masterpieces",
-          shows: [
-            {
-              show_id: "yakshini_mystery",
-              title: "Yakshini - The Curse",
-              image_url: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=500&auto=format&fit=crop&q=80",
-              rating: "4.9",
-              plays: "1.8M",
-              episodes_count: 450,
-              synopsis: "A mythological thriller about an ancient mystical spirit that awakens in a peaceful Himalayan village.",
-              stories: Array.from({ length: 20 }, (_, i) => ({
-                story_id: `ym_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: Curse of the Woods`,
-                duration: 780,
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
-                is_unlocked: i < 2
-              }))
-            },
-            {
-              show_id: "kaal_chakra",
-              title: "Kaal Chakra",
-              image_url: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80",
-              rating: "4.8",
-              plays: "1.2M",
-              episodes_count: 360,
-              synopsis: "Time loops, forgotten memories, and a detective trapped in the same 24 hours.",
-              stories: Array.from({ length: 18 }, (_, i) => ({
-                story_id: `kc_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: The Infinite Loop`,
-                duration: 720,
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-                is_unlocked: i < 2
-              }))
-            }
-          ]
-        }
-      ],
-      english: [
-        {
-          module_name: "Popular on Pocket FM",
-          shows: [
-            {
-              show_id: "my_billionaire_husband",
-              title: "My Billionaire Husband",
-              image_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80",
-              rating: "4.9",
-              plays: "3.2M",
-              episodes_count: 900,
-              synopsis: "Forced into marriage with a paralyzed billionaire, she never expected him to stand up and rule the world for her.",
-              stories: Array.from({ length: 25 }, (_, i) => ({
-                story_id: `mbh_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: The Golden Contract`,
-                duration: 650 + (i * 20),
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-                is_unlocked: i < 3
-              }))
-            },
-            {
-              show_id: "the_alpha_king",
-              title: "The Alpha King's Claim",
-              image_url: "https://images.unsplash.com/photo-1563089145-599997674d42?w=500&auto=format&fit=crop&q=80",
-              rating: "4.9",
-              plays: "2.8M",
-              episodes_count: 650,
-              synopsis: "A forbidden werewolf fantasy romance of moonlight, destiny, and royal power.",
-              stories: Array.from({ length: 20 }, (_, i) => ({
-                story_id: `ak_ep_${i + 1}`,
-                story_title: `Episode ${i + 1}: Moonlit Destiny`,
-                duration: 700 + (i * 15),
-                media_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-                is_unlocked: i < 2
-              }))
-            }
-          ]
-        }
-      ]
-    };
-
     let currentLanguage = 'hindi';
     let currentShowId = null;
     let currentShowObj = null;
@@ -2352,6 +2129,10 @@
     let currentSlideIndex = 0;
     let totalSlides = 0;
     let bannerSliderTimer = null;
+    let homeFeedRetryTimer = null;
+    let homeFeedRetryCount = 0;
+    let showEpisodesRetryTimer = null;
+    let showEpisodesRetryCount = 0;
     let previousTab = 'home';
     let currentTabName = 'home';
     let loadedEpisodesList = [];
@@ -2417,7 +2198,12 @@
 
       if (tabName === 'search') {
         setTimeout(() => document.getElementById('search-input')?.focus(), 150);
-        renderSearchGrid();
+        const searchInput = document.getElementById('search-input');
+        if (searchInput && searchInput.value.trim()) {
+          performSearch(searchInput.value.trim());
+        } else {
+          renderSearchEmptyState();
+        }
       } else if (tabName === 'unlocked') {
         renderUnlockedTab();
       }
@@ -2624,49 +2410,48 @@
       }
     }
 
-    function getAllSampleShows() {
-      const langShows = SAMPLE_DATABASE[currentLanguage] || SAMPLE_DATABASE['hindi'];
-      let allShows = [];
-      langShows.forEach(mod => {
-        if (mod.shows) allShows = allShows.concat(mod.shows);
-      });
-      return allShows;
-    }
-
-    function findShowById(id) {
-      for (const lang in SAMPLE_DATABASE) {
-        for (const mod of SAMPLE_DATABASE[lang]) {
-          const found = mod.shows?.find(s => s.show_id === id);
-          if (found) return found;
-        }
-      }
-      return null;
-    }
-
-    async function fetchHomeFeed() {
+    async function fetchHomeFeed(isRetry = false) {
+      clearTimeout(homeFeedRetryTimer);
       const container = document.getElementById('home-feed-container');
       const sliderContainer = document.getElementById('hero-slider-container');
       if (sliderContainer) sliderContainer.style.display = 'none';
 
-      container.innerHTML = `
-        <div class="loader">
-          <div class="spinner"></div>
-        </div>
-      `;
-
-      let modulesToRender = SAMPLE_DATABASE[currentLanguage] || SAMPLE_DATABASE['hindi'];
+      if (!isRetry) {
+        homeFeedRetryCount = 0;
+        container.innerHTML = `
+          <div class="loader" style="flex-direction: column; gap: 12px; min-height: 50vh;">
+            <div class="spinner"></div>
+            <p style="font-size: 12px; color: var(--text-muted);">Loading shows from Pocket FM API...</p>
+          </div>
+        `;
+      }
 
       try {
         const response = await fetch(`/home?language=${encodeURIComponent(currentLanguage)}`);
         if (response.ok) {
           const data = await response.json();
           if (data && data.result && data.result.length > 0) {
-            modulesToRender = data.result;
+            homeFeedRetryCount = 0;
+            renderFeedModules(data.result);
+            return;
           }
         }
-      } catch (err) { }
-
-      renderFeedModules(modulesToRender);
+        throw new Error("Empty or invalid API response");
+      } catch (err) {
+        homeFeedRetryCount++;
+        container.innerHTML = `
+          <div class="loader" style="flex-direction: column; gap: 12px; min-height: 50vh;">
+            <div class="spinner"></div>
+            <div style="text-align: center; color: var(--text-muted); font-size: 13px;">
+              <p style="color: #fff; font-weight: 700; margin-bottom: 4px;">Connecting to Pocket FM API...</p>
+              <p style="font-size: 11px; color: var(--text-muted);">Retrying in 3 seconds (Attempt ${homeFeedRetryCount})</p>
+            </div>
+            <button class="range-btn-item active" onclick="fetchHomeFeed()" style="padding: 8px 18px; border-radius: var(--radius-full); font-size: 12px; margin-top: 6px;">Retry Now</button>
+          </div>
+        `;
+        refreshIcons();
+        homeFeedRetryTimer = setTimeout(() => fetchHomeFeed(true), 3000);
+      }
     }
 
     function extractShowsFromModule(mod) {
@@ -2702,7 +2487,15 @@
       container.innerHTML = '';
 
       if (!modules || modules.length === 0) {
-        modules = SAMPLE_DATABASE['hindi'];
+        container.innerHTML = `
+          <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
+            <i data-lucide="alert-circle" style="width: 32px; height: 32px; margin-bottom: 8px; color: var(--accent);"></i>
+            <p style="font-size: 14px; font-weight: 700; color: #fff;">No shows found</p>
+            <button class="range-btn-item active" onclick="fetchHomeFeed()" style="margin: 12px auto 0; padding: 8px 18px; border-radius: var(--radius-full);">Refresh</button>
+          </div>
+        `;
+        refreshIcons();
+        return;
       }
 
       let popularModule = modules.find(m => m.module_name && (m.module_name.toLowerCase().includes('popular') || m.module_name.toLowerCase().includes('pocket fm') || m.module_name.toLowerCase().includes('top picks')));
