@@ -41,7 +41,7 @@ async function fetchDailyCookiesFromWebsite() {
       });
       rawSetCookie = directRes.headers['set-cookie'] || directRes.headers['Set-Cookie'];
       bodyContent = typeof directRes.data === 'string' ? directRes.data : JSON.stringify(directRes.data || '');
-    } catch (e) {}
+    } catch (e) { }
 
     if (!rawSetCookie || (Array.isArray(rawSetCookie) && rawSetCookie.length === 0)) {
       const proxyPayload = {
@@ -191,7 +191,7 @@ async function fetchViaWorkerProxy(targetUrl, headers, method = 'GET', body = nu
   if (typeof bodyData === 'string') {
     try {
       bodyData = JSON.parse(bodyData);
-    } catch (err) {}
+    } catch (err) { }
   }
 
   return { statusCode, data: bodyData };
@@ -615,7 +615,7 @@ app.get(['/license', '/api/license', '/api/get_license'], async (req, res) => {
           try {
             const j = JSON.parse(finalLicenseUrl);
             finalLicenseUrl = j.license_url || j.licenseUrl || j.url || finalLicenseUrl;
-          } catch(e) {}
+          } catch (e) { }
         }
 
         return res.status(200).json({
