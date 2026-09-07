@@ -462,21 +462,15 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
             if (seenStoryIds.has(story.story_id)) continue;
             seenStoryIds.add(story.story_id);
 
-            const videoUrl = story.video_url || story.video_info?.android?.video_url || "";
-            const storyObj = {
+            allStories.push({
               story_title: story.story_title || story.title || "",
               show_id: story.show_id || (baseShow && baseShow.show_id) || showId,
               image_url: story.image_url || story.cover_url || (baseShow && baseShow.image_url) || "",
               duration: typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0'),
+              video_url: story.video_url || story.video_info?.android?.video_url || "",
               story_id: story.story_id || "",
               media_url: story.media_url_enc || story.media_url || ""
-            };
-
-            if (videoUrl) {
-              storyObj.video_url = videoUrl;
-            }
-
-            allStories.push(storyObj);
+            });
           }
         }
       }
