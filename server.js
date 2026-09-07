@@ -476,8 +476,8 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
 
             const androidVideoUrl = (videoInfoObj && videoInfoObj.android && videoInfoObj.android.video_url) || (story.android && story.android.video_url) || "";
             const webVideoUrl = (videoInfoObj && videoInfoObj.web && videoInfoObj.web.video_url) || (story.web && story.web.video_url) || "";
-            const prevVideoValue = story.video_url || androidVideoUrl || "";
-            const audioUrl = prevVideoValue || story.media_url_enc || story.media_url || "";
+            const realMediaUrlEnc = story.media_url_enc || story.media_url || "";
+            const videoDashUrl = story.video_url || androidVideoUrl || realMediaUrlEnc || "";
 
             const storyObj = {
               story_title: story.story_title || story.title || "",
@@ -490,11 +490,11 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
             const finalVideoUrl = webVideoUrl || (story.video_url && !story.video_url.includes('.mpd') && story.video_url.includes('.m3u8') ? story.video_url : "");
 
             if (finalVideoUrl) {
-              storyObj.audio_url = audioUrl;
+              storyObj.audio_url = videoDashUrl;
               storyObj.video_url = finalVideoUrl;
-              storyObj.media_url_enc = audioUrl;
+              storyObj.media_url_enc = realMediaUrlEnc;
             } else {
-              storyObj.media_url_enc = audioUrl;
+              storyObj.media_url_enc = realMediaUrlEnc;
             }
 
             allStories.push(storyObj);
