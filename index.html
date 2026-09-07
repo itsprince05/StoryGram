@@ -2626,6 +2626,14 @@
                 }
               }
             });
+
+            // Register request filter to send PocketFM Origin & Referer headers on all requests
+            shakaPlayer.getNetworkingEngine().registerRequestFilter((type, request) => {
+              try {
+                request.headers['Origin'] = 'https://pocketfm.com';
+                request.headers['Referer'] = 'https://pocketfm.com/';
+              } catch (filterErr) {}
+            });
             shakaPlayer.addEventListener('buffering', (event) => {
               if (currentMediaMode === 'audio') {
                 isAudioBuffering = Boolean(event.buffering);
