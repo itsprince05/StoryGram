@@ -3287,7 +3287,7 @@
             ${playHistory.map(item => {
               const isCurrent = currentPlayingStory && currentPlayingStory.storyId === item.storyId;
               const isThisPlaying = isCurrent && isPlaying;
-              const hasVid = Boolean(item.hasVideo || (item.mediaUrl && item.mediaUrl.includes('.mpd')));
+              const hasVid = Boolean(item.hasVideo || (item.mediaUrl && (item.mediaUrl.includes('.mpd') || item.mediaUrl.includes('.m3u8'))));
               return `
                 <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border);">
                   <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(item.mediaUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid})">
@@ -3513,7 +3513,7 @@
 
       const streamUrl = mediaUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
-      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash'))) {
+      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('.m3u8') || streamUrl.includes('manifest') || streamUrl.includes('dash') || streamUrl.includes('hls'))) {
         try {
           await shakaPlayer.unload();
           await shakaPlayer.load(streamUrl);
