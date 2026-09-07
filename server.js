@@ -124,15 +124,13 @@ app.use(async (req, res, next) => {
 });
 
 function buildPocketHeaders(req) {
-  let token = req?.headers?.['authorization'] || req?.headers?.['auth'] || req?.headers?.['x-auth-token'] || cachedToken || process.env.DEFAULT_BEARER_TOKEN || '';
+  let token = req.headers['authorization'] || req.headers['auth'] || req.headers['x-auth-token'] || cachedToken || process.env.DEFAULT_BEARER_TOKEN || '';
 
   if (token && !token.toLowerCase().startsWith('bearer ')) {
     token = `Bearer ${token.trim()}`;
   }
 
-  const language = req?.headers?.['language'] || req?.headers?.['selected_language'] || req?.query?.language || req?.query?.selected_language || 'hindi';
-  const deviceId = req?.headers?.['device-id'] || req?.headers?.['device_id'] || req?.query?.device_id || req?.query?.deviceId || 'mobile-web';
-  const clientTs = req?.headers?.['client-ts'] || req?.headers?.['client_ts'] || req?.query?.client_ts || '1770000000';
+  const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
 
   const headers = {
     'Host': 'api.pocketfm.com',
@@ -143,9 +141,6 @@ function buildPocketHeaders(req) {
     'version-name': '9.1.3',
     'platform-version': '29',
     'app-version': '2013',
-    'device-id': deviceId,
-    'device_id': deviceId,
-    'client-ts': String(clientTs),
     'language': language,
     'authorization': token,
     'accept-encoding': 'gzip',
@@ -636,49 +631,35 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
 const licenseCache = new Map();
 
 function decryptPfmBlob(clientTs, deviceId, cipherBase64) {
-  const tsCandidates = [1770000000, clientTs, "1770000000"].filter(Boolean);
-  const deviceCandidates = [deviceId, "mobile-web"].filter(Boolean);
-
-  for (const dev of deviceCandidates) {
-    for (const ts of tsCandidates) {
-      try {
-        const rawData = `${dev}:${ts}`;
-        const encodedStr = Buffer.from(rawData).toString('base64');
-        const chars = encodedStr.split('');
-        for (let i = 0; i < chars.length - 1; i += 2) {
-          const temp = chars[i];
-          chars[i] = chars[i + 1];
-          chars[i + 1] = temp;
-        }
-        const keyString = chars.join('');
-
-        const cipherBytes = Buffer.from(cipherBase64, 'base64');
-        if (cipherBytes.length < 28) continue;
-
-        const salt = cipherBytes.subarray(0, 16);
-        const iv = cipherBytes.subarray(16, 28);
-        const strData = cipherBytes.subarray(28, cipherBytes.length - 16);
-
-        const derivedKey = crypto.pbkdf2Sync(keyString, salt, 10000, 32, 'sha256');
-
-        // In AES-GCM (96-bit nonce), the ciphertext payload is encrypted using AES-CTR starting at counter 2:
-        const ctrIv = Buffer.alloc(16);
-        iv.copy(ctrIv, 0, 0, 12);
-        ctrIv[15] = 2;
-
-        const decipher = crypto.createDecipheriv('aes-256-ctr', derivedKey, ctrIv);
-        let decrypted = decipher.update(strData, null, 'utf8');
-        decrypted += decipher.final('utf8');
-        const result = decrypted.trim();
-        if (result && (result.startsWith('http://') || result.startsWith('https://'))) {
-          return result;
-        }
-      } catch (err) {
-        // try next candidate
-      }
+  try {
+    const rawData = `${deviceId}:${clientTs}`;
+    const encodedStr = Buffer.from(rawData).toString('base64');
+    const chars = encodedStr.split('');
+    for (let i = 0; i < chars.length - 1; i += 2) {
+      const temp = chars[i];
+      chars[i] = chars[i + 1];
+      chars[i + 1] = temp;
     }
+    const keyString = chars.join('');
+
+    const cipherBytes = Buffer.from(cipherBase64, 'base64');
+    if (cipherBytes.length < 28) return null;
+
+    const salt = cipherBytes.subarray(0, 16);
+    const iv = cipherBytes.subarray(16, 28);
+    const strData = cipherBytes.subarray(28, cipherBytes.length - 16);
+    const authTag = cipherBytes.subarray(cipherBytes.length - 16);
+
+    const derivedKey = crypto.pbkdf2Sync(keyString, salt, 10000, 32, 'sha256');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', derivedKey, iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(strData, null, 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted.trim();
+  } catch (err) {
+    console.error('Blob decryption error:', err.message);
+    return null;
   }
-  return null;
 }
 
 app.get(['/api/license', '/license', '/api/license_url', '/api/get_license'], async (req, res) => {
@@ -692,19 +673,12 @@ app.get(['/api/license', '/license', '/api/license_url', '/api/get_license'], as
       return res.json({ success: true, license_url: licenseCache.get(showId), cached: true });
     }
 
-    const deviceId = req.headers['device-id'] || req.headers['device_id'] || req.query.device_id || req.query.deviceId || 'mobile-web';
-    const clientTs = parseInt(req.headers['client-ts'] || req.headers['client_ts'] || req.query.client_ts || '1770000000', 10);
-
     const headers = buildPocketHeaders(req);
-    headers['device-id'] = deviceId;
-    headers['device_id'] = deviceId;
-    headers['client-ts'] = String(clientTs);
-
-    const targetUrl = `${BASE_URL}/v2/content_api/show.play_details?show_id=${encodeURIComponent(showId)}&device_id=${encodeURIComponent(deviceId)}&client_ts=${clientTs}`;
-    let { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
+    const targetUrl = `${BASE_URL}/v2/content_api/show.play_details?show_id=${encodeURIComponent(showId)}`;
+    const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
 
     if (data && data.blob) {
-      const decryptedUrl = decryptPfmBlob(clientTs, deviceId, data.blob);
+      const decryptedUrl = decryptPfmBlob(1770000000, "mobile-web", data.blob);
       if (decryptedUrl) {
         licenseCache.set(showId, decryptedUrl);
         return res.json({ success: true, license_url: decryptedUrl });
@@ -717,39 +691,10 @@ app.get(['/api/license', '/license', '/api/license_url', '/api/get_license'], as
       return res.json({ success: true, license_url: directUrl });
     }
 
-    // Fallback attempt: Web platform headers
-    const webHeaders = {
-      'Host': 'api.pocketfm.com',
-      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'platform': 'web',
-      'device-id': deviceId,
-      'device_id': deviceId,
-      'client-ts': String(clientTs),
-      'content-type': 'application/json;charset=utf-8',
-      'accept': 'application/json',
-      'authorization': headers['authorization'] || ''
-    };
-    if (cachedCookies) webHeaders['Cookie'] = cachedCookies;
-
-    const webRes = await fetchViaWorkerProxy(targetUrl, webHeaders, 'GET');
-    if (webRes.data && webRes.data.blob) {
-      const decryptedUrl = decryptPfmBlob(clientTs, deviceId, webRes.data.blob);
-      if (decryptedUrl) {
-        licenseCache.set(showId, decryptedUrl);
-        return res.json({ success: true, license_url: decryptedUrl });
-      }
-    }
-
-    if (webRes.data && (webRes.data.license_url || webRes.data.licenseUrl)) {
-      const directUrl = webRes.data.license_url || webRes.data.licenseUrl;
-      licenseCache.set(showId, directUrl);
-      return res.json({ success: true, license_url: directUrl });
-    }
-
     return res.status(statusCode || 500).json({
       success: false,
       error: "Failed to obtain license blob from Pocket FM",
-      details: data || webRes.data
+      details: data
     });
   } catch (error) {
     return res.status(500).json({
@@ -757,142 +702,6 @@ app.get(['/api/license', '/license', '/api/license_url', '/api/get_license'], as
       message: 'Failed to process DRM license request',
       error: error.message
     });
-  }
-});
-
-app.post(['/api/drm_license', '/api/license_proxy'], express.raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
-  try {
-    const showId = req.headers['show_id'] || req.headers['show-id'] || req.query.show_id || req.query.showId;
-    if (!showId) {
-      return res.status(400).send("Missing show_id parameter");
-    }
-
-    let licenseUrl = licenseCache.get(showId);
-    if (!licenseUrl) {
-      const deviceId = req.headers['device-id'] || req.headers['device_id'] || req.query.device_id || 'mobile-web';
-      const clientTs = 1770000000;
-      const headers = buildPocketHeaders(req);
-      headers['device-id'] = deviceId;
-      headers['device_id'] = deviceId;
-      headers['client-ts'] = String(clientTs);
-
-      const targetUrl = `${BASE_URL}/v2/content_api/show.play_details?show_id=${encodeURIComponent(showId)}&device_id=${encodeURIComponent(deviceId)}&client_ts=${clientTs}`;
-      let { data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
-      if (data && data.blob) {
-        licenseUrl = decryptPfmBlob(clientTs, deviceId, data.blob);
-      }
-      if (!licenseUrl && data && (data.license_url || data.licenseUrl)) {
-        licenseUrl = data.license_url || data.licenseUrl;
-      }
-      if (licenseUrl) {
-        licenseCache.set(showId, licenseUrl);
-      }
-    }
-
-    if (!licenseUrl) {
-      return res.status(500).send("Could not resolve Widevine license URL");
-    }
-
-    // Forward the Widevine challenge to Gumlet license server
-    const challengeBuffer = req.body;
-    const gumletRes = await axios.post(licenseUrl, challengeBuffer, {
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'User-Agent': 'Mozilla/5.0'
-      },
-      responseType: 'arraybuffer',
-      timeout: 15000
-    });
-
-    res.set('Content-Type', 'application/octet-stream');
-    return res.send(Buffer.from(gumletRes.data));
-  } catch (err) {
-    console.error("DRM License proxy error:", err.message);
-    return res.status(500).send(err.message);
-  }
-});
-
-app.get(['/api/stream_proxy', '/api/manifest_proxy'], async (req, res) => {
-  try {
-    const targetUrl = req.query.url;
-    if (!targetUrl) {
-      return res.status(400).send("Missing 'url' parameter");
-    }
-
-    const response = await axios.get(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
-        'Accept': '*/*'
-      },
-      responseType: 'text',
-      timeout: 15000
-    });
-
-    let manifest = response.data;
-    const baseUrlMatch = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
-
-    // Rewrite relative BaseURLs so they route through media_proxy
-    manifest = manifest.replace(/<BaseURL>([^<]+)<\/BaseURL>/g, (match, chunkFile) => {
-      const fullChunkUrl = chunkFile.startsWith('http') ? chunkFile : `${baseUrlMatch}${chunkFile}`;
-      const proxiedChunkUrl = `/api/media_proxy?url=${encodeURIComponent(fullChunkUrl)}`;
-      return `<BaseURL>${proxiedChunkUrl}</BaseURL>`;
-    });
-
-    res.set({
-      'Content-Type': 'application/dash+xml',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-      'Access-Control-Allow-Headers': '*'
-    });
-    return res.send(manifest);
-  } catch (err) {
-    console.error("Stream proxy error:", err.message);
-    return res.status(500).send("Failed to proxy manifest: " + err.message);
-  }
-});
-
-app.get(['/api/media_proxy', '/api/chunk_proxy'], async (req, res) => {
-  try {
-    const targetUrl = req.query.url;
-    if (!targetUrl) {
-      return res.status(400).send("Missing 'url' parameter");
-    }
-
-    const forwardHeaders = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
-      'Accept': '*/*'
-    };
-
-    if (req.headers.range) {
-      forwardHeaders['Range'] = req.headers.range;
-    }
-
-    const response = await axios({
-      method: 'GET',
-      url: targetUrl,
-      headers: forwardHeaders,
-      responseType: 'stream',
-      validateStatus: (status) => status >= 200 && status < 400,
-      timeout: 20000
-    });
-
-    res.set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-      'Access-Control-Allow-Headers': '*',
-      'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges'
-    });
-
-    if (response.headers['content-type']) res.set('Content-Type', response.headers['content-type']);
-    if (response.headers['content-range']) res.set('Content-Range', response.headers['content-range']);
-    if (response.headers['content-length']) res.set('Content-Length', response.headers['content-length']);
-    if (response.headers['accept-ranges']) res.set('Accept-Ranges', response.headers['accept-ranges']);
-
-    res.status(response.status);
-    response.data.pipe(res);
-  } catch (err) {
-    console.error("Media proxy error:", err.message);
-    return res.status(500).send("Failed to proxy media segment: " + err.message);
   }
 });
 
