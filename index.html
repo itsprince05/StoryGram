@@ -3258,11 +3258,12 @@
         epDiv.id = `ep-item-${story.story_id}`;
 
         const hasVideo = Boolean(story.video_url);
+        const isDrm = Boolean(story.media_url_enc && !story.video_url && !story.audio_url);
         const durationText = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
         const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
         const audioUrl = story.audio_url || story.media_url_enc || story.media_url || "";
         const videoUrl = story.video_url || "";
-        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo);
+        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo, isDrm);
 
         const iconHtml = (isCurrent && isAudioBuffering)
           ? '<span class="btn-spinner"></span>'
@@ -3715,41 +3716,61 @@
       isAudioBuffering = true;
       updatePlayPauseButton();
 
+      // Only DRM-encrypted streams (media_url_enc) require Widevine DRM license!
+      // audio_url (e.g. vp9_output.mpd from ddqs490ahjgsl.cloudfront.net) or video_url do NOT need DRM license!
+      const requiresDrm = Boolean(
+        (currentPlayingStory && currentPlayingStory.isDrm) ||
+        finalStreamUrl.includes('drm-aac') ||
+        finalStreamUrl.includes('media.pocketfm.in') ||
+        (finalStreamUrl.includes('workers.dev') && !finalStreamUrl.includes('vp9_output') && !finalStreamUrl.includes('ddqs490ahjgsl'))
+      ) && !finalStreamUrl.includes('ddqs490ahjgsl.cloudfront.net');
+
       if (shakaPlayer && (finalStreamUrl.includes('.mpd') || finalStreamUrl.includes('manifest') || finalStreamUrl.includes('dash') || finalStreamUrl.includes('drm-aac') || finalStreamUrl.includes('workers.dev'))) {
         try {
-          if (!targetShowId) {
-            const match = finalStreamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || finalStreamUrl.match(/value=([a-zA-Z0-9]+)\//);
-            if (match) targetShowId = match[1];
-          }
+          if (requiresDrm) {
+            if (!targetShowId) {
+              const match = finalStreamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || finalStreamUrl.match(/value=([a-zA-Z0-9]+)\//);
+              if (match) targetShowId = match[1];
+            }
 
-          if (targetShowId) {
-            try {
-              const licRes = await fetch('/api/license', {
-                headers: {
-                  'show_id': targetShowId
-                }
-              });
-              if (licRes.ok) {
-                const licData = await licRes.json();
-                if (licData.success && licData.license_url) {
-                  shakaPlayer.configure({
-                    drm: {
-                      servers: {
-                        'com.widevine.alpha': licData.license_url
-                      },
-                      advanced: {
-                        'com.widevine.alpha': {
-                          videoRobustness: '',
-                          audioRobustness: ''
+            if (targetShowId) {
+              try {
+                const licRes = await fetch('/api/license', {
+                  headers: {
+                    'show_id': targetShowId
+                  }
+                });
+                if (licRes.ok) {
+                  const licData = await licRes.json();
+                  if (licData.success && licData.license_url) {
+                    shakaPlayer.configure({
+                      drm: {
+                        servers: {
+                          'com.widevine.alpha': licData.license_url
+                        },
+                        advanced: {
+                          'com.widevine.alpha': {
+                            videoRobustness: '',
+                            audioRobustness: ''
+                          }
                         }
                       }
-                    }
-                  });
+                    });
+                  }
                 }
+              } catch (licErr) {
+                console.warn("DRM license fetch warning:", licErr);
               }
-            } catch (licErr) {
-              console.warn("DRM license fetch warning:", licErr);
             }
+          } else {
+            // For clear audio_url / non-DRM DASH streams: DO NOT request license!
+            shakaPlayer.configure({
+              drm: {
+                servers: {},
+                clearKeys: {},
+                advanced: {}
+              }
+            });
           }
 
           await shakaPlayer.load(finalStreamUrl, startTime > 0 ? startTime : 0);
@@ -3804,6 +3825,11 @@
           }
         }
       } else {
+        if (shakaPlayer) {
+          try {
+            await shakaPlayer.unload();
+          } catch (e) { }
+        }
         audioElement.src = finalStreamUrl;
         if (startTime > 0) audioElement.currentTime = startTime;
         audioElement.playbackRate = currentPlaybackSpeed;
@@ -3938,7 +3964,8 @@
         const audioUrl = prevStory.audio_url || prevStory.media_url_enc || prevStory.media_url || "";
         const videoUrl = prevStory.video_url || "";
         const hasVid = Boolean(videoUrl);
-        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
+        const isDrm = Boolean(prevStory.media_url_enc && !prevStory.video_url && !prevStory.audio_url);
+        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid, isDrm);
       }
     }
 
@@ -3952,26 +3979,29 @@
         const audioUrl = nextStory.audio_url || nextStory.media_url_enc || nextStory.media_url || "";
         const videoUrl = nextStory.video_url || "";
         const hasVid = Boolean(videoUrl);
-        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
+        const isDrm = Boolean(nextStory.media_url_enc && !nextStory.video_url && !nextStory.audio_url);
+        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid, isDrm);
       }
     }
 
-    function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
+    function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, isDrm = false) {
       if (currentPlayingStory && currentPlayingStory.storyId === storyId) {
         openFullscreenPlayer();
       } else {
-        playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo);
+        playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, isDrm);
       }
     }
 
-    async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
+    async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, isDrm = false) {
       const isVid = Boolean(hasVideo || videoUrl);
+      const realIsDrm = Boolean(isDrm || (!videoUrl && audioUrl && (audioUrl.includes('drm-aac') || audioUrl.includes('media.pocketfm.in') || (audioUrl.includes('workers.dev') && !audioUrl.includes('vp9_output') && !audioUrl.includes('ddqs490ahjgsl')))));
       currentPlayingStory = {
         storyId,
         title,
         audioUrl: audioUrl || "",
         videoUrl: videoUrl || "",
         mediaUrl: audioUrl || "",
+        isDrm: realIsDrm,
         showTitle,
         thumbUrl,
         hasVideo: isVid,
