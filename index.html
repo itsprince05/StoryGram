@@ -3874,9 +3874,10 @@
                 if (cfUrl.includes('stream.render-stream.workers.dev')) {
                   cfUrl = cfUrl.replace('https://stream.render-stream.workers.dev', 'https://d13yevwzck7i9p.cloudfront.net');
                 }
+                request.headers['media_url_enc'] = cfUrl;
+                request.headers['x-media-url-enc'] = cfUrl;
                 request.headers['x-target-url'] = cfUrl;
-                request.headers['x-stream-url'] = cfUrl;
-                request.headers['url'] = cfUrl;
+                request.headers['target-url'] = cfUrl;
               }
             });
           }
