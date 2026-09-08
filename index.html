@@ -4392,7 +4392,7 @@
           for (let i = 0; i < active.buffered.length; i++) {
             const start = active.buffered.start(i);
             const end = active.buffered.end(i);
-            if (curTimeVal >= start - 1.5 && curTimeVal <= end + 1.5) {
+            if (curTimeVal >= start - 2 && curTimeVal <= end + 2) {
               bufferedEnd = Math.max(bufferedEnd, end);
             } else if (end > curTimeVal && (bufferedEnd === 0 || end > bufferedEnd)) {
               bufferedEnd = end;
@@ -4410,17 +4410,22 @@
             if (bufInfo) {
               const ranges = (bufInfo.audio && bufInfo.audio.length > 0) ? bufInfo.audio : (bufInfo.total || []);
               for (const r of ranges) {
-                if (curTimeVal >= r.start - 1.5 && curTimeVal <= r.end + 1.5) {
+                if (curTimeVal >= r.start - 2 && curTimeVal <= r.end + 2) {
                   bufferedEnd = Math.max(bufferedEnd, r.end);
                 } else if (r.end > curTimeVal && (bufferedEnd === 0 || r.end > bufferedEnd)) {
                   bufferedEnd = r.end;
                 }
               }
+              if (bufferedEnd === 0 && ranges.length > 0) {
+                bufferedEnd = ranges[ranges.length - 1].end;
+              }
             }
           } catch (e) { }
         }
 
-        const bufferPercent = Math.min(100, Math.max(0, (bufferedEnd / duration) * 100));
+        // Buffer percent should at least cover current playhead position
+        bufferedEnd = Math.max(bufferedEnd, curTimeVal);
+        const bufferPercent = Math.min(100, Math.max(percent, (bufferedEnd / duration) * 100));
 
         const fsBufferBar = document.getElementById('fs-buffer-bar');
         if (fsBufferBar) {
@@ -4435,10 +4440,11 @@
     }
 
     setInterval(() => {
-      if (isPlaying) {
+      const active = getActiveMediaElement();
+      if (active && active.duration && isFinite(active.duration)) {
         updateProgress();
       }
-    }, 400);
+    }, 200);
 
     let searchTimeout = null;
 
