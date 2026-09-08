@@ -2,12 +2,43 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = 'https://api.pocketfm.com';
 const WORKER_PROXY_URL = 'https://curl-proxy.bruceliu-dev.workers.dev/';
+
+function decryptPocketFmBlob(clientTs, deviceId, cipherBase64) {
+  const rawData = `${deviceId}:${clientTs}`;
+  const encoded = Buffer.from(rawData).toString('base64');
+  const chars = encoded.split('');
+  for (let i = 0; i < chars.length - 1; i += 2) {
+    const temp = chars[i];
+    chars[i] = chars[i + 1];
+    chars[i + 1] = temp;
+  }
+  const keyString = chars.join('');
+
+  const cipherBytes = Buffer.from(cipherBase64, 'base64');
+  if (cipherBytes.length < 28) {
+    throw new Error('Invalid cipher payload length: ' + cipherBytes.length);
+  }
+
+  const salt = cipherBytes.subarray(0, 16);
+  const iv = cipherBytes.subarray(16, 28);
+  const tag = cipherBytes.subarray(cipherBytes.length - 16);
+  const ciphertext = cipherBytes.subarray(28, cipherBytes.length - 16);
+
+  const derivedKey = crypto.pbkdf2Sync(keyString, salt, 10000, 32, 'sha256');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', derivedKey, iv);
+  decipher.setAuthTag(tag);
+
+  let decrypted = decipher.update(ciphertext, null, 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
 
 let cachedCookies = '';
 let cachedToken = '';
@@ -496,9 +527,13 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               const targetShowId = storyObj.show_id || (baseShow && baseShow.show_id) || showId || "";
               const targetStoryId = storyObj.story_id || "";
               if (targetShowId && targetStoryId) {
-                storyObj.media_url_enc = `https://stream.render-stream.workers.dev/drm-aac/${targetShowId}/${targetStoryId}/h264.mpd`;
+                const cloudfrontMpd = `https://d13yevwzck7i9p.cloudfront.net/drm-aac/${targetShowId}/${targetStoryId}/h264.mpd`;
+                storyObj.audio_url = cloudfrontMpd;
+                storyObj.media_url_enc = cloudfrontMpd;
+                storyObj.stream_url = cloudfrontMpd;
               } else {
                 storyObj.media_url_enc = realMediaUrlEnc;
+                storyObj.audio_url = realMediaUrlEnc;
               }
             }
 
@@ -540,6 +575,49 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
     return res.status(500).json({
       success: false,
       message: 'Failed to process show details batch',
+      error: error.message
+    });
+  }
+});
+
+app.get(['/api/license', '/api/get_license'], async (req, res) => {
+  try {
+    const showId = req.query.show_id || req.headers['show_id'] || req.headers['show-id'];
+    if (!showId) {
+      return res.status(400).json({ success: false, error: "Missing 'show_id' query param" });
+    }
+
+    const headers = buildPocketHeaders(req);
+    headers['platform'] = 'android';
+    headers['version-name'] = '9.1.3';
+    headers['platform-version'] = '29';
+    headers['app-version'] = '2013';
+    headers['device-id'] = 'mobile-web';
+    headers['device_id'] = 'mobile-web';
+    headers['client-ts'] = '1770000000';
+    headers['User-Agent'] = 'com.radio.pocketfm';
+
+    const targetUrl = `${BASE_URL}/v2/content_api/show.play_details?show_id=${encodeURIComponent(showId)}`;
+    const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
+
+    if (!data || typeof data !== 'object') {
+      return res.status(statusCode).json({ success: false, error: 'Invalid response from PocketFM' });
+    }
+
+    const blob = data.blob;
+    if (!blob) {
+      return res.status(400).json({ success: false, error: 'No DRM blob found in response', data });
+    }
+
+    const licenseUrl = decryptPocketFmBlob(1770000000, 'mobile-web', blob);
+    return res.status(200).json({
+      success: true,
+      license_url: licenseUrl
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to resolve DRM license',
       error: error.message
     });
   }
