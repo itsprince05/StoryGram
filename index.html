@@ -3120,7 +3120,8 @@
       const sliderContainer = document.getElementById('hero-slider-container');
       if (sliderContainer) sliderContainer.style.display = 'none';
 
-      if (!isRetry || !container.querySelector('.spinner')) {
+      if (!isRetry) {
+        homeFeedRetryCount = 0;
         container.innerHTML = `
           <div class="loader">
             <div class="spinner"></div>
@@ -3137,18 +3138,29 @@
         if (response.ok) {
           const data = await response.json();
           if (data && data.result && data.result.length > 0) {
+            homeFeedRetryCount = 0;
             renderFeedModules(data.result);
             return;
           }
         }
-        throw new Error("Empty or invalid API response");
+        throw new Error("Unable to fetch home feed");
       } catch (err) {
-        container.innerHTML = `
-          <div class="loader">
-            <div class="spinner"></div>
-          </div>
-        `;
-        homeFeedRetryTimer = setTimeout(() => fetchHomeFeed(true), 3000);
+        homeFeedRetryCount++;
+        if (homeFeedRetryCount <= 3) {
+          homeFeedRetryTimer = setTimeout(() => fetchHomeFeed(true), 2500);
+        } else {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+              <i data-lucide="wifi-off" style="width: 42px; height: 42px; margin-bottom: 14px; color: var(--primary); opacity: 0.9;"></i>
+              <p style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 6px;">Unable to load Home Feed</p>
+              <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 18px;">Please check network connection and try again</p>
+              <button onclick="fetchHomeFeed()" style="background: var(--primary-gradient); color: #fff; border: none; padding: 10px 24px; border-radius: var(--radius-full); font-weight: 700; font-size: 13px; cursor: pointer; box-shadow: 0 4px 14px rgba(255, 51, 102, 0.4);">
+                Tap to Retry
+              </button>
+            </div>
+          `;
+          refreshIcons();
+        }
       }
     }
 
@@ -3476,17 +3488,31 @@
         }
         throw new Error("Failed to load show details");
       } catch (err) {
-        if (mode === 'replace') {
-          const epContainer = document.getElementById('show-page-episodes-container');
-          if (epContainer && !epContainer.querySelector('.spinner')) {
-            epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"></div></div>';
+        showEpisodesRetryCount++;
+        if (showEpisodesRetryCount <= 3) {
+          showEpisodesRetryTimer = setTimeout(() => {
+            if (currentShowId === showId) {
+              fetchShowEpisodes(showId, currPtr, mode, startEpisodeNum);
+            }
+          }, 2500);
+        } else {
+          if (mode === 'replace') {
+            const epContainer = document.getElementById('show-page-episodes-container');
+            if (epContainer) {
+              epContainer.innerHTML = `
+                <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                  <i data-lucide="wifi-off" style="width: 32px; height: 32px; margin-bottom: 10px; color: var(--primary);"></i>
+                  <p style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px;">Failed to load episodes</p>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Please try again</p>
+                  <button onclick="fetchShowEpisodes('${escapeAttr(showId)}', ${currPtr}, '${mode}', ${startEpisodeNum})" style="background: var(--primary-gradient); color: #fff; border: none; padding: 8px 20px; border-radius: var(--radius-full); font-weight: 700; font-size: 12px; cursor: pointer;">
+                    Retry
+                  </button>
+                </div>
+              `;
+              refreshIcons();
+            }
           }
         }
-        setTimeout(() => {
-          if (currentShowId === showId) {
-            fetchShowEpisodes(showId, currPtr, mode, startEpisodeNum);
-          }
-        }, 3000);
       }
     }
 
