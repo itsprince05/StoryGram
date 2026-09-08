@@ -493,7 +493,13 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               storyObj.audio_url = videoDashUrl;
               storyObj.video_url = finalVideoUrl;
             } else {
-              storyObj.media_url_enc = realMediaUrlEnc;
+              const targetShowId = storyObj.show_id || (baseShow && baseShow.show_id) || showId || "";
+              const targetStoryId = storyObj.story_id || "";
+              if (targetShowId && targetStoryId) {
+                storyObj.media_url_enc = `https://stream.render-stream.workers.dev?value=${targetShowId}/${targetStoryId}`;
+              } else {
+                storyObj.media_url_enc = realMediaUrlEnc;
+              }
             }
 
             allStories.push(storyObj);
