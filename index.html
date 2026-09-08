@@ -3808,41 +3808,53 @@
         try {
           await shakaPlayer.unload();
 
-          // Auto-detect show ID for PocketFM DRM License resolution
-          let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
-          if (!targetShowId) {
-            const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || streamUrl.match(/value=([a-zA-Z0-9]+)\//);
-            if (match) targetShowId = match[1];
-          }
+          const isDrmEncrypted = streamUrl.includes('drm-aac') || (audioUrl && audioUrl.includes('drm-aac'));
 
-          if (targetShowId) {
-            try {
-              const licRes = await fetch('/api/license', {
-                headers: {
-                  'show_id': targetShowId
-                }
-              });
-              if (licRes.ok) {
-                const licData = await licRes.json();
-                if (licData.success && licData.license_url) {
-                  shakaPlayer.configure({
-                    drm: {
-                      servers: {
-                        'com.widevine.alpha': licData.license_url
-                      },
-                      advanced: {
-                        'com.widevine.alpha': {
-                          videoRobustness: '',
-                          audioRobustness: ''
+          if (isDrmEncrypted) {
+            // Auto-detect show ID for PocketFM DRM License resolution ONLY for media_url_enc
+            let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
+            if (!targetShowId) {
+              const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || streamUrl.match(/value=([a-zA-Z0-9]+)\//);
+              if (match) targetShowId = match[1];
+            }
+
+            if (targetShowId) {
+              try {
+                const licRes = await fetch('/api/license', {
+                  headers: {
+                    'show_id': targetShowId
+                  }
+                });
+                if (licRes.ok) {
+                  const licData = await licRes.json();
+                  if (licData.success && licData.license_url) {
+                    shakaPlayer.configure({
+                      drm: {
+                        servers: {
+                          'com.widevine.alpha': licData.license_url
+                        },
+                        advanced: {
+                          'com.widevine.alpha': {
+                            videoRobustness: '',
+                            audioRobustness: ''
+                          }
                         }
                       }
-                    }
-                  });
+                    });
+                  }
                 }
+              } catch (licErr) {
+                console.warn("DRM license fetch warning:", licErr);
               }
-            } catch (licErr) {
-              console.warn("DRM license fetch warning:", licErr);
             }
+          } else {
+            // Clear DRM servers for regular non-DRM streams
+            shakaPlayer.configure({
+              drm: {
+                servers: {},
+                advanced: {}
+              }
+            });
           }
 
           await shakaPlayer.load(streamUrl);
