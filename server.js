@@ -52,8 +52,7 @@ app.use(express.static(__dirname));
 
 async function fetchDailyCookiesFromWebsite() {
   const targetUrls = [
-    'https://pocketfm.com/',
-    'https://www.pocketfm.com/'
+    'https://pocketfm.com/'
   ];
 
   const webHeaders = {
@@ -116,9 +115,9 @@ async function fetchDailyCookiesFromWebsite() {
         cachedCookies = cookieList.join('; ');
       }
 
-      const jwtMatch = bodyContent.match(/eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}/);
-      if (jwtMatch && jwtMatch[0]) {
-        cachedToken = jwtMatch[0];
+      const jwtMatch = bodyContent.match(/eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}/) || bodyContent.match(/auth-token=([^;"'\s]+)/);
+      if (jwtMatch && (jwtMatch[1] || jwtMatch[0])) {
+        cachedToken = jwtMatch[1] || jwtMatch[0];
       }
 
       for (const cookieItem of cookieList) {
@@ -169,10 +168,6 @@ app.use(async (req, res, next) => {
 function buildPocketHeaders(req) {
   let token = req.headers['authorization'] || req.headers['auth'] || req.headers['x-auth-token'] || cachedToken || process.env.DEFAULT_BEARER_TOKEN || '';
 
-  if (token && !token.toLowerCase().startsWith('bearer ')) {
-    token = `Bearer ${token.trim()}`;
-  }
-
   const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
 
   const headers = {
@@ -185,10 +180,16 @@ function buildPocketHeaders(req) {
     'platform-version': '29',
     'app-version': '2013',
     'language': language,
-    'authorization': token,
     'accept-encoding': 'gzip',
     'User-Agent': 'com.radio.pocketfm'
   };
+
+  if (token && token.trim() && token.trim().toLowerCase() !== 'bearer') {
+    if (!token.toLowerCase().startsWith('bearer ')) {
+      token = `Bearer ${token.trim()}`;
+    }
+    headers['authorization'] = token;
+  }
 
   if (cachedCookies) {
     headers['Cookie'] = cachedCookies;
@@ -198,6 +199,30 @@ function buildPocketHeaders(req) {
 }
 
 async function fetchViaWorkerProxy(targetUrl, headers, method = 'GET', body = null) {
+  // Try direct axios first
+  try {
+    const axiosConfig = {
+      method: method.toUpperCase(),
+      url: targetUrl,
+      headers: headers,
+      timeout: 10000,
+      validateStatus: () => true,
+      maxRedirects: 5
+    };
+    if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase()) && body) {
+      axiosConfig.data = body;
+    }
+    const directRes = await axios(axiosConfig);
+    if (directRes.status >= 200 && directRes.status < 400 && directRes.data) {
+      let d = directRes.data;
+      if (typeof d === 'string') {
+        try { d = JSON.parse(d); } catch (e) { }
+      }
+      return { statusCode: directRes.status, data: d };
+    }
+  } catch (directErr) { }
+
+  // Fallback via Worker Proxy
   const proxyPayload = {
     url: targetUrl,
     method: method.toUpperCase(),
@@ -242,14 +267,6 @@ async function fetchViaWorkerProxy(targetUrl, headers, method = 'GET', body = nu
 async function forwardToPocketFM(targetUrl, req, res) {
   try {
     const headers = buildPocketHeaders(req);
-
-    if (!headers.authorization || headers.authorization === 'Bearer ') {
-      return res.status(401).json({
-        success: false,
-        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers."
-      });
-    }
-
     const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, req.method, req.body);
 
     if (typeof data === 'object' && data !== null) {
@@ -305,16 +322,6 @@ app.get(['/refresh-cookies', '/api/refresh-cookies'], async (req, res) => {
 app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
-
-    if (!headers.authorization || headers.authorization === 'Bearer ') {
-      return res.status(401).json({
-        success: false,
-        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers.",
-        cookies: cachedCookies || "No cookies found",
-        token: cachedToken || ""
-      });
-    }
-
     const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
     const apiType = req.headers['api_type'] || req.headers['api-type'] || req.query.api_type || 'explore_v2';
 
@@ -398,14 +405,6 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
 app.get(['/search', '/api/search'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
-
-    if (!headers.authorization || headers.authorization === 'Bearer ') {
-      return res.status(401).json({
-        success: false,
-        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers."
-      });
-    }
-
     const query = req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
     const genre = req.headers['genre'] || req.query.genre || '';
     const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
@@ -467,14 +466,6 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
     }
 
     const headers = buildPocketHeaders(req);
-
-    if (!headers.authorization || headers.authorization === 'Bearer ') {
-      return res.status(401).json({
-        success: false,
-        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers."
-      });
-    }
-
     const startPtr = parseInt(req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
     const pageSource = req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
     const batchSize = Math.min(Math.max(parseInt(req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
