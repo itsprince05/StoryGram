@@ -1210,9 +1210,12 @@
       left: 0;
       right: 0;
       height: 4px;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.12);
       cursor: pointer;
-      position: relative;
+      overflow: hidden;
+      border-top-left-radius: var(--radius-lg);
+      border-top-right-radius: var(--radius-lg);
+      z-index: 10;
     }
 
     .player-buffer-bar {
@@ -1220,20 +1223,22 @@
       top: 0;
       left: 0;
       height: 100%;
-      background: rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.45);
       width: 0%;
       pointer-events: none;
       transition: width 0.25s ease;
-      z-index: 0;
+      z-index: 1;
     }
 
     .player-progress-bar {
-      position: relative;
+      position: absolute;
+      top: 0;
+      left: 0;
       height: 100%;
       background: var(--primary-gradient);
       width: 0%;
       transition: width 0.1s linear;
-      z-index: 1;
+      z-index: 2;
     }
 
     .player-content {
@@ -1607,7 +1612,7 @@
     .fs-progress-track {
       width: 100%;
       height: 8px;
-      background: rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.12);
       border-radius: var(--radius-full);
       position: relative;
       cursor: pointer;
@@ -1620,28 +1625,30 @@
       top: 0;
       left: 0;
       height: 100%;
-      background: rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.45);
       border-radius: var(--radius-full);
       width: 0%;
       pointer-events: none;
-      transition: width 0.3s ease;
-      z-index: 0;
+      transition: width 0.25s ease;
+      z-index: 1;
     }
 
     .fs-progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
       height: 100%;
       background: linear-gradient(90deg, #ff3366 0%, #ff527b 100%);
       border-radius: var(--radius-full);
       width: 0%;
-      position: relative;
       pointer-events: none;
       box-shadow: 0 0 10px rgba(255, 51, 102, 0.7);
-      z-index: 1;
+      z-index: 2;
     }
 
     .fs-progress-handle {
       position: absolute;
-      right: -8px;
+      right: -9px;
       top: 50%;
       transform: translateY(-50%);
       width: 18px;
@@ -1651,6 +1658,7 @@
       border: 3px solid #ff3366;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 12px #ff3366;
       transition: transform 0.15s ease;
+      z-index: 3;
     }
 
     .fs-progress-track:hover .fs-progress-handle,
