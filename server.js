@@ -9,6 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = 'https://api.pocketfm.com';
 const WORKER_PROXY_URL = 'https://curl-proxy.bruceliu-dev.workers.dev/';
+const STREAM_WORKER_URL = process.env.STREAM_WORKER_URL || 'https://stream.render-stream.workers.dev';
 
 function decryptPocketFmBlob(clientTs, deviceId, cipherBase64) {
   const rawData = `${deviceId}:${clientTs}`;
@@ -527,10 +528,10 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               const targetShowId = storyObj.show_id || (baseShow && baseShow.show_id) || showId || "";
               const targetStoryId = storyObj.story_id || "";
               if (targetShowId && targetStoryId) {
-                const cloudfrontMpd = `https://d13yevwzck7i9p.cloudfront.net/drm-aac/${targetShowId}/${targetStoryId}/h264.mpd`;
-                storyObj.audio_url = cloudfrontMpd;
-                storyObj.media_url_enc = cloudfrontMpd;
-                storyObj.stream_url = cloudfrontMpd;
+                const streamMpd = `${STREAM_WORKER_URL.replace(/\/+$/, '')}/drm-aac/${targetShowId}/${targetStoryId}/h264.mpd`;
+                storyObj.audio_url = streamMpd;
+                storyObj.media_url_enc = streamMpd;
+                storyObj.stream_url = streamMpd;
               } else {
                 storyObj.media_url_enc = realMediaUrlEnc;
                 storyObj.audio_url = realMediaUrlEnc;
