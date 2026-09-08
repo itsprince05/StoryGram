@@ -51,110 +51,117 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 async function fetchDailyCookiesFromWebsite() {
-  const targetUrl = 'https://www.pocketfm.com/';
-  const webHeaders = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8'
-  };
-
   try {
-    let rawSetCookie = null;
-    let bodyContent = '';
+    const targetUrl = 'https://www.pocketfm.com/';
+    const webHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8'
+    };
 
-    try {
-      const directRes = await axios.get(targetUrl, {
-        headers: webHeaders,
-        timeout: 10000,
-        validateStatus: () => true,
-        maxRedirects: 5
-      });
-      rawSetCookie = directRes.headers['set-cookie'] || directRes.headers['Set-Cookie'];
-      bodyContent = typeof directRes.data === 'string' ? directRes.data : JSON.stringify(directRes.data || '');
-    } catch (e) { }
+    for (const targetUrl of targetUrls) {
+      try {
+        let rawSetCookie = null;
+        let bodyContent = '';
 
-    if (!rawSetCookie || (Array.isArray(rawSetCookie) && rawSetCookie.length === 0) || !bodyContent) {
-      const proxyPayload = {
-        url: targetUrl,
-        method: 'GET',
-        headers: webHeaders
-      };
+        try {
+          const directRes = await axios.get(targetUrl, {
+            headers: webHeaders,
+            timeout: 10000,
+            validateStatus: () => true,
+            maxRedirects: 5
+          });
+          rawSetCookie = directRes.headers['set-cookie'] || directRes.headers['Set-Cookie'];
+          bodyContent = typeof directRes.data === 'string' ? directRes.data : JSON.stringify(directRes.data || '');
+        } catch (e) { }
 
-      const workerResponse = await axios.post(WORKER_PROXY_URL, proxyPayload, {
-        headers: {
-          'Accept': '*/*',
-          'Content-Type': 'application/json',
-          'Origin': 'https://curlonline.com',
-          'Referer': 'https://curlonline.com/',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36'
-        },
-        timeout: 30000,
-        validateStatus: () => true
-      });
+        if (!rawSetCookie || (Array.isArray(rawSetCookie) && rawSetCookie.length === 0) || !bodyContent) {
+          const proxyPayload = {
+            url: targetUrl,
+            method: 'GET',
+            headers: webHeaders
+          };
 
-      const resHeaders = workerResponse.data?.headers || workerResponse.headers || {};
-      rawSetCookie = resHeaders['set-cookie'] || resHeaders['Set-Cookie'] || resHeaders['set_cookie'] || '';
-      bodyContent = workerResponse.data?.body !== undefined ? workerResponse.data.body : workerResponse.data;
-      if (typeof bodyContent !== 'string') {
-        bodyContent = JSON.stringify(bodyContent || {});
-      }
-    }
+          const workerResponse = await axios.post(WORKER_PROXY_URL, proxyPayload, {
+            headers: {
+              'Accept': '*/*',
+              'Content-Type': 'application/json',
+              'Origin': 'https://curlonline.com',
+              'Referer': 'https://curlonline.com/',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36'
+            },
+            timeout: 30000,
+            validateStatus: () => true
+          });
 
-    let cookieList = [];
-    if (Array.isArray(rawSetCookie)) {
-      cookieList = rawSetCookie.map(c => c.split(';')[0].trim());
-    } else if (typeof rawSetCookie === 'string' && rawSetCookie) {
-      cookieList = rawSetCookie.split(/,(?=[^;]+=[^;]+)/).map(c => c.split(';')[0].trim());
-    }
-
-    if (cookieList.length > 0) {
-      cachedCookies = cookieList.join('; ');
-    }
-
-    const jwtMatch = bodyContent.match(/eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}/);
-    if (jwtMatch && jwtMatch[0]) {
-      cachedToken = jwtMatch[0];
-    }
-
-    for (const cookieItem of cookieList) {
-      const parts = cookieItem.split('=');
-      if (parts.length >= 2) {
-        const key = parts[0].trim().toLowerCase();
-        const val = parts.slice(1).join('=').trim();
-        if (key === 'auth-token' || key === 'auth_token' || key === 'token' || (val.startsWith('eyJ') && val.includes('.'))) {
-          cachedToken = val;
+          const resHeaders = workerResponse.data?.headers || workerResponse.headers || {};
+          rawSetCookie = resHeaders['set-cookie'] || resHeaders['Set-Cookie'] || resHeaders['set_cookie'] || '';
+          bodyContent = workerResponse.data?.body !== undefined ? workerResponse.data.body : workerResponse.data;
+          if (typeof bodyContent !== 'string') {
+            bodyContent = JSON.stringify(bodyContent || {});
+          }
         }
+
+        let cookieList = [];
+        if (Array.isArray(rawSetCookie)) {
+          cookieList = rawSetCookie.map(c => c.split(';')[0].trim());
+        } else if (typeof rawSetCookie === 'string' && rawSetCookie) {
+          cookieList = rawSetCookie.split(/,(?=[^;]+=[^;]+)/).map(c => c.split(';')[0].trim());
+        }
+
+        if (cookieList.length > 0) {
+          cachedCookies = cookieList.join('; ');
+        }
+
+        const jwtMatch = bodyContent.match(/eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}/);
+        if (jwtMatch && jwtMatch[0]) {
+          cachedToken = jwtMatch[0];
+        }
+
+        for (const cookieItem of cookieList) {
+          const parts = cookieItem.split('=');
+          if (parts.length >= 2) {
+            const key = parts[0].trim().toLowerCase();
+            const val = parts.slice(1).join('=').trim();
+            if (key === 'auth-token' || key === 'auth_token' || key === 'token' || (val.startsWith('eyJ') && val.includes('.'))) {
+              cachedToken = val;
+            }
+          }
+        }
+
+        if (cachedToken) {
+          break;
+        }
+      } catch (err) {
+        console.error(`Error fetching daily cookies from ${targetUrl}:`, err.message);
       }
     }
-  } catch (err) {
-    console.error(`Error fetching daily cookies from ${targetUrl}:`, err.message);
   }
-}
 
 async function ensureDailySession(force = false) {
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
-  if (force || lastFetchDate !== today || !cachedToken) {
-    if (!isRefreshing) {
-      isRefreshing = true;
-      try {
-        await fetchDailyCookiesFromWebsite();
-        if (cachedToken) {
-          lastFetchDate = today;
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    if (force || lastFetchDate !== today || !cachedToken) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          await fetchDailyCookiesFromWebsite();
+          if (cachedToken) {
+            lastFetchDate = today;
+          }
+        } finally {
+          isRefreshing = false;
         }
-      } finally {
-        isRefreshing = false;
       }
     }
   }
-}
 
-app.use(async (req, res, next) => {
-  if (req.path === '/health' || req.path === '/ping') {
-    return next();
-  }
-  await ensureDailySession();
-  next();
-});
+  app.use(async (req, res, next) => {
+    if (req.path === '/health' || req.path === '/ping') {
+      return next();
+    }
+    await ensureDailySession();
+    next();
+  });
 
   function buildPocketHeaders(req) {
     let token = req.headers['authorization'] || req.headers['auth'] || req.headers['x-auth-token'] || cachedToken || process.env.DEFAULT_BEARER_TOKEN || '';
