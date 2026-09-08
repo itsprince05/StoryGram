@@ -7,9 +7,7 @@
   <title>Story Gram - Audio Series & Shows</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,500;1,700&family=Inter:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,500;1,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
@@ -39,9 +37,7 @@
       --nav-height: 64px;
     }
 
-    *,
-    *::before,
-    *::after {
+    *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
@@ -71,23 +67,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
     }
 
-    body,
-    button,
-    input,
-    select,
-    textarea,
-    optgroup,
-    span,
-    p,
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6,
-    div,
-    a,
-    text {
+    body, button, input, select, textarea, optgroup, span, p, h1, h2, h3, h4, h5, h6, div, a, text {
       font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
     }
 
@@ -567,7 +547,6 @@
       font-size: 12px;
       font-weight: 800;
       padding: 6px 14px;
-      margin-bottom: 5px;
       border-radius: var(--radius-full);
       width: fit-content;
       box-shadow: 0 4px 12px rgba(255, 255, 255, 0.35);
@@ -581,11 +560,11 @@
 
     .hero-dots {
       position: absolute;
-      bottom: 10px;
+      bottom: 8px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
-      gap: 5px;
+      gap: 6px;
       z-index: 10;
     }
 
@@ -2283,9 +2262,7 @@
       <!-- TAB 3: SEARCH -->
       <div id="tab-search" class="tab-content">
         <form class="search-box" id="search-form" onsubmit="handleSearchSubmit(event)" action="javascript:void(0);">
-          <input type="search" id="search-input" class="search-input" placeholder="Search shows, characters, stories..."
-            enterkeyhint="search" inputmode="search" autocomplete="off" autocorrect="off" autocapitalize="off"
-            spellcheck="false">
+          <input type="search" id="search-input" class="search-input" placeholder="Search shows, characters, stories..." enterkeyhint="search" inputmode="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
           <button type="submit" class="search-btn-icon-btn" aria-label="Search">
             <i data-lucide="search" class="search-btn-icon"></i>
           </button>
@@ -2322,9 +2299,7 @@
             </div>
             <div class="account-user-info">
               <div class="account-user-name">Story Gram Listener</div>
-              <div class="account-user-status">
-                <div class="status-dot"></div> VIP Member (Unlimited Streaming)
-              </div>
+              <div class="account-user-status"><div class="status-dot"></div> VIP Member (Unlimited Streaming)</div>
             </div>
           </div>
 
@@ -2339,8 +2314,7 @@
                   <span>Content Language</span>
                 </div>
                 <div class="account-row-right">
-                  <span id="account-current-lang"
-                    style="color: var(--text-main); font-weight: 700; text-transform: capitalize;">Hindi</span>
+                  <span id="account-current-lang" style="color: var(--text-main); font-weight: 700; text-transform: capitalize;">Hindi</span>
                   <i data-lucide="chevron-right"></i>
                 </div>
               </div>
@@ -2366,8 +2340,7 @@
                   <i data-lucide="activity" style="color: #38bdf8;"></i>
                   <span>API Connection</span>
                 </div>
-                <span class="status-badge"
-                  style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border-color: rgba(34, 197, 94, 0.3);">
+                <span class="status-badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border-color: rgba(34, 197, 94, 0.3);">
                   <div class="status-dot"></div> Online
                 </span>
               </div>
@@ -2444,8 +2417,7 @@
         <div class="fs-body">
           <div class="fs-poster-wrap">
             <img id="fs-poster-img" class="fs-poster-img" src="" alt="Show Poster">
-            <video id="fs-video-element" class="fs-video-player" playsinline webkit-playsinline preload="auto"
-              disablePictureInPicture></video>
+            <video id="fs-video-element" class="fs-video-player" playsinline webkit-playsinline preload="auto" disablePictureInPicture></video>
           </div>
 
           <div class="fs-info-wrap">
@@ -2467,13 +2439,10 @@
 
           <div class="fs-controls-row">
             <button class="fs-skip-btn" onclick="skipAudio(-15)" title="Rewind 15 seconds">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" />
-                <text x="12" y="15.2" font-size="7.5"
-                  font-family="-apple-system, BlinkMacSystemFont, 'Roboto', 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
-                  font-weight="800" text-anchor="middle" fill="currentColor" stroke="none">15</text>
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+                <text x="12" y="15.2" font-size="7.5" font-family="-apple-system, BlinkMacSystemFont, 'Roboto', 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="800" text-anchor="middle" fill="currentColor" stroke="none">15</text>
               </svg>
             </button>
             <button class="fs-nav-ctrl-btn" onclick="playPrevEpisode()" title="Previous Episode">
@@ -2486,13 +2455,10 @@
               <i data-lucide="skip-forward"></i>
             </button>
             <button class="fs-skip-btn" onclick="skipAudio(15)" title="Forward 15 seconds">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.74 2.74L21 8" />
-                <path d="M21 3v5h-5" />
-                <text x="12" y="15.2" font-size="7.5"
-                  font-family="-apple-system, BlinkMacSystemFont, 'Roboto', 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
-                  font-weight="800" text-anchor="middle" fill="currentColor" stroke="none">15</text>
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.74 2.74L21 8"/>
+                <path d="M21 3v5h-5"/>
+                <text x="12" y="15.2" font-size="7.5" font-family="-apple-system, BlinkMacSystemFont, 'Roboto', 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="800" text-anchor="middle" fill="currentColor" stroke="none">15</text>
               </svg>
             </button>
           </div>
@@ -2597,12 +2563,12 @@
     let playHistory = [];
     try {
       playHistory = JSON.parse(localStorage.getItem('storygram_history') || '[]');
-    } catch (e) { playHistory = []; }
+    } catch(e) { playHistory = []; }
 
     let favoriteShowsMap = {};
     try {
       favoriteShowsMap = JSON.parse(localStorage.getItem('storygram_favorites') || '{}');
-    } catch (e) { favoriteShowsMap = {}; }
+    } catch(e) { favoriteShowsMap = {}; }
 
     const audioElement = document.getElementById('audio-element');
     const videoElement = document.getElementById('fs-video-element');
@@ -2623,8 +2589,12 @@
             shakaPlayer = new shaka.Player(audioElement);
             shakaPlayer.configure({
               abr: {
-                enabled: true,
-                defaultBandwidthEstimate: 1000000
+                enabled: false,
+                defaultBandwidthEstimate: 128000,
+                restrictions: {
+                  minBandwidth: 120000,
+                  maxBandwidth: 135000
+                }
               },
               streaming: {
                 rebufferingGoal: 2,
@@ -3258,12 +3228,11 @@
         epDiv.id = `ep-item-${story.story_id}`;
 
         const hasVideo = Boolean(story.video_url);
-        const isDrm = Boolean(story.media_url_enc && !story.video_url && !story.audio_url);
         const durationText = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
         const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
         const audioUrl = story.audio_url || story.media_url_enc || story.media_url || "";
         const videoUrl = story.video_url || "";
-        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo, isDrm);
+        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo);
 
         const iconHtml = (isCurrent && isAudioBuffering)
           ? '<span class="btn-spinner"></span>'
@@ -3445,12 +3414,12 @@
           </div>
           <div class="episodes-list">
             ${playHistory.map(item => {
-          const isCurrent = currentPlayingStory && currentPlayingStory.storyId === item.storyId;
-          const isThisPlaying = isCurrent && isPlaying;
-          const hasVid = Boolean(item.hasVideo && item.videoUrl);
-          const audioUrl = item.audioUrl || item.mediaUrl || "";
-          const videoUrl = item.videoUrl || "";
-          return `
+              const isCurrent = currentPlayingStory && currentPlayingStory.storyId === item.storyId;
+              const isThisPlaying = isCurrent && isPlaying;
+              const hasVid = Boolean(item.hasVideo && item.videoUrl);
+              const audioUrl = item.audioUrl || item.mediaUrl || "";
+              const videoUrl = item.videoUrl || "";
+              return `
                 <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border);">
                   <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(audioUrl)}', '${escapeAttr(videoUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid})">
                     <div class="ep-play-btn" data-has-video="${hasVid ? 'true' : 'false'}">
@@ -3463,7 +3432,7 @@
                   </div>
                 </div>
               `;
-        }).join('')}
+            }).join('')}
           </div>
         `;
         refreshIcons();
@@ -3487,11 +3456,11 @@
           </div>
           <div class="grid-container">
             ${favKeys.map(key => {
-          const show = favoriteShowsMap[key];
-          const showTitle = show.title || "Show";
-          const showImg = show.image_url || "";
-          const rating = show.rating || null;
-          return `
+              const show = favoriteShowsMap[key];
+              const showTitle = show.title || "Show";
+              const showImg = show.image_url || "";
+              const rating = show.rating || null;
+              return `
                 <div class="grid-card" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(showTitle)}', '${escapeAttr(showImg)}')">
                   <div class="grid-poster-wrap">
                     <img class="grid-poster" src="${escapeAttr(showImg || 'https://via.placeholder.com/130')}" alt="${escapeAttr(showTitle)}" loading="lazy">
@@ -3503,7 +3472,7 @@
                   <div class="grid-title">${escapeHtml(showTitle)}</div>
                 </div>
               `;
-        }).join('')}
+            }).join('')}
           </div>
         `;
         refreshIcons();
@@ -3576,279 +3545,26 @@
       }
     }
 
-    async function unloadAudioStream() {
-      if (shakaPlayer) {
-        try {
-          await shakaPlayer.unload();
-        } catch (e) { }
-      }
-      if (audioElement) {
-        audioElement.pause();
-        audioElement.removeAttribute('src');
-        audioElement.load();
-      }
-    }
-
-    async function unloadVideoStream() {
-      if (hlsVideoPlayer) {
-        try {
-          hlsVideoPlayer.stopLoad();
-          hlsVideoPlayer.detachMedia();
-          hlsVideoPlayer.destroy();
-        } catch (e) { }
-        hlsVideoPlayer = null;
-      }
-      if (videoElement) {
-        videoElement.pause();
-        videoElement.removeAttribute('src');
-        videoElement.load();
-      }
-      currentLoadedVideoUrl = '';
-    }
-
-    async function loadVideoStream(videoUrl, startTime = 0, autoPlay = true) {
-      if (!videoUrl) return;
-
-      // 1. Unload audio stream completely so no audio is buffered/downloaded in background
-      await unloadAudioStream();
-
-      // 2. Unload previous video stream
-      await unloadVideoStream();
+    async function loadVideoStream(videoUrl) {
+      if (!videoUrl || currentLoadedVideoUrl === videoUrl) return;
       currentLoadedVideoUrl = videoUrl;
 
-      isAudioBuffering = true;
-      updatePlayPauseButton();
+      if (hlsVideoPlayer) {
+        hlsVideoPlayer.destroy();
+        hlsVideoPlayer = null;
+      }
 
       if (window.Hls && Hls.isSupported() && (videoUrl.includes('.m3u8') || videoUrl.includes('hls') || videoUrl.includes('HLS') || videoUrl.includes('Default'))) {
         hlsVideoPlayer = new Hls({
           enableWorker: true,
-          lowLatencyMode: true,
-          startPosition: startTime > 0 ? startTime : -1
+          lowLatencyMode: true
         });
-
-        hlsVideoPlayer.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-          if (data && data.levels && data.levels.length > 0) {
-            let targetIdx = -1;
-            targetIdx = data.levels.findIndex(lvl => lvl.height === 480 || lvl.width === 480);
-            if (targetIdx === -1) {
-              targetIdx = data.levels.findIndex(lvl => lvl.url && (lvl.url.includes('480') || lvl.url.includes('low')));
-            }
-            if (targetIdx === -1 && data.levels.length > 1) {
-              const sorted = data.levels.map((lvl, idx) => ({ lvl, idx })).sort((a, b) => a.lvl.bandwidth - b.lvl.bandwidth);
-              targetIdx = sorted[Math.floor(sorted.length / 2)].idx;
-            }
-            if (targetIdx !== -1) {
-              hlsVideoPlayer.currentLevel = targetIdx;
-              hlsVideoPlayer.autoLevelEnabled = false;
-            }
-          }
-
-          if (startTime > 0) {
-            videoElement.currentTime = startTime;
-          }
-          videoElement.playbackRate = currentPlaybackSpeed;
-          if (autoPlay) {
-            videoElement.play().then(() => {
-              isAudioBuffering = false;
-              isPlaying = true;
-              updatePlayPauseButton();
-            }).catch(err => {
-              console.warn("Video play error:", err);
-              isAudioBuffering = false;
-              isPlaying = false;
-              updatePlayPauseButton();
-            });
-          } else {
-            isAudioBuffering = false;
-            isPlaying = false;
-            updatePlayPauseButton();
-          }
-        });
-
-        hlsVideoPlayer.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            console.error("Hls fatal error:", data);
-            isAudioBuffering = false;
-            isPlaying = false;
-            updatePlayPauseButton();
-          }
-        });
-
         hlsVideoPlayer.loadSource(videoUrl);
         hlsVideoPlayer.attachMedia(videoElement);
+      } else if (videoElement && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+        videoElement.src = videoUrl;
       } else if (videoElement) {
         videoElement.src = videoUrl;
-        if (startTime > 0) videoElement.currentTime = startTime;
-        videoElement.playbackRate = currentPlaybackSpeed;
-        if (autoPlay) {
-          videoElement.play().then(() => {
-            isAudioBuffering = false;
-            isPlaying = true;
-            updatePlayPauseButton();
-          }).catch(err => {
-            console.warn("Video play fallback error:", err);
-            isAudioBuffering = false;
-            isPlaying = false;
-            updatePlayPauseButton();
-          });
-        } else {
-          isAudioBuffering = false;
-          isPlaying = false;
-          updatePlayPauseButton();
-        }
-      }
-    }
-
-    async function loadAudioStream(streamUrl, targetShowId = '', startTime = 0, autoPlay = true) {
-      if (!streamUrl) return;
-
-      // 1. Unload video stream completely so no video is buffered/downloaded in background
-      await unloadVideoStream();
-
-      // 2. Unload previous audio stream
-      await unloadAudioStream();
-
-      let finalStreamUrl = streamUrl;
-      if (finalStreamUrl.includes('d13yevwzck7i9p.cloudfront.net')) {
-        finalStreamUrl = finalStreamUrl.replace('https://d13yevwzck7i9p.cloudfront.net', 'https://stream.render-stream.workers.dev');
-      }
-
-      isAudioBuffering = true;
-      updatePlayPauseButton();
-
-      // Only DRM-encrypted streams (media_url_enc) require Widevine DRM license!
-      // audio_url (e.g. vp9_output.mpd from ddqs490ahjgsl.cloudfront.net) or video_url do NOT need DRM license!
-      const requiresDrm = Boolean(
-        (currentPlayingStory && currentPlayingStory.isDrm) ||
-        finalStreamUrl.includes('drm-aac') ||
-        finalStreamUrl.includes('media.pocketfm.in') ||
-        (finalStreamUrl.includes('workers.dev') && !finalStreamUrl.includes('vp9_output') && !finalStreamUrl.includes('ddqs490ahjgsl'))
-      ) && !finalStreamUrl.includes('ddqs490ahjgsl.cloudfront.net');
-
-      if (shakaPlayer && (finalStreamUrl.includes('.mpd') || finalStreamUrl.includes('manifest') || finalStreamUrl.includes('dash') || finalStreamUrl.includes('drm-aac') || finalStreamUrl.includes('workers.dev'))) {
-        try {
-          if (requiresDrm) {
-            if (!targetShowId) {
-              const match = finalStreamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || finalStreamUrl.match(/value=([a-zA-Z0-9]+)\//);
-              if (match) targetShowId = match[1];
-            }
-
-            if (targetShowId) {
-              try {
-                const licRes = await fetch('/api/license', {
-                  headers: {
-                    'show_id': targetShowId
-                  }
-                });
-                if (licRes.ok) {
-                  const licData = await licRes.json();
-                  if (licData.success && licData.license_url) {
-                    shakaPlayer.configure({
-                      drm: {
-                        servers: {
-                          'com.widevine.alpha': licData.license_url
-                        },
-                        advanced: {
-                          'com.widevine.alpha': {
-                            videoRobustness: '',
-                            audioRobustness: ''
-                          }
-                        }
-                      }
-                    });
-                  }
-                }
-              } catch (licErr) {
-                console.warn("DRM license fetch warning:", licErr);
-              }
-            }
-          } else {
-            // For clear audio_url / non-DRM DASH streams: DO NOT request license!
-            shakaPlayer.configure({
-              drm: {
-                servers: {},
-                clearKeys: {},
-                advanced: {}
-              }
-            });
-          }
-
-          await shakaPlayer.load(finalStreamUrl, startTime > 0 ? startTime : 0);
-
-          // Force 128kbps audio quality when multiple representations exist (media_url_enc)
-          const variantTracks = shakaPlayer.getVariantTracks();
-          if (variantTracks && variantTracks.length > 1) {
-            const track128 = variantTracks.find(t => t.bandwidth === 128000 || (t.bandwidth >= 120000 && t.bandwidth <= 135000));
-            if (track128) {
-              shakaPlayer.configure({ abr: { enabled: false } });
-              shakaPlayer.selectVariantTrack(track128, /* clearBuffer= */ false);
-            } else {
-              const sorted = variantTracks.slice().sort((a, b) => Math.abs(a.bandwidth - 128000) - Math.abs(b.bandwidth - 128000));
-              shakaPlayer.configure({ abr: { enabled: false } });
-              shakaPlayer.selectVariantTrack(sorted[0], /* clearBuffer= */ false);
-            }
-          }
-
-          if (startTime > 0 && Math.abs(audioElement.currentTime - startTime) > 0.5) {
-            audioElement.currentTime = startTime;
-          }
-          audioElement.playbackRate = currentPlaybackSpeed;
-          if (autoPlay) {
-            await audioElement.play();
-            isAudioBuffering = false;
-            isPlaying = true;
-          } else {
-            isAudioBuffering = false;
-            isPlaying = false;
-          }
-          updatePlayPauseButton();
-        } catch (err) {
-          console.error("Shaka player error:", err);
-          try {
-            audioElement.src = finalStreamUrl;
-            if (startTime > 0) audioElement.currentTime = startTime;
-            audioElement.playbackRate = currentPlaybackSpeed;
-            if (autoPlay) {
-              await audioElement.play();
-              isAudioBuffering = false;
-              isPlaying = true;
-            } else {
-              isAudioBuffering = false;
-              isPlaying = false;
-            }
-            updatePlayPauseButton();
-          } catch (audioErr) {
-            console.error("Audio playback error:", audioErr);
-            isAudioBuffering = false;
-            isPlaying = false;
-            updatePlayPauseButton();
-          }
-        }
-      } else {
-        if (shakaPlayer) {
-          try {
-            await shakaPlayer.unload();
-          } catch (e) { }
-        }
-        audioElement.src = finalStreamUrl;
-        if (startTime > 0) audioElement.currentTime = startTime;
-        audioElement.playbackRate = currentPlaybackSpeed;
-        if (autoPlay) {
-          audioElement.play().then(() => {
-            isAudioBuffering = false;
-            isPlaying = true;
-            updatePlayPauseButton();
-          }).catch(err => {
-            console.log("Audio autoplay fallback:", err);
-            isAudioBuffering = false;
-            isPlaying = false;
-            updatePlayPauseButton();
-          });
-        } else {
-          isAudioBuffering = false;
-          isPlaying = false;
-          updatePlayPauseButton();
-        }
       }
     }
 
@@ -3858,9 +3574,10 @@
       if (targetMode === 'video' && !currentPlayingStory.videoUrl) return;
 
       const oldElem = getActiveMediaElement();
-      const currentTime = (oldElem && typeof oldElem.currentTime === 'number' && !isNaN(oldElem.currentTime)) ? oldElem.currentTime : 0;
-      const wasPlaying = Boolean(isPlaying || (oldElem && !oldElem.paused));
+      const currentTime = (oldElem && oldElem.currentTime) ? oldElem.currentTime : 0;
+      const wasPlaying = Boolean(oldElem && !oldElem.paused);
 
+      if (oldElem) oldElem.pause();
       currentMediaMode = targetMode;
 
       const posterImg = document.getElementById('fs-poster-img');
@@ -3874,17 +3591,46 @@
         if (posterImg) posterImg.style.display = 'none';
         if (videoElement) videoElement.style.display = 'block';
 
-        await loadVideoStream(currentPlayingStory.videoUrl, currentTime, wasPlaying);
+        await loadVideoStream(currentPlayingStory.videoUrl);
+        if (videoElement) {
+          videoElement.currentTime = currentTime;
+          videoElement.playbackRate = currentPlaybackSpeed;
+          if (wasPlaying) {
+            isAudioBuffering = true;
+            updatePlayPauseButton();
+            try {
+              await videoElement.play();
+              isAudioBuffering = false;
+              isPlaying = true;
+            } catch(e) {
+              isAudioBuffering = false;
+              isPlaying = false;
+            }
+          }
+        }
       } else {
         if (posterImg) posterImg.style.display = 'block';
-        if (videoElement) videoElement.style.display = 'none';
+        if (videoElement) {
+          videoElement.style.display = 'none';
+          videoElement.pause();
+        }
 
-        const audioStream = currentPlayingStory.audioUrl || currentPlayingStory.mediaUrl || "";
-        const showId = currentPlayingStory.showId || currentShowId || "";
-        await loadAudioStream(audioStream, showId, currentTime, wasPlaying);
+        audioElement.currentTime = currentTime;
+        audioElement.playbackRate = currentPlaybackSpeed;
+        if (wasPlaying) {
+          isAudioBuffering = true;
+          updatePlayPauseButton();
+          try {
+            await audioElement.play();
+            isAudioBuffering = false;
+            isPlaying = true;
+          } catch(e) {
+            isAudioBuffering = false;
+            isPlaying = false;
+          }
+        }
       }
 
-      updateFullscreenPlayerUI();
       updatePlayPauseButton();
       updateProgress();
       refreshIcons();
@@ -3964,8 +3710,7 @@
         const audioUrl = prevStory.audio_url || prevStory.media_url_enc || prevStory.media_url || "";
         const videoUrl = prevStory.video_url || "";
         const hasVid = Boolean(videoUrl);
-        const isDrm = Boolean(prevStory.media_url_enc && !prevStory.video_url && !prevStory.audio_url);
-        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid, isDrm);
+        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
       }
     }
 
@@ -3979,41 +3724,45 @@
         const audioUrl = nextStory.audio_url || nextStory.media_url_enc || nextStory.media_url || "";
         const videoUrl = nextStory.video_url || "";
         const hasVid = Boolean(videoUrl);
-        const isDrm = Boolean(nextStory.media_url_enc && !nextStory.video_url && !nextStory.audio_url);
-        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid, isDrm);
+        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
       }
     }
 
-    function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, isDrm = false) {
+    function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
       if (currentPlayingStory && currentPlayingStory.storyId === storyId) {
         openFullscreenPlayer();
       } else {
-        playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, isDrm);
+        playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo);
       }
     }
 
-    async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, isDrm = false) {
+    async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
       const isVid = Boolean(hasVideo || videoUrl);
-      const realIsDrm = Boolean(isDrm || (!videoUrl && audioUrl && (audioUrl.includes('drm-aac') || audioUrl.includes('media.pocketfm.in') || (audioUrl.includes('workers.dev') && !audioUrl.includes('vp9_output') && !audioUrl.includes('ddqs490ahjgsl')))));
       currentPlayingStory = {
         storyId,
         title,
         audioUrl: audioUrl || "",
         videoUrl: videoUrl || "",
         mediaUrl: audioUrl || "",
-        isDrm: realIsDrm,
         showTitle,
         thumbUrl,
-        hasVideo: isVid,
-        showId: currentShowId
+        hasVideo: isVid
       };
 
       currentMediaMode = 'audio';
       currentLoadedVideoUrl = '';
 
+      if (videoElement) {
+        videoElement.pause();
+        videoElement.removeAttribute('src');
+        videoElement.style.display = 'none';
+      }
+      if (hlsVideoPlayer) {
+        hlsVideoPlayer.destroy();
+        hlsVideoPlayer = null;
+      }
       const posterImg = document.getElementById('fs-poster-img');
       if (posterImg) posterImg.style.display = 'block';
-      if (videoElement) videoElement.style.display = 'none';
 
       isAudioBuffering = true;
       updatePlayPauseButton();
@@ -4050,10 +3799,112 @@
       updateFullscreenPlayerUI();
       openFullscreenPlayer();
 
-      const streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-      const targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
+      let streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+      if (streamUrl.includes('d13yevwzck7i9p.cloudfront.net')) {
+        streamUrl = streamUrl.replace('https://d13yevwzck7i9p.cloudfront.net', 'https://stream.render-stream.workers.dev');
+      }
 
-      await loadAudioStream(streamUrl, targetShowId, 0, true);
+      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash') || streamUrl.includes('drm-aac') || streamUrl.includes('workers.dev'))) {
+        try {
+          await shakaPlayer.unload();
+
+          // Auto-detect show ID for PocketFM DRM License resolution
+          let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
+          if (!targetShowId) {
+            const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || streamUrl.match(/value=([a-zA-Z0-9]+)\//);
+            if (match) targetShowId = match[1];
+          }
+
+          if (targetShowId) {
+            try {
+              const licRes = await fetch('/api/license', {
+                headers: {
+                  'show_id': targetShowId
+                }
+              });
+              if (licRes.ok) {
+                const licData = await licRes.json();
+                if (licData.success && licData.license_url) {
+                  shakaPlayer.configure({
+                    drm: {
+                      servers: {
+                        'com.widevine.alpha': licData.license_url
+                      },
+                      advanced: {
+                        'com.widevine.alpha': {
+                          videoRobustness: '',
+                          audioRobustness: ''
+                        }
+                      }
+                    }
+                  });
+                }
+              }
+            } catch (licErr) {
+              console.warn("DRM license fetch warning:", licErr);
+            }
+          }
+
+          await shakaPlayer.load(streamUrl);
+
+          // Force 128k quality track selection (protected_audio_mpd_128k.mp4)
+          const variantTracks = shakaPlayer.getVariantTracks();
+          if (variantTracks && variantTracks.length > 0) {
+            const track128 = variantTracks.find(t => t.bandwidth === 128000 || (t.bandwidth >= 120000 && t.bandwidth <= 135000));
+            if (track128) {
+              shakaPlayer.configure({ abr: { enabled: false } });
+              shakaPlayer.selectVariantTrack(track128, /* clearBuffer= */ false);
+            } else {
+              const sorted = variantTracks.slice().sort((a, b) => Math.abs(a.bandwidth - 128000) - Math.abs(b.bandwidth - 128000));
+              shakaPlayer.configure({ abr: { enabled: false } });
+              shakaPlayer.selectVariantTrack(sorted[0], /* clearBuffer= */ false);
+            }
+          }
+
+          audioElement.playbackRate = currentPlaybackSpeed;
+          await audioElement.play();
+          isAudioBuffering = false;
+          isPlaying = true;
+          updatePlayPauseButton();
+          showToast("Playing");
+        } catch (err) {
+          console.error("Shaka player error:", err);
+          try {
+            audioElement.src = streamUrl;
+            audioElement.playbackRate = currentPlaybackSpeed;
+            await audioElement.play();
+            isAudioBuffering = false;
+            isPlaying = true;
+            updatePlayPauseButton();
+            showToast("Playing");
+          } catch (audioErr) {
+            console.error("Audio playback error:", audioErr);
+            isAudioBuffering = false;
+            isPlaying = false;
+            updatePlayPauseButton();
+            showToast("Playback error: " + (err.message || "DRM Error"), true);
+          }
+        }
+      } else {
+        if (shakaPlayer) {
+          try {
+            await shakaPlayer.unload();
+          } catch (e) { }
+        }
+        audioElement.src = streamUrl;
+        audioElement.playbackRate = currentPlaybackSpeed;
+        audioElement.play().then(() => {
+          isAudioBuffering = false;
+          isPlaying = true;
+          updatePlayPauseButton();
+          showToast("Playing");
+        }).catch(err => {
+          console.log("Audio autoplay fallback:", err);
+          isAudioBuffering = false;
+          isPlaying = false;
+          updatePlayPauseButton();
+        });
+      }
     }
 
     function openCurrentPlayingShow() {
@@ -4131,9 +3982,26 @@
     }
 
     async function closePlayerBar() {
-      await unloadAudioStream();
-      await unloadVideoStream();
+      if (shakaPlayer) {
+        try {
+          await shakaPlayer.unload();
+        } catch (e) { }
+      }
+      if (hlsVideoPlayer) {
+        hlsVideoPlayer.destroy();
+        hlsVideoPlayer = null;
+      }
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      audioElement.removeAttribute('src');
+      audioElement.load();
 
+      if (videoElement) {
+        videoElement.pause();
+        videoElement.currentTime = 0;
+        videoElement.removeAttribute('src');
+        videoElement.style.display = 'none';
+      }
       const posterImg = document.getElementById('fs-poster-img');
       if (posterImg) posterImg.style.display = 'block';
 
