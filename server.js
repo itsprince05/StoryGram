@@ -496,7 +496,7 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               const targetShowId = storyObj.show_id || (baseShow && baseShow.show_id) || showId || "";
               const targetStoryId = storyObj.story_id || "";
               if (targetShowId && targetStoryId) {
-                storyObj.media_url_enc = `https://stream.render-stream.workers.dev?value=${targetShowId}/${targetStoryId}`;
+                storyObj.media_url_enc = `https://stream.render-stream.workers.dev/drm-aac/${targetShowId}/${targetStoryId}/h264.mpd`;
               } else {
                 storyObj.media_url_enc = realMediaUrlEnc;
               }
