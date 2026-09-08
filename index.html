@@ -3827,7 +3827,11 @@
 
           if (targetShowId) {
             try {
-              const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}`);
+              const licRes = await fetch('/api/license', {
+                headers: {
+                  'show_id': targetShowId
+                }
+              });
               if (licRes.ok) {
                 const licData = await licRes.json();
                 if (licData.success && licData.license_url) {
