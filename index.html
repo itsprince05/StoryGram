@@ -2669,6 +2669,10 @@
   <audio id="audio-element" preload="auto"></audio>
 
   <script>
+    const API_BASE = (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port !== '3000' && window.location.port !== ''))
+      ? 'https://api-wupu.onrender.com'
+      : '';
+
     let currentLanguage = 'hindi';
     let currentShowId = null;
     let currentShowObj = null;
@@ -3115,7 +3119,7 @@
       }
 
       try {
-        const response = await fetch('/home', {
+        const response = await fetch(`${API_BASE}/home`, {
           headers: {
             'language': currentLanguage
           }
@@ -3123,18 +3127,33 @@
         if (response.ok) {
           const data = await response.json();
           if (data && data.result && data.result.length > 0) {
+            homeFeedRetryCount = 0;
             renderFeedModules(data.result);
             return;
           }
         }
         throw new Error("Empty or invalid API response");
       } catch (err) {
-        container.innerHTML = `
-          <div class="loader">
-            <div class="spinner"></div>
-          </div>
-        `;
-        homeFeedRetryTimer = setTimeout(() => fetchHomeFeed(true), 3000);
+        console.error("Home feed fetch error:", err);
+        homeFeedRetryCount++;
+        if (homeFeedRetryCount > 2) {
+          container.innerHTML = `
+            <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
+              <i data-lucide="alert-circle" style="width: 36px; height: 36px; margin-bottom: 12px; color: var(--accent);"></i>
+              <p style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 6px;">Unable to load audio series</p>
+              <p style="font-size: 12px; margin-bottom: 16px;">Please check connection or try again</p>
+              <button class="range-btn-item active" onclick="homeFeedRetryCount = 0; fetchHomeFeed();" style="margin: 0 auto; padding: 8px 24px; border-radius: var(--radius-full);">Try Again</button>
+            </div>
+          `;
+          refreshIcons();
+        } else {
+          container.innerHTML = `
+            <div class="loader">
+              <div class="spinner"></div>
+            </div>
+          `;
+          homeFeedRetryTimer = setTimeout(() => fetchHomeFeed(true), 2500);
+        }
       }
     }
 
@@ -3400,7 +3419,7 @@
         currentTopPtr = currPtr;
       }
       try {
-        const response = await fetch('/show', {
+        const response = await fetch(`${API_BASE}/show`, {
           headers: {
             'show_id': showId,
             'curr_ptr': String(currPtr),
@@ -4037,7 +4056,7 @@
 
             if (targetShowId) {
               try {
-                const licRes = await fetch('/api/license', {
+                const licRes = await fetch(`${API_BASE}/api/license`, {
                   headers: {
                     'show_id': targetShowId
                   }
@@ -4353,7 +4372,7 @@
       container.innerHTML = `<div class="loader" style="min-height: 40vh;"><div class="spinner"></div></div>`;
 
       try {
-        const res = await fetch('/search', {
+        const res = await fetch(`${API_BASE}/search`, {
           headers: {
             'query': query,
             'language': currentLanguage
