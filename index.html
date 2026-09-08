@@ -1212,13 +1212,28 @@
       height: 4px;
       background: rgba(255, 255, 255, 0.1);
       cursor: pointer;
+      position: relative;
+    }
+
+    .player-buffer-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.28);
+      width: 0%;
+      pointer-events: none;
+      transition: width 0.25s ease;
+      z-index: 0;
     }
 
     .player-progress-bar {
+      position: relative;
       height: 100%;
       background: var(--primary-gradient);
       width: 0%;
       transition: width 0.1s linear;
+      z-index: 1;
     }
 
     .player-content {
@@ -2488,6 +2503,7 @@
     <!-- FLOATING BOTTOM AUDIO PLAYER -->
     <div id="player-bar" class="player-bar hidden" onclick="openFullscreenPlayer()">
       <div class="player-progress-wrap" onclick="seekAudio(event); event.stopPropagation();">
+        <div id="player-buffer-bar" class="player-buffer-bar"></div>
         <div id="player-progress-bar" class="player-progress-bar"></div>
       </div>
       <div class="player-content">
@@ -2776,6 +2792,18 @@
     [audioElement, videoElement].forEach(el => {
       if (!el) return;
       el.addEventListener('timeupdate', () => {
+        if (getActiveMediaElement() === el) updateProgress();
+      });
+
+      el.addEventListener('progress', () => {
+        if (getActiveMediaElement() === el) updateProgress();
+      });
+
+      el.addEventListener('loadedmetadata', () => {
+        if (getActiveMediaElement() === el) updateProgress();
+      });
+
+      el.addEventListener('durationchange', () => {
         if (getActiveMediaElement() === el) updateProgress();
       });
 
@@ -4301,8 +4329,12 @@
 
       const progressBar = document.getElementById('player-progress-bar');
       if (progressBar) progressBar.style.width = '0%';
+      const miniBufferBar = document.getElementById('player-buffer-bar');
+      if (miniBufferBar) miniBufferBar.style.width = '0%';
       const fsProgressBar = document.getElementById('fs-progress-bar');
       if (fsProgressBar) fsProgressBar.style.width = '0%';
+      const fsBufferBar = document.getElementById('fs-buffer-bar');
+      if (fsBufferBar) fsBufferBar.style.width = '0%';
 
       updatePlayPauseButton();
     }
@@ -4328,8 +4360,10 @@
 
     function updateProgress() {
       const active = getActiveMediaElement();
-      if (active && active.duration) {
-        const percent = (active.currentTime / active.duration) * 100;
+      if (!active) return;
+      const duration = active.duration;
+      if (duration && isFinite(duration) && duration > 0) {
+        const percent = Math.min(100, Math.max(0, (active.currentTime / duration) * 100));
         const miniBar = document.getElementById('player-progress-bar');
         if (miniBar) miniBar.style.width = percent + '%';
 
@@ -4340,16 +4374,63 @@
         if (curTime) curTime.innerText = formatTime(active.currentTime);
 
         const durTime = document.getElementById('fs-duration-time');
-        if (durTime) durTime.innerText = formatTime(active.duration);
+        if (durTime) durTime.innerText = formatTime(duration);
 
-        const bufferBar = document.getElementById('fs-buffer-bar');
-        if (bufferBar && active.buffered && active.buffered.length > 0) {
-          const bufferedEnd = active.buffered.end(active.buffered.length - 1);
-          const bufferPercent = (bufferedEnd / active.duration) * 100;
-          bufferBar.style.width = Math.min(bufferPercent, 100) + '%';
+        let bufferedEnd = 0;
+        const curTimeVal = active.currentTime || 0;
+
+        // 1. Calculate from active HTMLMediaElement buffered TimeRanges (Audio or Video)
+        if (active.buffered && active.buffered.length > 0) {
+          for (let i = 0; i < active.buffered.length; i++) {
+            const start = active.buffered.start(i);
+            const end = active.buffered.end(i);
+            if (curTimeVal >= start - 1.5 && curTimeVal <= end + 1.5) {
+              bufferedEnd = Math.max(bufferedEnd, end);
+            } else if (end > curTimeVal && (bufferedEnd === 0 || end > bufferedEnd)) {
+              bufferedEnd = end;
+            }
+          }
+          if (bufferedEnd === 0) {
+            bufferedEnd = active.buffered.end(active.buffered.length - 1);
+          }
+        }
+
+        // 2. If in audio mode and using Shaka Player, also check shakaPlayer.getBufferedInfo()
+        if (currentMediaMode === 'audio' && shakaPlayer) {
+          try {
+            const bufInfo = shakaPlayer.getBufferedInfo();
+            if (bufInfo) {
+              const ranges = (bufInfo.audio && bufInfo.audio.length > 0) ? bufInfo.audio : (bufInfo.total || []);
+              for (const r of ranges) {
+                if (curTimeVal >= r.start - 1.5 && curTimeVal <= r.end + 1.5) {
+                  bufferedEnd = Math.max(bufferedEnd, r.end);
+                } else if (r.end > curTimeVal && (bufferedEnd === 0 || r.end > bufferedEnd)) {
+                  bufferedEnd = r.end;
+                }
+              }
+            }
+          } catch (e) { }
+        }
+
+        const bufferPercent = Math.min(100, Math.max(0, (bufferedEnd / duration) * 100));
+
+        const fsBufferBar = document.getElementById('fs-buffer-bar');
+        if (fsBufferBar) {
+          fsBufferBar.style.width = bufferPercent + '%';
+        }
+
+        const miniBufferBar = document.getElementById('player-buffer-bar');
+        if (miniBufferBar) {
+          miniBufferBar.style.width = bufferPercent + '%';
         }
       }
     }
+
+    setInterval(() => {
+      if (isPlaying) {
+        updateProgress();
+      }
+    }, 400);
 
     let searchTimeout = null;
 
