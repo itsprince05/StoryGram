@@ -1600,6 +1600,19 @@
       overflow: visible;
     }
 
+    .fs-buffer-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.22);
+      border-radius: var(--radius-full);
+      width: 0%;
+      pointer-events: none;
+      transition: width 0.3s ease;
+      z-index: 0;
+    }
+
     .fs-progress-bar {
       height: 100%;
       background: linear-gradient(90deg, #ff3366 0%, #ff527b 100%);
@@ -1608,6 +1621,7 @@
       position: relative;
       pointer-events: none;
       box-shadow: 0 0 10px rgba(255, 51, 102, 0.7);
+      z-index: 1;
     }
 
     .fs-progress-handle {
@@ -2536,6 +2550,7 @@
 
           <div class="fs-progress-block">
             <div class="fs-progress-track" onclick="seekAudioFs(event)">
+              <div id="fs-buffer-bar" class="fs-buffer-bar"></div>
               <div id="fs-progress-bar" class="fs-progress-bar">
                 <div class="fs-progress-handle"></div>
               </div>
@@ -4282,6 +4297,13 @@
 
         const durTime = document.getElementById('fs-duration-time');
         if (durTime) durTime.innerText = formatTime(active.duration);
+
+        const bufferBar = document.getElementById('fs-buffer-bar');
+        if (bufferBar && active.buffered && active.buffered.length > 0) {
+          const bufferedEnd = active.buffered.end(active.buffered.length - 1);
+          const bufferPercent = (bufferedEnd / active.duration) * 100;
+          bufferBar.style.width = Math.min(bufferPercent, 100) + '%';
+        }
       }
     }
 
