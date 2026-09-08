@@ -1504,7 +1504,7 @@
     .fs-poster-wrap {
       width: 100%;
       max-width: 100%;
-      aspect-ratio: 16 / 9;
+      aspect-ratio: 1 / 1;
       border-radius: var(--radius-lg);
       overflow: hidden;
       box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 51, 102, 0.18);
@@ -2071,28 +2071,7 @@
     }
 
     .toast {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%) translateY(-100px);
-      background: rgba(15, 23, 42, 0.96);
-      border: 1px solid var(--border);
-      color: #fff;
-      padding: 10px 20px;
-      border-radius: var(--radius-full);
-      font-size: 12px;
-      font-weight: 700;
-      z-index: 300;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      backdrop-filter: blur(12px);
-    }
-
-    .toast.show {
-      transform: translateX(-50%) translateY(0);
+      display: none !important;
     }
 
     /* LUCIDE ICONS STYLING */
@@ -2609,6 +2588,10 @@
           if (shaka.Player.isBrowserSupported()) {
             shakaPlayer = new shaka.Player(audioElement);
             shakaPlayer.configure({
+              abr: {
+                enabled: true,
+                defaultBandwidthEstimate: 1000000
+              },
               streaming: {
                 rebufferingGoal: 2,
                 bufferingGoal: 10,
@@ -2733,14 +2716,7 @@
     }
 
     function showToast(msg, isError = false) {
-      const toast = document.getElementById('toast');
-      const text = document.getElementById('toast-message');
-      text.innerText = msg;
-      toast.classList.add('show');
-      refreshIcons();
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
+      // Toast disabled completely
     }
 
     function switchTab(tabName, updateNav = true) {
@@ -3750,7 +3726,7 @@
 
     function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
       if (currentPlayingStory && currentPlayingStory.storyId === storyId) {
-        togglePlayPause();
+        openFullscreenPlayer();
       } else {
         playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo);
       }
@@ -3817,6 +3793,7 @@
       document.getElementById('app-frame')?.classList.add('has-player');
 
       updateFullscreenPlayerUI();
+      openFullscreenPlayer();
 
       let streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
       if (streamUrl.includes('d13yevwzck7i9p.cloudfront.net')) {
