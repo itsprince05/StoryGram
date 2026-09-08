@@ -2,7 +2,6 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
-const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
@@ -41,7 +40,7 @@ async function fetchDailyCookiesFromWebsite() {
       });
       rawSetCookie = directRes.headers['set-cookie'] || directRes.headers['Set-Cookie'];
       bodyContent = typeof directRes.data === 'string' ? directRes.data : JSON.stringify(directRes.data || '');
-    } catch (e) { }
+    } catch (e) {}
 
     if (!rawSetCookie || (Array.isArray(rawSetCookie) && rawSetCookie.length === 0)) {
       const proxyPayload = {
@@ -191,7 +190,7 @@ async function fetchViaWorkerProxy(targetUrl, headers, method = 'GET', body = nu
   if (typeof bodyData === 'string') {
     try {
       bodyData = JSON.parse(bodyData);
-    } catch (err) { }
+    } catch (err) {}
   }
 
   return { statusCode, data: bodyData };
@@ -475,30 +474,25 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               }
             }
 
-            const actualShowId = story.show_id || (baseShow && baseShow.show_id) || showId;
             const androidVideoUrl = (videoInfoObj && videoInfoObj.android && videoInfoObj.android.video_url) || (story.android && story.android.video_url) || "";
             const webVideoUrl = (videoInfoObj && videoInfoObj.web && videoInfoObj.web.video_url) || (story.web && story.web.video_url) || "";
-            const realMediaUrlEnc = story.media_url_enc || story.media_url || story.media_enc || story.media || "";
-            const videoDashUrl = (story.video_url && story.video_url.includes('.mpd') ? story.video_url : "") || androidVideoUrl || "";
+            const realMediaUrlEnc = story.media_url_enc || story.media_url || "";
+            const videoDashUrl = story.video_url || androidVideoUrl || realMediaUrlEnc || "";
 
             const storyObj = {
               story_title: story.story_title || story.title || "",
-              show_id: actualShowId,
+              show_id: story.show_id || (baseShow && baseShow.show_id) || showId,
               image_url: story.image_url || story.cover_url || (baseShow && baseShow.image_url) || "",
               duration: typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0'),
               story_id: story.story_id || ""
             };
 
             const finalVideoUrl = webVideoUrl || (story.video_url && !story.video_url.includes('.mpd') && story.video_url.includes('.m3u8') ? story.video_url : "");
-            const finalAudioUrl = story.audio_url || (finalVideoUrl ? videoDashUrl : "");
 
-            if (finalAudioUrl) {
-              storyObj.audio_url = finalAudioUrl;
-            }
             if (finalVideoUrl) {
+              storyObj.audio_url = videoDashUrl;
               storyObj.video_url = finalVideoUrl;
-            }
-            if (realMediaUrlEnc) {
+            } else {
               storyObj.media_url_enc = realMediaUrlEnc;
             }
 
@@ -540,106 +534,6 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
     return res.status(500).json({
       success: false,
       message: 'Failed to process show details batch',
-      error: error.message
-    });
-  }
-});
-
-function decryptPfmBlob(clientTs, deviceId, cipherBase64) {
-  const rawData = Buffer.from(`${deviceId}:${clientTs}`, 'utf8');
-  let encodedStr = rawData.toString('base64');
-  let chars = encodedStr.split('');
-  for (let i = 0; i < chars.length - 1; i += 2) {
-    let temp = chars[i];
-    chars[i] = chars[i + 1];
-    chars[i + 1] = temp;
-  }
-  const keyStr = chars.join('');
-  const cipherBuffer = Buffer.from(cipherBase64, 'base64');
-  if (cipherBuffer.length < 28) {
-    throw new Error('Invalid DRM cipher length');
-  }
-  const salt = cipherBuffer.subarray(0, 16);
-  const iv = cipherBuffer.subarray(16, 28);
-  const strData = cipherBuffer.subarray(28, cipherBuffer.length - 16);
-  const tag = cipherBuffer.subarray(cipherBuffer.length - 16);
-
-  const key = crypto.pbkdf2Sync(keyStr, salt, 10000, 32, 'sha256');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  let decrypted = decipher.update(strData, null, 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
-}
-
-app.get(['/license', '/api/license', '/api/get_license'], async (req, res) => {
-  try {
-    const showId = req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.headers['entity_id'] || req.query.show_id;
-
-    if (!showId) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing 'show_id'. Pass it in headers or query params."
-      });
-    }
-
-    if (!cachedToken) {
-      await fetchDailyCookiesFromWebsite();
-    }
-
-    const pfmHeaders = {
-      'user-agent': 'com.radio.pocketfm',
-      'platform': 'android',
-      'version-name': '9.1.3',
-      'platform-version': '29',
-      'app-version': '2013',
-      'device-id': 'mobile-web',
-      'device_id': 'mobile-web',
-      'client-ts': '1770000000',
-      'content-type': 'application/json;charset=utf-8'
-    };
-
-    if (cachedToken) {
-      pfmHeaders['authorization'] = `Bearer ${cachedToken}`;
-      pfmHeaders['auth-token'] = cachedToken;
-    }
-
-    const targetUrl = `${BASE_URL}/v2/content_api/show.play_details?show_id=${encodeURIComponent(showId)}`;
-    const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, pfmHeaders, 'GET');
-
-    if (data && data.blob) {
-      try {
-        const decryptedUrl = decryptPfmBlob(1770000000, 'mobile-web', data.blob);
-        let finalLicenseUrl = decryptedUrl.trim();
-        if (finalLicenseUrl.startsWith('{')) {
-          try {
-            const j = JSON.parse(finalLicenseUrl);
-            finalLicenseUrl = j.license_url || j.licenseUrl || j.url || finalLicenseUrl;
-          } catch (e) { }
-        }
-
-        return res.status(200).json({
-          success: true,
-          show_id: showId,
-          license_url: finalLicenseUrl
-        });
-      } catch (decErr) {
-        return res.status(500).json({
-          success: false,
-          error: "Failed to decrypt DRM license blob: " + decErr.message
-        });
-      }
-    } else {
-      return res.status(statusCode || 400).json({
-        success: false,
-        error: "No DRM blob found in Pocket FM play details response",
-        details: data
-      });
-    }
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to resolve DRM license',
       error: error.message
     });
   }
