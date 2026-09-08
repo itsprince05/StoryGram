@@ -3575,19 +3575,54 @@
       }
     }
 
-    async function loadVideoStream(videoUrl) {
-      if (!videoUrl || currentLoadedVideoUrl === videoUrl) return;
-      currentLoadedVideoUrl = videoUrl;
+    async function unloadAudioStream() {
+      if (shakaPlayer) {
+        try {
+          await shakaPlayer.unload();
+        } catch (e) { }
+      }
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.removeAttribute('src');
+        audioElement.load();
+      }
+    }
 
+    async function unloadVideoStream() {
       if (hlsVideoPlayer) {
-        hlsVideoPlayer.destroy();
+        try {
+          hlsVideoPlayer.stopLoad();
+          hlsVideoPlayer.detachMedia();
+          hlsVideoPlayer.destroy();
+        } catch (e) { }
         hlsVideoPlayer = null;
       }
+      if (videoElement) {
+        videoElement.pause();
+        videoElement.removeAttribute('src');
+        videoElement.load();
+      }
+      currentLoadedVideoUrl = '';
+    }
+
+    async function loadVideoStream(videoUrl, startTime = 0, autoPlay = true) {
+      if (!videoUrl) return;
+
+      // 1. Unload audio stream completely so no audio is buffered/downloaded in background
+      await unloadAudioStream();
+
+      // 2. Unload previous video stream
+      await unloadVideoStream();
+      currentLoadedVideoUrl = videoUrl;
+
+      isAudioBuffering = true;
+      updatePlayPauseButton();
 
       if (window.Hls && Hls.isSupported() && (videoUrl.includes('.m3u8') || videoUrl.includes('hls') || videoUrl.includes('HLS') || videoUrl.includes('Default'))) {
         hlsVideoPlayer = new Hls({
           enableWorker: true,
-          lowLatencyMode: true
+          lowLatencyMode: true,
+          startPosition: startTime > 0 ? startTime : -1
         });
 
         hlsVideoPlayer.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
@@ -3606,14 +3641,188 @@
               hlsVideoPlayer.autoLevelEnabled = false;
             }
           }
+
+          if (startTime > 0) {
+            videoElement.currentTime = startTime;
+          }
+          videoElement.playbackRate = currentPlaybackSpeed;
+          if (autoPlay) {
+            videoElement.play().then(() => {
+              isAudioBuffering = false;
+              isPlaying = true;
+              updatePlayPauseButton();
+            }).catch(err => {
+              console.warn("Video play error:", err);
+              isAudioBuffering = false;
+              isPlaying = false;
+              updatePlayPauseButton();
+            });
+          } else {
+            isAudioBuffering = false;
+            isPlaying = false;
+            updatePlayPauseButton();
+          }
+        });
+
+        hlsVideoPlayer.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            console.error("Hls fatal error:", data);
+            isAudioBuffering = false;
+            isPlaying = false;
+            updatePlayPauseButton();
+          }
         });
 
         hlsVideoPlayer.loadSource(videoUrl);
         hlsVideoPlayer.attachMedia(videoElement);
-      } else if (videoElement && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-        videoElement.src = videoUrl;
       } else if (videoElement) {
         videoElement.src = videoUrl;
+        if (startTime > 0) videoElement.currentTime = startTime;
+        videoElement.playbackRate = currentPlaybackSpeed;
+        if (autoPlay) {
+          videoElement.play().then(() => {
+            isAudioBuffering = false;
+            isPlaying = true;
+            updatePlayPauseButton();
+          }).catch(err => {
+            console.warn("Video play fallback error:", err);
+            isAudioBuffering = false;
+            isPlaying = false;
+            updatePlayPauseButton();
+          });
+        } else {
+          isAudioBuffering = false;
+          isPlaying = false;
+          updatePlayPauseButton();
+        }
+      }
+    }
+
+    async function loadAudioStream(streamUrl, targetShowId = '', startTime = 0, autoPlay = true) {
+      if (!streamUrl) return;
+
+      // 1. Unload video stream completely so no video is buffered/downloaded in background
+      await unloadVideoStream();
+
+      // 2. Unload previous audio stream
+      await unloadAudioStream();
+
+      let finalStreamUrl = streamUrl;
+      if (finalStreamUrl.includes('d13yevwzck7i9p.cloudfront.net')) {
+        finalStreamUrl = finalStreamUrl.replace('https://d13yevwzck7i9p.cloudfront.net', 'https://stream.render-stream.workers.dev');
+      }
+
+      isAudioBuffering = true;
+      updatePlayPauseButton();
+
+      if (shakaPlayer && (finalStreamUrl.includes('.mpd') || finalStreamUrl.includes('manifest') || finalStreamUrl.includes('dash') || finalStreamUrl.includes('drm-aac') || finalStreamUrl.includes('workers.dev'))) {
+        try {
+          if (!targetShowId) {
+            const match = finalStreamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || finalStreamUrl.match(/value=([a-zA-Z0-9]+)\//);
+            if (match) targetShowId = match[1];
+          }
+
+          if (targetShowId) {
+            try {
+              const licRes = await fetch('/api/license', {
+                headers: {
+                  'show_id': targetShowId
+                }
+              });
+              if (licRes.ok) {
+                const licData = await licRes.json();
+                if (licData.success && licData.license_url) {
+                  shakaPlayer.configure({
+                    drm: {
+                      servers: {
+                        'com.widevine.alpha': licData.license_url
+                      },
+                      advanced: {
+                        'com.widevine.alpha': {
+                          videoRobustness: '',
+                          audioRobustness: ''
+                        }
+                      }
+                    }
+                  });
+                }
+              }
+            } catch (licErr) {
+              console.warn("DRM license fetch warning:", licErr);
+            }
+          }
+
+          await shakaPlayer.load(finalStreamUrl, startTime > 0 ? startTime : 0);
+
+          // Force 128kbps audio quality when multiple representations exist (media_url_enc)
+          const variantTracks = shakaPlayer.getVariantTracks();
+          if (variantTracks && variantTracks.length > 1) {
+            const track128 = variantTracks.find(t => t.bandwidth === 128000 || (t.bandwidth >= 120000 && t.bandwidth <= 135000));
+            if (track128) {
+              shakaPlayer.configure({ abr: { enabled: false } });
+              shakaPlayer.selectVariantTrack(track128, /* clearBuffer= */ false);
+            } else {
+              const sorted = variantTracks.slice().sort((a, b) => Math.abs(a.bandwidth - 128000) - Math.abs(b.bandwidth - 128000));
+              shakaPlayer.configure({ abr: { enabled: false } });
+              shakaPlayer.selectVariantTrack(sorted[0], /* clearBuffer= */ false);
+            }
+          }
+
+          if (startTime > 0 && Math.abs(audioElement.currentTime - startTime) > 0.5) {
+            audioElement.currentTime = startTime;
+          }
+          audioElement.playbackRate = currentPlaybackSpeed;
+          if (autoPlay) {
+            await audioElement.play();
+            isAudioBuffering = false;
+            isPlaying = true;
+          } else {
+            isAudioBuffering = false;
+            isPlaying = false;
+          }
+          updatePlayPauseButton();
+        } catch (err) {
+          console.error("Shaka player error:", err);
+          try {
+            audioElement.src = finalStreamUrl;
+            if (startTime > 0) audioElement.currentTime = startTime;
+            audioElement.playbackRate = currentPlaybackSpeed;
+            if (autoPlay) {
+              await audioElement.play();
+              isAudioBuffering = false;
+              isPlaying = true;
+            } else {
+              isAudioBuffering = false;
+              isPlaying = false;
+            }
+            updatePlayPauseButton();
+          } catch (audioErr) {
+            console.error("Audio playback error:", audioErr);
+            isAudioBuffering = false;
+            isPlaying = false;
+            updatePlayPauseButton();
+          }
+        }
+      } else {
+        audioElement.src = finalStreamUrl;
+        if (startTime > 0) audioElement.currentTime = startTime;
+        audioElement.playbackRate = currentPlaybackSpeed;
+        if (autoPlay) {
+          audioElement.play().then(() => {
+            isAudioBuffering = false;
+            isPlaying = true;
+            updatePlayPauseButton();
+          }).catch(err => {
+            console.log("Audio autoplay fallback:", err);
+            isAudioBuffering = false;
+            isPlaying = false;
+            updatePlayPauseButton();
+          });
+        } else {
+          isAudioBuffering = false;
+          isPlaying = false;
+          updatePlayPauseButton();
+        }
       }
     }
 
@@ -3623,10 +3832,9 @@
       if (targetMode === 'video' && !currentPlayingStory.videoUrl) return;
 
       const oldElem = getActiveMediaElement();
-      const currentTime = (oldElem && oldElem.currentTime) ? oldElem.currentTime : 0;
-      const wasPlaying = Boolean(oldElem && !oldElem.paused);
+      const currentTime = (oldElem && typeof oldElem.currentTime === 'number' && !isNaN(oldElem.currentTime)) ? oldElem.currentTime : 0;
+      const wasPlaying = Boolean(isPlaying || (oldElem && !oldElem.paused));
 
-      if (oldElem) oldElem.pause();
       currentMediaMode = targetMode;
 
       const posterImg = document.getElementById('fs-poster-img');
@@ -3640,46 +3848,17 @@
         if (posterImg) posterImg.style.display = 'none';
         if (videoElement) videoElement.style.display = 'block';
 
-        await loadVideoStream(currentPlayingStory.videoUrl);
-        if (videoElement) {
-          videoElement.currentTime = currentTime;
-          videoElement.playbackRate = currentPlaybackSpeed;
-          if (wasPlaying) {
-            isAudioBuffering = true;
-            updatePlayPauseButton();
-            try {
-              await videoElement.play();
-              isAudioBuffering = false;
-              isPlaying = true;
-            } catch (e) {
-              isAudioBuffering = false;
-              isPlaying = false;
-            }
-          }
-        }
+        await loadVideoStream(currentPlayingStory.videoUrl, currentTime, wasPlaying);
       } else {
         if (posterImg) posterImg.style.display = 'block';
-        if (videoElement) {
-          videoElement.style.display = 'none';
-          videoElement.pause();
-        }
+        if (videoElement) videoElement.style.display = 'none';
 
-        audioElement.currentTime = currentTime;
-        audioElement.playbackRate = currentPlaybackSpeed;
-        if (wasPlaying) {
-          isAudioBuffering = true;
-          updatePlayPauseButton();
-          try {
-            await audioElement.play();
-            isAudioBuffering = false;
-            isPlaying = true;
-          } catch (e) {
-            isAudioBuffering = false;
-            isPlaying = false;
-          }
-        }
+        const audioStream = currentPlayingStory.audioUrl || currentPlayingStory.mediaUrl || "";
+        const showId = currentPlayingStory.showId || currentShowId || "";
+        await loadAudioStream(audioStream, showId, currentTime, wasPlaying);
       }
 
+      updateFullscreenPlayerUI();
       updatePlayPauseButton();
       updateProgress();
       refreshIcons();
@@ -3795,23 +3974,16 @@
         mediaUrl: audioUrl || "",
         showTitle,
         thumbUrl,
-        hasVideo: isVid
+        hasVideo: isVid,
+        showId: currentShowId
       };
 
       currentMediaMode = 'audio';
       currentLoadedVideoUrl = '';
 
-      if (videoElement) {
-        videoElement.pause();
-        videoElement.removeAttribute('src');
-        videoElement.style.display = 'none';
-      }
-      if (hlsVideoPlayer) {
-        hlsVideoPlayer.destroy();
-        hlsVideoPlayer = null;
-      }
       const posterImg = document.getElementById('fs-poster-img');
       if (posterImg) posterImg.style.display = 'block';
+      if (videoElement) videoElement.style.display = 'none';
 
       isAudioBuffering = true;
       updatePlayPauseButton();
@@ -3848,111 +4020,10 @@
       updateFullscreenPlayerUI();
       openFullscreenPlayer();
 
-      let streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-      if (streamUrl.includes('d13yevwzck7i9p.cloudfront.net')) {
-        streamUrl = streamUrl.replace('https://d13yevwzck7i9p.cloudfront.net', 'https://stream.render-stream.workers.dev');
-      }
+      const streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+      const targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
 
-      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash') || streamUrl.includes('drm-aac') || streamUrl.includes('workers.dev'))) {
-        try {
-          await shakaPlayer.unload();
-
-          // Auto-detect show ID for PocketFM DRM License resolution
-          let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
-          if (!targetShowId) {
-            const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || streamUrl.match(/value=([a-zA-Z0-9]+)\//);
-            if (match) targetShowId = match[1];
-          }
-
-          if (targetShowId) {
-            try {
-              const licRes = await fetch('/api/license', {
-                headers: {
-                  'show_id': targetShowId
-                }
-              });
-              if (licRes.ok) {
-                const licData = await licRes.json();
-                if (licData.success && licData.license_url) {
-                  shakaPlayer.configure({
-                    drm: {
-                      servers: {
-                        'com.widevine.alpha': licData.license_url
-                      },
-                      advanced: {
-                        'com.widevine.alpha': {
-                          videoRobustness: '',
-                          audioRobustness: ''
-                        }
-                      }
-                    }
-                  });
-                }
-              }
-            } catch (licErr) {
-              console.warn("DRM license fetch warning:", licErr);
-            }
-          }
-
-          await shakaPlayer.load(streamUrl);
-
-          // Force 128kbps audio quality when multiple representations exist (media_url_enc)
-          const variantTracks = shakaPlayer.getVariantTracks();
-          if (variantTracks && variantTracks.length > 1) {
-            const track128 = variantTracks.find(t => t.bandwidth === 128000 || (t.bandwidth >= 120000 && t.bandwidth <= 135000));
-            if (track128) {
-              shakaPlayer.configure({ abr: { enabled: false } });
-              shakaPlayer.selectVariantTrack(track128, /* clearBuffer= */ false);
-            } else {
-              const sorted = variantTracks.slice().sort((a, b) => Math.abs(a.bandwidth - 128000) - Math.abs(b.bandwidth - 128000));
-              shakaPlayer.configure({ abr: { enabled: false } });
-              shakaPlayer.selectVariantTrack(sorted[0], /* clearBuffer= */ false);
-            }
-          }
-
-          audioElement.playbackRate = currentPlaybackSpeed;
-          await audioElement.play();
-          isAudioBuffering = false;
-          isPlaying = true;
-          updatePlayPauseButton();
-        } catch (err) {
-          console.error("Shaka player error:", err);
-          try {
-            audioElement.src = streamUrl;
-            audioElement.playbackRate = currentPlaybackSpeed;
-            await audioElement.play();
-            isAudioBuffering = false;
-            isPlaying = true;
-            updatePlayPauseButton();
-            showToast("Playing");
-          } catch (audioErr) {
-            console.error("Audio playback error:", audioErr);
-            isAudioBuffering = false;
-            isPlaying = false;
-            updatePlayPauseButton();
-            showToast("Playback error: " + (err.message || "DRM Error"), true);
-          }
-        }
-      } else {
-        if (shakaPlayer) {
-          try {
-            await shakaPlayer.unload();
-          } catch (e) { }
-        }
-        audioElement.src = streamUrl;
-        audioElement.playbackRate = currentPlaybackSpeed;
-        audioElement.play().then(() => {
-          isAudioBuffering = false;
-          isPlaying = true;
-          updatePlayPauseButton();
-          showToast("Playing");
-        }).catch(err => {
-          console.log("Audio autoplay fallback:", err);
-          isAudioBuffering = false;
-          isPlaying = false;
-          updatePlayPauseButton();
-        });
-      }
+      await loadAudioStream(streamUrl, targetShowId, 0, true);
     }
 
     function openCurrentPlayingShow() {
@@ -4030,26 +4101,9 @@
     }
 
     async function closePlayerBar() {
-      if (shakaPlayer) {
-        try {
-          await shakaPlayer.unload();
-        } catch (e) { }
-      }
-      if (hlsVideoPlayer) {
-        hlsVideoPlayer.destroy();
-        hlsVideoPlayer = null;
-      }
-      audioElement.pause();
-      audioElement.currentTime = 0;
-      audioElement.removeAttribute('src');
-      audioElement.load();
+      await unloadAudioStream();
+      await unloadVideoStream();
 
-      if (videoElement) {
-        videoElement.pause();
-        videoElement.currentTime = 0;
-        videoElement.removeAttribute('src');
-        videoElement.style.display = 'none';
-      }
       const posterImg = document.getElementById('fs-poster-img');
       if (posterImg) posterImg.style.display = 'block';
 
