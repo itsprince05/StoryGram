@@ -3555,6 +3555,25 @@
           enableWorker: true,
           lowLatencyMode: true
         });
+
+        hlsVideoPlayer.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+          if (data && data.levels && data.levels.length > 0) {
+            let targetIdx = -1;
+            targetIdx = data.levels.findIndex(lvl => lvl.height === 480 || lvl.width === 480);
+            if (targetIdx === -1) {
+              targetIdx = data.levels.findIndex(lvl => lvl.url && (lvl.url.includes('480') || lvl.url.includes('low')));
+            }
+            if (targetIdx === -1 && data.levels.length > 1) {
+              const sorted = data.levels.map((lvl, idx) => ({ lvl, idx })).sort((a, b) => a.lvl.bandwidth - b.lvl.bandwidth);
+              targetIdx = sorted[Math.floor(sorted.length / 2)].idx;
+            }
+            if (targetIdx !== -1) {
+              hlsVideoPlayer.currentLevel = targetIdx;
+              hlsVideoPlayer.autoLevelEnabled = false;
+            }
+          }
+        });
+
         hlsVideoPlayer.loadSource(videoUrl);
         hlsVideoPlayer.attachMedia(videoElement);
       } else if (videoElement && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
@@ -3842,12 +3861,26 @@
           }
 
           await shakaPlayer.load(streamUrl);
+
+          // Force 128kbps audio quality when multiple representations exist (media_url_enc)
+          const variantTracks = shakaPlayer.getVariantTracks();
+          if (variantTracks && variantTracks.length > 1) {
+            const track128 = variantTracks.find(t => t.bandwidth === 128000 || (t.bandwidth >= 120000 && t.bandwidth <= 135000));
+            if (track128) {
+              shakaPlayer.configure({ abr: { enabled: false } });
+              shakaPlayer.selectVariantTrack(track128, /* clearBuffer= */ false);
+            } else {
+              const sorted = variantTracks.slice().sort((a, b) => Math.abs(a.bandwidth - 128000) - Math.abs(b.bandwidth - 128000));
+              shakaPlayer.configure({ abr: { enabled: false } });
+              shakaPlayer.selectVariantTrack(sorted[0], /* clearBuffer= */ false);
+            }
+          }
+
           audioElement.playbackRate = currentPlaybackSpeed;
           await audioElement.play();
           isAudioBuffering = false;
           isPlaying = true;
           updatePlayPauseButton();
-          showToast("Playing");
         } catch (err) {
           console.error("Shaka player error:", err);
           try {
