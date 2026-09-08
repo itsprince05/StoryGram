@@ -523,9 +523,10 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
             if (finalVideoUrl) {
               storyObj.audio_url = videoDashUrl;
               storyObj.video_url = finalVideoUrl;
-            } else {
+            } else if (realMediaUrlEnc) {
               storyObj.media_url_enc = realMediaUrlEnc;
-              storyObj.audio_url = realMediaUrlEnc;
+            } else if (story.audio_url) {
+              storyObj.audio_url = story.audio_url;
             }
 
             allStories.push(storyObj);
@@ -573,9 +574,9 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
 
 app.get(['/api/license', '/api/get_license'], async (req, res) => {
   try {
-    const showId = req.query.show_id || req.headers['show_id'] || req.headers['show-id'];
+    const showId = req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.query.show_id;
     if (!showId) {
-      return res.status(400).json({ success: false, error: "Missing 'show_id' query param" });
+      return res.status(400).json({ success: false, error: "Missing 'show_id'. Please pass 'show_id' in headers." });
     }
 
     const headers = buildPocketHeaders(req);
