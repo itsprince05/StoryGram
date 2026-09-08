@@ -1751,7 +1751,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 10px;
+      padding: 12px 14px 10px;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -1765,45 +1765,133 @@
     }
 
     .fs-speed-label {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 700;
       color: var(--text-muted);
       display: flex;
       align-items: center;
       gap: 6px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.6px;
     }
 
-    .fs-speed-pills {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+    .fs-speed-badge {
+      background: rgba(255, 51, 102, 0.15);
+      border: 1px solid rgba(255, 51, 102, 0.35);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      letter-spacing: 0.3px;
+    }
+
+    .fs-speed-slider-wrap {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
       gap: 8px;
+      padding: 4px 0 2px;
     }
 
-    .speed-pill {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 8px 0;
-      border-radius: var(--radius-sm);
-      font-size: 14px;
-      font-weight: 700;
+    .fs-speed-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.16);
+      border-radius: var(--radius-full);
+      position: relative;
       cursor: pointer;
-      text-align: center;
-      transition: all 0.2s;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: visible;
+      touch-action: none;
     }
 
-    .speed-pill:hover {
-      color: var(--text-main);
-      border-color: rgba(255, 51, 102, 0.4);
+    .fs-speed-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #ff3366 0%, #ff527b 100%);
+      border-radius: var(--radius-full);
+      width: 20%;
+      position: relative;
+      pointer-events: none;
+      box-shadow: 0 0 10px rgba(255, 51, 102, 0.7);
+      transition: width 0.15s ease;
     }
 
-    .speed-pill.active {
-      background: var(--primary-gradient);
-      color: #fff;
-      border-color: transparent;
-      box-shadow: 0 2px 8px rgba(255, 51, 102, 0.4);
+    .fs-speed-handle {
+      position: absolute;
+      right: -9px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid #ff3366;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 12px #ff3366;
+      transition: transform 0.15s ease;
+      cursor: grab;
+    }
+
+    .fs-speed-track:hover .fs-speed-handle,
+    .fs-speed-track:active .fs-speed-handle {
+      transform: translateY(-50%) scale(1.2);
+    }
+
+    .fs-speed-ticks {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 2px;
+      pointer-events: none;
+    }
+
+    .fs-speed-tick {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.45);
+      transition: all 0.2s ease;
+    }
+
+    .fs-speed-tick.passed {
+      background: #ffffff;
+      box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+    }
+
+    .fs-speed-tick.active {
+      background: #ffffff;
+      transform: scale(1.3);
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
+    }
+
+    .fs-speed-labels {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 2px;
+    }
+
+    .speed-step-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.45);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    .speed-step-label:hover {
+      color: #ffffff;
+    }
+
+    .speed-step-label.active {
+      color: var(--primary);
+      font-weight: 800;
+      text-shadow: 0 0 8px rgba(255, 51, 102, 0.6);
     }
 
     /* BOTTOM NAV */
@@ -2499,18 +2587,34 @@
 
           <div class="fs-speed-section">
             <div class="fs-speed-header">
-              <span class="fs-speed-label"><i data-lucide="gauge"
-                  style="width: 16px; height: 16px; color: var(--primary);"></i> Speed</span>
-              <span id="fs-current-speed-text"
-                style="color: var(--primary); font-weight: 700; font-size: 14px;">1.0x</span>
+              <span class="fs-speed-label">
+                <i data-lucide="gauge" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                Speed
+              </span>
+              <span id="fs-current-speed-text" class="fs-speed-badge">1x</span>
             </div>
-            <div class="fs-speed-pills">
-              <button class="speed-pill" data-speed="0.75" onclick="setPlaybackSpeed(0.75)">0.75x</button>
-              <button class="speed-pill active" data-speed="1" onclick="setPlaybackSpeed(1)">1x</button>
-              <button class="speed-pill" data-speed="1.25" onclick="setPlaybackSpeed(1.25)">1.25x</button>
-              <button class="speed-pill" data-speed="1.5" onclick="setPlaybackSpeed(1.5)">1.5x</button>
-              <button class="speed-pill" data-speed="1.75" onclick="setPlaybackSpeed(1.75)">1.75x</button>
-              <button class="speed-pill" data-speed="2" onclick="setPlaybackSpeed(2)">2x</button>
+            <div class="fs-speed-slider-wrap">
+              <div class="fs-speed-track" id="fs-speed-track" onclick="handleSpeedTrackClick(event)">
+                <div id="fs-speed-bar" class="fs-speed-bar" style="width: 20%;">
+                  <div class="fs-speed-handle"></div>
+                </div>
+                <div class="fs-speed-ticks">
+                  <div class="fs-speed-tick passed" data-index="0"></div>
+                  <div class="fs-speed-tick passed active" data-index="1"></div>
+                  <div class="fs-speed-tick" data-index="2"></div>
+                  <div class="fs-speed-tick" data-index="3"></div>
+                  <div class="fs-speed-tick" data-index="4"></div>
+                  <div class="fs-speed-tick" data-index="5"></div>
+                </div>
+              </div>
+              <div class="fs-speed-labels">
+                <span class="speed-step-label" data-speed="0.75" onclick="setPlaybackSpeed(0.75)">0.75x</span>
+                <span class="speed-step-label active" data-speed="1" onclick="setPlaybackSpeed(1)">1x</span>
+                <span class="speed-step-label" data-speed="1.25" onclick="setPlaybackSpeed(1.25)">1.25x</span>
+                <span class="speed-step-label" data-speed="1.5" onclick="setPlaybackSpeed(1.5)">1.5x</span>
+                <span class="speed-step-label" data-speed="1.75" onclick="setPlaybackSpeed(1.75)">1.75x</span>
+                <span class="speed-step-label" data-speed="2" onclick="setPlaybackSpeed(2)">2x</span>
+              </div>
             </div>
           </div>
         </div>
@@ -2582,6 +2686,8 @@
     let currentPlayingStory = null;
     let isPlaying = false;
     let isAudioBuffering = false;
+    let currentPlaybackSpeed = 1.0;
+    const SPEED_STEPS = [0.75, 1, 1.25, 1.5, 1.75, 2];
     let currentSlideIndex = 0;
     let totalSlides = 0;
     let bannerSliderTimer = null;
@@ -3720,6 +3826,7 @@
         }
       }
 
+      setPlaybackSpeed(currentPlaybackSpeed);
       updateProgress();
     }
 
@@ -3732,6 +3839,108 @@
         active.currentTime = pos * active.duration;
         updateProgress();
       }
+    }
+
+    function setPlaybackSpeed(speed) {
+      const numSpeed = typeof speed === 'number' ? speed : parseFloat(speed);
+      if (isNaN(numSpeed)) return;
+
+      let closestSpeed = SPEED_STEPS[0];
+      let minDiff = Math.abs(numSpeed - closestSpeed);
+      for (let s of SPEED_STEPS) {
+        const diff = Math.abs(numSpeed - s);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestSpeed = s;
+        }
+      }
+
+      currentPlaybackSpeed = closestSpeed;
+
+      if (audioElement) {
+        audioElement.playbackRate = currentPlaybackSpeed;
+      }
+      if (videoElement) {
+        videoElement.playbackRate = currentPlaybackSpeed;
+      }
+
+      const speedIdx = SPEED_STEPS.indexOf(currentPlaybackSpeed);
+      const percent = speedIdx !== -1 ? (speedIdx / (SPEED_STEPS.length - 1)) * 100 : 20;
+
+      const speedBar = document.getElementById('fs-speed-bar');
+      if (speedBar) {
+        speedBar.style.width = percent + '%';
+      }
+
+      const speedText = document.getElementById('fs-current-speed-text');
+      if (speedText) {
+        speedText.innerText = `${currentPlaybackSpeed}x`;
+      }
+
+      document.querySelectorAll('.speed-step-label').forEach(lbl => {
+        const s = parseFloat(lbl.dataset.speed);
+        lbl.classList.toggle('active', s === currentPlaybackSpeed);
+      });
+
+      document.querySelectorAll('.fs-speed-tick').forEach((tick, idx) => {
+        tick.classList.toggle('passed', idx <= speedIdx);
+        tick.classList.toggle('active', idx === speedIdx);
+      });
+    }
+
+    function handleSpeedTrackClick(e) {
+      const track = document.getElementById('fs-speed-track');
+      if (!track) return;
+      const rect = track.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const targetIndex = Math.round(ratio * (SPEED_STEPS.length - 1));
+      setPlaybackSpeed(SPEED_STEPS[targetIndex]);
+    }
+
+    function initSpeedSliderDrag() {
+      const track = document.getElementById('fs-speed-track');
+      if (!track) return;
+
+      let isDragging = false;
+
+      const onPointerMove = (clientX) => {
+        const rect = track.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const targetIndex = Math.round(ratio * (SPEED_STEPS.length - 1));
+        setPlaybackSpeed(SPEED_STEPS[targetIndex]);
+      };
+
+      track.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        onPointerMove(e.clientX);
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+          onPointerMove(e.clientX);
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      track.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        if (e.touches && e.touches[0]) {
+          onPointerMove(e.touches[0].clientX);
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (isDragging && e.touches && e.touches[0]) {
+          onPointerMove(e.touches[0].clientX);
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchend', () => {
+        isDragging = false;
+      });
     }
 
     function playPrevEpisode() {
@@ -4247,6 +4456,8 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       initShakaPlayer();
+      initSpeedSliderDrag();
+      setPlaybackSpeed(currentPlaybackSpeed);
       refreshIcons();
       fetchHomeFeed();
 
