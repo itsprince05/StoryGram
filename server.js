@@ -52,7 +52,8 @@ app.use(express.static(__dirname));
 
 async function fetchDailyCookiesFromWebsite() {
   const targetUrls = [
-    'https://pocketfm.com/'
+    'https://pocketfm.com/',
+    'https://www.pocketfm.com/'
   ];
 
   const webHeaders = {
@@ -184,13 +185,10 @@ function buildPocketHeaders(req) {
     'platform-version': '29',
     'app-version': '2013',
     'language': language,
+    'authorization': token,
     'accept-encoding': 'gzip',
     'User-Agent': 'com.radio.pocketfm'
   };
-
-  if (token && token.trim() !== 'Bearer' && token.trim() !== 'Bearer null' && token.trim() !== 'Bearer undefined') {
-    headers['authorization'] = token;
-  }
 
   if (cachedCookies) {
     headers['Cookie'] = cachedCookies;
@@ -244,6 +242,14 @@ async function fetchViaWorkerProxy(targetUrl, headers, method = 'GET', body = nu
 async function forwardToPocketFM(targetUrl, req, res) {
   try {
     const headers = buildPocketHeaders(req);
+
+    if (!headers.authorization || headers.authorization === 'Bearer ') {
+      return res.status(401).json({
+        success: false,
+        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers."
+      });
+    }
+
     const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, req.method, req.body);
 
     if (typeof data === 'object' && data !== null) {
@@ -299,6 +305,15 @@ app.get(['/refresh-cookies', '/api/refresh-cookies'], async (req, res) => {
 app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
+
+    if (!headers.authorization || headers.authorization === 'Bearer ') {
+      return res.status(401).json({
+        success: false,
+        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers.",
+        cookies: cachedCookies || "No cookies found",
+        token: cachedToken || ""
+      });
+    }
 
     const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
     const apiType = req.headers['api_type'] || req.headers['api-type'] || req.query.api_type || 'explore_v2';
@@ -384,6 +399,13 @@ app.get(['/search', '/api/search'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
 
+    if (!headers.authorization || headers.authorization === 'Bearer ') {
+      return res.status(401).json({
+        success: false,
+        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers."
+      });
+    }
+
     const query = req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
     const genre = req.headers['genre'] || req.query.genre || '';
     const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
@@ -445,6 +467,13 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
     }
 
     const headers = buildPocketHeaders(req);
+
+    if (!headers.authorization || headers.authorization === 'Bearer ') {
+      return res.status(401).json({
+        success: false,
+        error: "Missing Authorization token. Please pass 'authorization' or 'auth' in headers."
+      });
+    }
 
     const startPtr = parseInt(req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
     const pageSource = req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
