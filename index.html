@@ -1462,28 +1462,27 @@
     }
 
     .fs-media-type-toggle {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--border);
       padding: 3px;
       border-radius: var(--radius-full);
       gap: 4px;
-      margin-bottom: 2px;
       z-index: 5;
     }
 
     .media-type-btn {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      padding: 6px 18px;
+      padding: 5px 14px;
       border-radius: var(--radius-full);
       border: none;
       background: transparent;
       color: var(--text-muted);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -1492,8 +1491,8 @@
     .media-type-btn svg,
     .media-type-btn .lucide,
     .media-type-btn [data-lucide] {
-      width: 15px !important;
-      height: 15px !important;
+      width: 14px !important;
+      height: 14px !important;
     }
 
     .media-type-btn.active {
@@ -1504,8 +1503,8 @@
 
     .fs-poster-wrap {
       width: 100%;
-      max-width: 160px;
-      aspect-ratio: 1 / 1;
+      max-width: 100%;
+      aspect-ratio: 16 / 9;
       border-radius: var(--radius-lg);
       overflow: hidden;
       box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 51, 102, 0.18);
@@ -2425,12 +2424,8 @@
               <path d="m6 9 6 6 6-6" />
             </svg>
           </button>
-          <div class="fs-header-title">Now Playing</div>
-          <div style="width: 36px;"></div>
-        </div>
-
-        <div class="fs-body">
-          <div id="fs-media-type-toggle" class="fs-media-type-toggle" style="display: none;">
+          
+          <div id="fs-media-type-toggle" class="fs-media-type-toggle">
             <button id="btn-mode-audio" class="media-type-btn active" onclick="switchMediaMode('audio')">
               <i data-lucide="headphones"></i> Audio
             </button>
@@ -2439,6 +2434,10 @@
             </button>
           </div>
 
+          <div style="width: 36px;"></div>
+        </div>
+
+        <div class="fs-body">
           <div class="fs-poster-wrap">
             <img id="fs-poster-img" class="fs-poster-img" src="" alt="Show Poster">
             <video id="fs-video-element" class="fs-video-player" playsinline webkit-playsinline preload="auto" disablePictureInPicture></video>
@@ -3675,7 +3674,10 @@
       if (bgImg && currentPlayingStory.thumbUrl) bgImg.src = currentPlayingStory.thumbUrl;
 
       if (toggleRow) {
-        toggleRow.style.display = currentPlayingStory.videoUrl ? 'flex' : 'none';
+        toggleRow.style.display = 'inline-flex';
+      }
+      if (btnVideo) {
+        btnVideo.style.display = (currentPlayingStory && currentPlayingStory.videoUrl) ? 'inline-flex' : 'none';
       }
       if (btnAudio) btnAudio.classList.toggle('active', currentMediaMode === 'audio');
       if (btnVideo) btnVideo.classList.toggle('active', currentMediaMode === 'video');
