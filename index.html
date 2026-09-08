@@ -3811,9 +3811,43 @@
 
       const streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
-      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash'))) {
+      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash') || streamUrl.includes('drm-aac') || streamUrl.includes('workers.dev'))) {
         try {
           await shakaPlayer.unload();
+
+          // Auto-detect show ID for PocketFM DRM License resolution
+          let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
+          if (!targetShowId) {
+            const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || streamUrl.match(/value=([a-zA-Z0-9]+)\//);
+            if (match) targetShowId = match[1];
+          }
+
+          if (targetShowId) {
+            try {
+              const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}`);
+              if (licRes.ok) {
+                const licData = await licRes.json();
+                if (licData.success && licData.license_url) {
+                  shakaPlayer.configure({
+                    drm: {
+                      servers: {
+                        'com.widevine.alpha': licData.license_url
+                      },
+                      advanced: {
+                        'com.widevine.alpha': {
+                          videoRobustness: '',
+                          audioRobustness: ''
+                        }
+                      }
+                    }
+                  });
+                }
+              }
+            } catch (licErr) {
+              console.warn("DRM license fetch warning:", licErr);
+            }
+          }
+
           await shakaPlayer.load(streamUrl);
           audioElement.playbackRate = currentPlaybackSpeed;
           await audioElement.play();
@@ -3836,7 +3870,7 @@
             isAudioBuffering = false;
             isPlaying = false;
             updatePlayPauseButton();
-            showToast("Playback error", true);
+            showToast("Playback error: " + (err.message || "DRM Error"), true);
           }
         }
       } else {
