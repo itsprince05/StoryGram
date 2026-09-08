@@ -3855,6 +3855,32 @@
             }
           }
 
+          const targetStoryId = storyId || (currentPlayingStory && currentPlayingStory.storyId) || "";
+          const netEngine = shakaPlayer.getNetworkingEngine();
+          if (netEngine) {
+            netEngine.clearAllRequestFilters();
+            netEngine.registerRequestFilter((type, request) => {
+              if (targetShowId) {
+                request.headers['show_id'] = targetShowId;
+                request.headers['x-show-id'] = targetShowId;
+              }
+              if (targetStoryId) {
+                request.headers['story_id'] = targetStoryId;
+                request.headers['x-story-id'] = targetStoryId;
+              }
+              const currentUri = (request.uris && request.uris[0]) ? request.uris[0] : '';
+              if (currentUri) {
+                let cfUrl = currentUri;
+                if (cfUrl.includes('stream.render-stream.workers.dev')) {
+                  cfUrl = cfUrl.replace('https://stream.render-stream.workers.dev', 'https://d13yevwzck7i9p.cloudfront.net');
+                }
+                request.headers['x-target-url'] = cfUrl;
+                request.headers['x-stream-url'] = cfUrl;
+                request.headers['url'] = cfUrl;
+              }
+            });
+          }
+
           await shakaPlayer.load(streamUrl);
           audioElement.playbackRate = currentPlaybackSpeed;
           await audioElement.play();
