@@ -1389,12 +1389,12 @@
     .fs-player-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(0, 0, 0, 0.85);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       z-index: 350;
       display: none;
-      align-items: flex-end;
+      align-items: stretch;
       justify-content: center;
       opacity: 0;
       transition: opacity 0.3s ease;
@@ -1409,11 +1409,11 @@
       position: relative;
       width: 100%;
       max-width: 480px;
-      height: 94vh;
-      max-height: 94vh;
+      height: 100%;
+      max-height: 100vh;
       background: #090d16;
-      border-top-left-radius: 24px;
-      border-top-right-radius: 24px;
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
       border: 1px solid var(--border);
       border-bottom: none;
       box-shadow: 0 -15px 50px rgba(0, 0, 0, 0.85);
