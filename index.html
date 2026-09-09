@@ -1954,10 +1954,10 @@
       background: linear-gradient(135deg, rgba(255, 51, 102, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 18px;
+      padding: 15px;
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 15px;
     }
 
     .account-avatar {
@@ -2393,8 +2393,8 @@
         <div class="account-page-wrap">
           <div class="account-profile-card">
             <div class="account-avatar" id="account-avatar-container">
-              <svg id="account-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              <svg id="account-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                 class="lucide lucide-user-round">
                 <circle cx="12" cy="8" r="5" />
                 <path d="M20 21a8 8 0 0 0-16 0" />
@@ -4832,6 +4832,14 @@
       initShakaPlayer();
       refreshIcons();
       fetchHomeFeed();
+
+      window.addEventListener('online', () => {
+        if (currentTabName === 'home') {
+          fetchHomeFeed();
+        } else if (currentTabName === 'show-detail' && currentShowId) {
+          fetchShowEpisodes(currentShowId, currentBatchStartPtr, 'replace', currentTopPtr + 1);
+        }
+      });
 
       const sliderElem = document.getElementById('hero-slider-container');
       if (sliderElem) {
