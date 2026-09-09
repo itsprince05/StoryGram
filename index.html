@@ -2243,14 +2243,250 @@
       height: 16px;
     }
 
-    /* FILLED STAR ICONS */
-    svg.lucide-star,
-    [data-lucide="star"],
-    .hero-badge-rating svg,
-    .card-tag-right svg,
-    #show-badge-rating svg {
-      fill: #fbbf24 !important;
-      stroke: #fbbf24 !important;
+    /* ==========================================
+       ACCESS CONTROL & DEVICE LOCK MODAL STYLES
+       ========================================== */
+    .access-lock-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(5, 5, 8, 0.96);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      box-sizing: border-box;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .access-lock-overlay.hidden {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    .access-lock-card {
+      width: 100%;
+      max-width: 390px;
+      background: linear-gradient(165deg, rgba(26, 26, 36, 0.95) 0%, rgba(13, 13, 20, 0.98) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-xl);
+      padding: 24px 20px;
+      box-sizing: border-box;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(255, 51, 102, 0.15);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 14px;
+      animation: popIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .access-lock-icon-wrap {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fbbf24;
+      box-shadow: 0 0 24px rgba(245, 158, 11, 0.25);
+      transition: all 0.3s ease;
+    }
+
+    .access-lock-icon-wrap.mismatch,
+    .access-lock-icon-wrap.blocked {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.3);
+    }
+
+    .access-lock-icon-wrap.expired {
+      background: rgba(249, 115, 22, 0.15);
+      border-color: rgba(249, 115, 22, 0.4);
+      color: #fb923c;
+      box-shadow: 0 0 24px rgba(249, 115, 22, 0.3);
+    }
+
+    .access-lock-icon-wrap svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .access-lock-title {
+      font-size: 19px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.25;
+      margin: 0;
+    }
+
+    .access-lock-desc {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin: 0;
+    }
+
+    .access-lock-user-box {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-sizing: border-box;
+      text-align: left;
+    }
+
+    .lock-user-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #E11D48;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 15px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .lock-user-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 50%;
+    }
+
+    .lock-user-details {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .lock-user-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .lock-user-email {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .access-lock-device-box {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      box-sizing: border-box;
+      text-align: left;
+    }
+
+    .device-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .device-copy-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255, 51, 102, 0.15);
+      border: 1px solid rgba(255, 51, 102, 0.35);
+      color: var(--primary);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .device-copy-badge:active {
+      transform: scale(0.92);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .device-box-id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11.5px;
+      color: #38bdf8;
+      font-weight: 700;
+      word-break: break-all;
+    }
+
+    .access-lock-actions {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .access-lock-btn {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .access-lock-btn.primary {
+      background: var(--primary-gradient);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(255, 51, 102, 0.4);
+    }
+
+    .access-lock-btn.outline {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+    }
+
+    .access-lock-btn:active {
+      transform: scale(0.96);
     }
   </style>
 </head>
@@ -2403,6 +2639,54 @@
             <div class="account-user-info">
               <div class="account-user-name" id="account-user-name">User Name</div>
               <div class="account-user-email" id="account-user-email">useremail@mail.com</div>
+            </div>
+          </div>
+
+          <!-- VIP & DEVICE ACCESS STATUS CARD -->
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title"><i data-lucide="shield-check"></i> VIP & Device Access</div>
+            </div>
+            <div class="account-card">
+              <div class="account-row">
+                <div class="account-row-left">
+                  <i data-lucide="award" style="color: #fbbf24;"></i>
+                  <span>Access Status</span>
+                </div>
+                <span id="account-vip-badge" class="status-badge"
+                  style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border-color: rgba(34, 197, 94, 0.3);">
+                  <div class="status-dot"></div> <span id="account-vip-status-text">VIP Active</span>
+                </span>
+              </div>
+              <div class="account-row">
+                <div class="account-row-left">
+                  <i data-lucide="calendar" style="color: #38bdf8;"></i>
+                  <span>Valid Until</span>
+                </div>
+                <span id="account-vip-expiry" style="font-size: 11.5px; font-weight: 700; color: var(--text-main);">Checking...</span>
+              </div>
+              <div class="account-row">
+                <div class="account-row-left">
+                  <i data-lucide="smartphone" style="color: #a78bfa;"></i>
+                  <span>Device ID</span>
+                </div>
+                <div class="account-row-right">
+                  <span id="account-device-id-label" style="font-family: monospace; font-size: 11px; color: #38bdf8; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</span>
+                  <span class="device-copy-badge" onclick="copyAccountDeviceId()">
+                    <i data-lucide="copy" style="width: 10px; height: 10px;"></i> Copy
+                  </span>
+                </div>
+              </div>
+              <div class="account-row" onclick="checkAccessStatus(true)" style="cursor: pointer;">
+                <div class="account-row-left">
+                  <i data-lucide="refresh-cw" id="account-sync-icon" style="color: var(--primary);"></i>
+                  <span>Sync Access with Database</span>
+                </div>
+                <div class="account-row-right">
+                  <span style="color: var(--primary); font-weight: 700; font-size: 11.5px;">Check Status</span>
+                  <i data-lucide="chevron-right"></i>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2673,6 +2957,46 @@
   <!-- AUDIO ELEMENT -->
   <audio id="audio-element" preload="auto"></audio>
 
+  <!-- ACCESS LOCK MODAL (POPUP WHEN STATUS IS NOT ALLOWED) -->
+  <div id="access-lock-modal" class="access-lock-overlay hidden">
+    <div class="access-lock-card">
+      <div class="access-lock-icon-wrap" id="lock-icon-wrap">
+        <i data-lucide="shield-alert" id="lock-icon" style="width: 32px; height: 32px;"></i>
+      </div>
+      <h2 class="access-lock-title" id="lock-title">Access Pending Approval</h2>
+      <p class="access-lock-desc" id="lock-desc">
+        Your account is registered in Story Gram database. Please contact Admin with your Device ID to activate access.
+      </p>
+
+      <div class="access-lock-user-box">
+        <div class="lock-user-avatar" id="lock-user-avatar">U</div>
+        <div class="lock-user-details">
+          <div class="lock-user-name" id="lock-user-name">User Name</div>
+          <div class="lock-user-email" id="lock-user-email">useremail@mail.com</div>
+        </div>
+      </div>
+
+      <div class="access-lock-device-box">
+        <div class="device-box-header">
+          <span>Your Device ID</span>
+          <span class="device-copy-badge" id="device-copy-badge" onclick="copyLockDeviceId()">
+            <i data-lucide="copy" style="width: 11px; height: 11px;"></i> <span id="lock-copy-text">Copy</span>
+          </span>
+        </div>
+        <div class="device-box-id" id="lock-device-id">Fetching Device ID...</div>
+      </div>
+
+      <div class="access-lock-actions">
+        <button class="access-lock-btn primary" id="btn-check-access" onclick="checkAccessStatus()">
+          <i data-lucide="refresh-cw" id="btn-check-icon"></i> Check Access Status
+        </button>
+        <button class="access-lock-btn outline" onclick="copyFullAccountInfo()">
+          <i data-lucide="share-2"></i> Copy Info for Admin
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let currentLanguage = 'hindi';
     let currentShowId = null;
@@ -2724,6 +3048,17 @@
           shaka.polyfill.installAll();
           if (shaka.Player.isBrowserSupported()) {
             shakaPlayer = new shaka.Player(audioElement);
+            
+            // Networking filter to support DRM license requests in WebView & Cross-Origin
+            const netEngine = shakaPlayer.getNetworkingEngine();
+            if (netEngine) {
+              netEngine.registerRequestFilter((type, request) => {
+                if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
+                  request.allowCrossSiteCredentials = true;
+                }
+              });
+            }
+
             shakaPlayer.configure({
               abr: {
                 enabled: false,
@@ -2737,6 +3072,13 @@
                 rebufferingGoal: 2,
                 bufferingGoal: 45,
                 bufferBehind: 30,
+                retryParameters: {
+                  maxAttempts: 3,
+                  baseDelay: 1000,
+                  backoffFactor: 2
+                }
+              },
+              drm: {
                 retryParameters: {
                   maxAttempts: 3,
                   baseDelay: 1000,
@@ -4060,8 +4402,10 @@
                         },
                         advanced: {
                           'com.widevine.alpha': {
-                            videoRobustness: '',
-                            audioRobustness: ''
+                            audioRobustness: ['SW_SECURE_CRYPTO', 'SW_SECURE_DECODE', ''],
+                            videoRobustness: ['SW_SECURE_CRYPTO', 'SW_SECURE_DECODE', ''],
+                            distinctiveIdentifierRequired: false,
+                            persistentStateRequired: false
                           }
                         }
                       }
@@ -4763,10 +5107,259 @@
       return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
+    // ========================================================
+    // DEVICE ID GENERATOR / RETRIEVER
+    // ========================================================
+    function getDeviceId() {
+      // 1. Android Bridge explicit method
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
+          const did = window.AndroidBridge.getDeviceId();
+          if (did && did.trim()) return did.trim();
+        }
+      } catch (e) { }
+
+      // 2. Android Bridge getUserData payload
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
+          const raw = window.AndroidBridge.getUserData();
+          if (raw) {
+            const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (data.deviceId || data.device_id || data.androidId) {
+              return (data.deviceId || data.device_id || data.androidId).trim();
+            }
+          }
+        }
+      } catch (e) { }
+
+      // 3. LocalStorage persistent fallback
+      let localDevId = localStorage.getItem('storygram_device_id');
+      if (!localDevId) {
+        localDevId = 'DEV-' + Array.from(crypto.getRandomValues(new Uint8Array(8)))
+          .map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+        localStorage.setItem('storygram_device_id', localDevId);
+      }
+      return localDevId;
+    }
+
+    // ========================================================
+    // USER ACCESS VERIFICATION WITH MYSQL VIA SERVER.JS PROXY
+    // ========================================================
+    let userAccessStatus = 'checking';
+    let currentUserAccessData = null;
+
+    async function verifyUserAccess(userInfo = null) {
+      try {
+        const deviceId = getDeviceId();
+        
+        let user = userInfo;
+        if (!user) {
+          try {
+            user = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+          } catch (e) { user = {}; }
+        }
+
+        const email = (user && user.email) ? user.email.trim() : '';
+        const name = (user && user.name) ? user.name.trim() : 'User';
+        const photoUrl = (user && (user.avatarUrl || user.photoUrl)) ? (user.avatarUrl || user.photoUrl) : '';
+
+        // Update Device ID labels in UI
+        const lockDevIdEl = document.getElementById('lock-device-id');
+        if (lockDevIdEl) lockDevIdEl.innerText = deviceId;
+        const accDevIdEl = document.getElementById('account-device-id-label');
+        if (accDevIdEl) accDevIdEl.innerText = deviceId;
+
+        // If no user email yet, default to device identifier
+        const verificationEmail = email || `${deviceId.toLowerCase()}@device.storygram`;
+
+        const res = await fetch('/api/user/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: verificationEmail,
+            name: name || 'User',
+            photoUrl: photoUrl,
+            deviceId: deviceId
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          currentUserAccessData = data;
+          handleAccessVerificationResult(data, name, verificationEmail, photoUrl, deviceId);
+          return data;
+        } else {
+          console.warn("Verify user access returned HTTP error:", res.status);
+        }
+      } catch (err) {
+        console.error("Failed to verify user access:", err);
+      }
+    }
+
+    function handleAccessVerificationResult(data, name, email, photoUrl, deviceId) {
+      const lockModal = document.getElementById('access-lock-modal');
+      const lockTitle = document.getElementById('lock-title');
+      const lockDesc = document.getElementById('lock-desc');
+      const lockIconWrap = document.getElementById('lock-icon-wrap');
+      const lockIcon = document.getElementById('lock-icon');
+      const lockUserName = document.getElementById('lock-user-name');
+      const lockUserEmail = document.getElementById('lock-user-email');
+      const lockUserAvatar = document.getElementById('lock-user-avatar');
+
+      const vipStatusBadge = document.getElementById('account-vip-badge');
+      const vipStatusText = document.getElementById('account-vip-status-text');
+      const vipExpiryEl = document.getElementById('account-vip-expiry');
+
+      if (lockUserName) lockUserName.innerText = name || 'User';
+      if (lockUserEmail) lockUserEmail.innerText = email || 'user@email.com';
+
+      if (lockUserAvatar) {
+        if (photoUrl) {
+          lockUserAvatar.innerHTML = `<img src="${photoUrl}" alt="Avatar">`;
+        } else {
+          lockUserAvatar.innerText = (name || 'U').charAt(0).toUpperCase();
+        }
+      }
+
+      const status = data.status || 'pending';
+      userAccessStatus = status;
+
+      if (status === 'allowed') {
+        // Hide Lock Modal
+        if (lockModal) lockModal.classList.add('hidden');
+
+        // Update Account Tab
+        if (vipStatusBadge) {
+          vipStatusBadge.style.background = 'rgba(34, 197, 94, 0.15)';
+          vipStatusBadge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+          vipStatusBadge.style.color = '#4ade80';
+        }
+        if (vipStatusText) vipStatusText.innerText = 'VIP Active';
+        if (vipExpiryEl) {
+          vipExpiryEl.innerText = data.allowed_until ? data.allowed_until : 'Lifetime Access';
+        }
+      } else {
+        // Access Denied / Pending: Pause player immediately
+        try {
+          const active = getActiveMediaElement();
+          if (active && !active.paused) active.pause();
+          closePlayerBar();
+        } catch (e) { }
+
+        // Configure Lock Modal based on status
+        if (lockModal) lockModal.classList.remove('hidden');
+
+        if (lockIconWrap) {
+          lockIconWrap.className = 'access-lock-icon-wrap';
+        }
+
+        if (status === 'pending') {
+          if (lockIconWrap) lockIconWrap.classList.add('pending');
+          if (lockTitle) lockTitle.innerText = 'Access Pending Approval';
+          if (lockDesc) lockDesc.innerText = 'Your account has been registered. Please send your Device ID to Admin to approve access for this device.';
+          if (lockIcon) lockIcon.setAttribute('data-lucide', 'shield-alert');
+          if (vipStatusText) vipStatusText.innerText = 'Pending Approval';
+          if (vipStatusBadge) {
+            vipStatusBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+            vipStatusBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+            vipStatusBadge.style.color = '#fbbf24';
+          }
+        } else if (status === 'device_mismatch') {
+          if (lockIconWrap) lockIconWrap.classList.add('mismatch');
+          if (lockTitle) lockTitle.innerText = 'Device Mismatch Detected';
+          if (lockDesc) lockDesc.innerText = 'This account is locked to a different device. You cannot use it on this phone until Admin resets your device lock.';
+          if (lockIcon) lockIcon.setAttribute('data-lucide', 'shield-x');
+          if (vipStatusText) vipStatusText.innerText = 'Device Locked';
+          if (vipStatusBadge) {
+            vipStatusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+            vipStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+            vipStatusBadge.style.color = '#f87171';
+          }
+        } else if (status === 'expired') {
+          if (lockIconWrap) lockIconWrap.classList.add('expired');
+          if (lockTitle) lockTitle.innerText = 'Subscription Expired';
+          if (lockDesc) lockDesc.innerText = `Your VIP access expired on ${data.allowed_until || 'recently'}. Please contact Admin to extend your subscription.`;
+          if (lockIcon) lockIcon.setAttribute('data-lucide', 'clock');
+          if (vipStatusText) vipStatusText.innerText = 'Expired';
+          if (vipStatusBadge) {
+            vipStatusBadge.style.background = 'rgba(249, 115, 22, 0.15)';
+            vipStatusBadge.style.borderColor = 'rgba(249, 115, 22, 0.3)';
+            vipStatusBadge.style.color = '#fb923c';
+          }
+        } else if (status === 'blocked') {
+          if (lockIconWrap) lockIconWrap.classList.add('blocked');
+          if (lockTitle) lockTitle.innerText = 'Access Revoked';
+          if (lockDesc) lockDesc.innerText = 'Your access has been suspended by Admin. Please contact support for assistance.';
+          if (lockIcon) lockIcon.setAttribute('data-lucide', 'shield-ban');
+          if (vipStatusText) vipStatusText.innerText = 'Blocked';
+          if (vipStatusBadge) {
+            vipStatusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+            vipStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+            vipStatusBadge.style.color = '#f87171';
+          }
+        }
+
+        if (vipExpiryEl) {
+          vipExpiryEl.innerText = data.allowed_until ? data.allowed_until : 'No Access';
+        }
+      }
+      refreshIcons();
+    }
+
+    async function checkAccessStatus(isFromAccount = false) {
+      const btnIcon = document.getElementById(isFromAccount ? 'account-sync-icon' : 'btn-check-icon');
+      if (btnIcon) btnIcon.classList.add('spin-animation');
+
+      let saved = null;
+      try {
+        saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
+      } catch (e) { }
+
+      await verifyUserAccess(saved);
+
+      setTimeout(() => {
+        if (btnIcon) btnIcon.classList.remove('spin-animation');
+      }, 700);
+    }
+
+    function copyLockDeviceId() {
+      const devId = getDeviceId();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(devId);
+      }
+      const copyText = document.getElementById('lock-copy-text');
+      if (copyText) {
+        copyText.innerText = 'Copied!';
+        setTimeout(() => { copyText.innerText = 'Copy'; }, 2000);
+      }
+    }
+
+    function copyAccountDeviceId() {
+      const devId = getDeviceId();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(devId);
+      }
+    }
+
+    function copyFullAccountInfo() {
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+      const devId = getDeviceId();
+      const text = `Story Gram Device Access Request:\nName: ${saved.name || 'User'}\nEmail: ${saved.email || 'N/A'}\nDevice ID: ${devId}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text);
+      }
+      const copyText = document.getElementById('lock-copy-text');
+      if (copyText) {
+        copyText.innerText = 'Info Copied!';
+        setTimeout(() => { copyText.innerText = 'Copy'; }, 2000);
+      }
+    }
+
     // ==========================================
     // USER PROFILE (ANDROID BRIDGE & PERSISTENCE)
     // ==========================================
-    function updateUserProfile(name, email, avatarUrl) {
+    function updateUserProfile(name, email, avatarUrl, deviceId) {
       const nameEl = document.getElementById('account-user-name');
       const emailEl = document.getElementById('account-user-email');
       const avatarSvg = document.getElementById('account-avatar-svg');
@@ -4796,13 +5389,23 @@
         }
       }
 
+      if (deviceId && deviceId.trim()) {
+        try { localStorage.setItem('storygram_device_id', deviceId.trim()); } catch (e) { }
+      }
+
+      const userObj = {
+        name: name || '',
+        email: email || '',
+        avatarUrl: avatarUrl || '',
+        deviceId: deviceId || getDeviceId()
+      };
+
       try {
-        localStorage.setItem('storygram_user', JSON.stringify({
-          name: name || '',
-          email: email || '',
-          avatarUrl: avatarUrl || ''
-        }));
+        localStorage.setItem('storygram_user', JSON.stringify(userObj));
       } catch (e) { }
+
+      // Automatically verify access on user update
+      verifyUserAccess(userObj);
     }
 
     function loadSavedUserProfile() {
@@ -4812,7 +5415,7 @@
           const rawData = window.AndroidBridge.getUserData();
           if (rawData) {
             const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-            updateUserProfile(data.name || data.displayName, data.email, data.avatarUrl || data.photoUrl);
+            updateUserProfile(data.name || data.displayName, data.email, data.avatarUrl || data.photoUrl, data.deviceId || data.device_id);
             return;
           }
         }
@@ -4822,14 +5425,20 @@
       try {
         const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         if (saved && (saved.name || saved.email || saved.avatarUrl)) {
-          updateUserProfile(saved.name, saved.email, saved.avatarUrl);
+          updateUserProfile(saved.name, saved.email, saved.avatarUrl, saved.deviceId);
           return;
         }
       } catch (e) { }
+
+      // Default: verify access with device ID
+      verifyUserAccess();
     }
 
     window.updateUserProfile = updateUserProfile;
     window.setUserData = updateUserProfile;
+    window.verifyUserAccess = verifyUserAccess;
+    window.checkAccessStatus = checkAccessStatus;
+    window.getDeviceId = getDeviceId;
 
     window.addEventListener('DOMContentLoaded', () => {
       loadSavedUserProfile();
