@@ -1690,9 +1690,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      width: 100%;
       max-width: 360px;
-      gap: 8px;
+      gap: 15px;
       margin-top: -10px;
       margin-bottom: 0;
       flex-shrink: 0;
@@ -2899,11 +2898,15 @@
 
     function switchTab(tabName, updateNav = true, pushHistory = true) {
       const actionBar = document.querySelector('.action-bar');
+      if (currentTabName && currentTabName !== 'show-detail' && tabName === 'show-detail') {
+        previousTab = currentTabName;
+      } else if (currentTabName && currentTabName !== 'show-detail' && currentTabName !== tabName && tabName !== 'show-detail') {
+        previousTab = currentTabName;
+      }
+
+      currentTabName = tabName;
+
       if (tabName !== 'show-detail') {
-        if (currentTabName && currentTabName !== 'show-detail' && currentTabName !== tabName) {
-          previousTab = currentTabName;
-        }
-        currentTabName = tabName;
         if (actionBar) actionBar.style.display = 'flex';
 
         const barTitle = document.getElementById('action-bar-title');
@@ -3967,8 +3970,9 @@
         return;
       }
 
-      // 3. If on Show Details page, go back to previous tab or Home
-      if (currentTabName === 'show-detail') {
+      // 3. If on Show Details page (check variable and DOM class), go back to previous tab or Home
+      const showDetailTab = document.getElementById('tab-show-detail');
+      if (currentTabName === 'show-detail' || (showDetailTab && showDetailTab.classList.contains('active'))) {
         switchTab(previousTab || 'home', true, false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
