@@ -726,6 +726,85 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
   }
 });
 
+// =======================================================
+// STORYGRAM MYSQL / PHP USER ACCESS & DEVICE LOCK PROXY
+// Database: u563285099_StoryGram on princeapps.com/StoryGram
+// =======================================================
+const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/StoryGram';
+const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
+
+app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
+  try {
+    const { email, name, photoUrl, photo_url, deviceId, device_id } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        status: 'invalid_request',
+        error: 'Email is required'
+      });
+    }
+
+    const payload = {
+      email,
+      name: name || 'User',
+      photo_url: photoUrl || photo_url || '',
+      device_id: deviceId || device_id || '',
+      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
+    };
+
+    const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': PHP_API_KEY
+      },
+      timeout: 15000,
+      validateStatus: () => true
+    });
+
+    return res.status(phpResponse.status).json(phpResponse.data);
+  } catch (error) {
+    console.error("User verify error:", error.message);
+    return res.status(500).json({
+      success: false,
+      status: 'server_error',
+      message: 'Failed to verify user access with database'
+    });
+  }
+});
+
+app.post(['/api/admin/users', '/admin/users'], async (req, res) => {
+  try {
+    const phpResponse = await axios.post(`${PHP_BACKEND_URL}/admin.php`, { action: 'list_users' }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': PHP_API_KEY
+      },
+      timeout: 15000,
+      validateStatus: () => true
+    });
+    return res.status(phpResponse.status).json(phpResponse.data);
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post(['/api/admin/update-access', '/admin/update-access'], async (req, res) => {
+  try {
+    const phpResponse = await axios.post(`${PHP_BACKEND_URL}/admin.php`, { action: 'update_access', ...req.body }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': PHP_API_KEY
+      },
+      timeout: 15000,
+      validateStatus: () => true
+    });
+    return res.status(phpResponse.status).json(phpResponse.data);
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.all('/api/proxy/*', (req, res) => {
   const endpointPath = req.params[0];
   const queryParams = new URLSearchParams(req.query).toString();
