@@ -2117,8 +2117,8 @@
     }
 
     .spinner {
-      width: 50px;
-      height: 50px;
+      width: 48px;
+      height: 48px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -2126,8 +2126,8 @@
     }
 
     .spinner svg {
-      width: 50px;
-      height: 50px;
+      width: 48px;
+      height: 48px;
       stroke: var(--primary);
     }
 
@@ -2623,11 +2623,6 @@
       <div class="restricted-status-card" id="restricted-status-card" style="padding: 10px;">
         <div class="restricted-status-badge" id="restricted-status-badge">No Access</div>
       </div>
-
-      <!-- 3. Log Out Button -->
-      <button class="account-danger-btn" onclick="logoutUser()" style="padding: 10px; gap: 10px; width: 100%;">
-        <i data-lucide="log-out"></i> Log Out
-      </button>
     </div>
   </div>
 
@@ -2883,9 +2878,6 @@
           </div>
 
           <div class="section" style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px;">
-            <button class="account-danger-btn" onclick="logoutUser()" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; font-weight: 700; padding: 13px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; width: 100%;">
-              <i data-lucide="log-out"></i> Log Out
-            </button>
             <button class="account-danger-btn" onclick="clearAllAppData()" style="opacity: 0.7; font-size: 11px;">
               <i data-lucide="trash-2"></i> Clear History & Cache
             </button>
