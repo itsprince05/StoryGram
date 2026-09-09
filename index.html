@@ -5208,6 +5208,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            userId: user && (user.userId || user.user_id) ? (user.userId || user.user_id) : '',
             email: email,
             name: name || 'User',
             photoUrl: photoUrl,
@@ -5391,7 +5392,7 @@
     // ==========================================
     // USER PROFILE (ANDROID BRIDGE & PERSISTENCE)
     // ==========================================
-    function updateUserProfile(name, email, avatarUrl, deviceId) {
+    function updateUserProfile(name, email, avatarUrl, deviceId, userId) {
       const nameEl = document.getElementById('account-user-name');
       const emailEl = document.getElementById('account-user-email');
       const avatarSvg = document.getElementById('account-avatar-svg');
@@ -5426,6 +5427,7 @@
       }
 
       const userObj = {
+        userId: userId || '',
         name: name || '',
         email: email || '',
         avatarUrl: avatarUrl || '',
@@ -5447,8 +5449,10 @@
           const rawData = window.AndroidBridge.getUserData();
           if (rawData) {
             const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-            updateUserProfile(data.name || data.displayName, data.email, data.avatarUrl || data.photoUrl, data.deviceId || data.device_id);
-            return;
+            if (data && (data.email || data.name)) {
+              updateUserProfile(data.name || data.displayName, data.email, data.avatarUrl || data.photoUrl, data.deviceId || data.device_id, data.userId || data.user_id || data.id);
+              return;
+            }
           }
         }
       } catch (e) { }
@@ -5457,7 +5461,7 @@
       try {
         const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         if (saved && (saved.name || saved.email || saved.avatarUrl)) {
-          updateUserProfile(saved.name, saved.email, saved.avatarUrl, saved.deviceId);
+          updateUserProfile(saved.name, saved.email, saved.avatarUrl, saved.deviceId, saved.userId);
           return;
         }
       } catch (e) { }
