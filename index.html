@@ -1814,16 +1814,17 @@
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--border);
       color: var(--text-main);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       cursor: pointer;
       transition: all 0.2s ease;
       box-sizing: border-box;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      white-space: nowrap;
     }
 
     .fs-action-pill-btn:hover {
@@ -2563,12 +2564,12 @@
           <div class="fs-bottom-actions-row">
             <button class="fs-action-pill-btn" onclick="openSpeedModal()" title="Playback Speed">
               <i data-lucide="gauge"></i>
-              <span id="fs-btn-speed-val">1x</span>
+              <span id="fs-btn-speed-val">Speed - 1x</span>
             </button>
             <button class="fs-action-pill-btn" id="fs-btn-timer-pill" onclick="openSleepTimerModal()"
               title="Sleep Timer">
               <i data-lucide="moon"></i>
-              <span id="fs-btn-timer-val">Timer</span>
+              <span id="fs-btn-timer-val">Sleep Timer - Off</span>
             </button>
           </div>
         </div>
@@ -3716,7 +3717,7 @@
       if (audioElement) audioElement.playbackRate = speed;
       if (videoElement) videoElement.playbackRate = speed;
       const speedBtnVal = document.getElementById('fs-btn-speed-val');
-      if (speedBtnVal) speedBtnVal.innerText = speed === 1.0 ? '1x' : `${speed}x`;
+      if (speedBtnVal) speedBtnVal.innerText = `Speed - ${speed}x`;
       renderSpeedOptionsList();
       closeSpeedModal();
     }
@@ -3778,7 +3779,7 @@
 
       if (minutes === 0) {
         sleepTimerTargetTimestamp = 0;
-        if (timerVal) timerVal.innerText = 'Timer';
+        if (timerVal) timerVal.innerText = 'Sleep Timer - Off';
         if (pillBtn) pillBtn.classList.remove('active');
       } else {
         sleepTimerTargetTimestamp = Date.now() + minutes * 60 * 1000;
@@ -3791,7 +3792,7 @@
             clearInterval(sleepTimerInterval);
             currentSleepTimerMinutes = 0;
             sleepTimerTargetTimestamp = 0;
-            if (timerVal) timerVal.innerText = 'Timer';
+            if (timerVal) timerVal.innerText = 'Sleep Timer - Off';
             if (pillBtn) pillBtn.classList.remove('active');
 
             if (audioElement) audioElement.pause();
@@ -3810,18 +3811,22 @@
 
     function updateSleepTimerDisplay() {
       const timerVal = document.getElementById('fs-btn-timer-val');
-      if (!timerVal || sleepTimerTargetTimestamp === 0) return;
+      if (!timerVal) return;
+      if (sleepTimerTargetTimestamp === 0 || currentSleepTimerMinutes === 0) {
+        timerVal.innerText = 'Sleep Timer - Off';
+        return;
+      }
       const remainingMs = Math.max(0, sleepTimerTargetTimestamp - Date.now());
       const remainingSecs = Math.ceil(remainingMs / 1000);
       const mins = Math.floor(remainingSecs / 60);
       const secs = remainingSecs % 60;
       if (mins >= 60) {
         const hrs = (mins / 60).toFixed(1).replace('.0', '');
-        timerVal.innerText = `${hrs}h`;
+        timerVal.innerText = `Sleep Timer - ${hrs}h`;
       } else if (mins > 0) {
-        timerVal.innerText = `${mins}m`;
+        timerVal.innerText = `Sleep Timer - ${mins}m`;
       } else {
-        timerVal.innerText = `${secs}s`;
+        timerVal.innerText = `Sleep Timer - ${secs}s`;
       }
     }
 
