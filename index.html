@@ -5449,51 +5449,26 @@
 
         const payload = {
           userId: userId,
-          user_id: userId,
           email: email,
           name: name,
           photoUrl: photoUrl,
-          photo_url: photoUrl,
-          deviceId: deviceId,
-          device_id: deviceId,
-          api_key: 'StoryGramSecretKey_9874981488'
+          deviceId: deviceId
         };
 
-        let res = null;
         let data = null;
 
-        // Try 1: Local / API proxy endpoint
+        // Secure call via backend proxy (/api/user/verify attaches secret key securely)
         try {
-          res = await fetch('/api/user/verify', {
+          const res = await fetch('/api/user/verify', {
             method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'X-API-KEY': 'StoryGramSecretKey_9874981488'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
           if (res && res.ok) {
             data = await res.json();
           }
-        } catch (e) { }
-
-        // Try 2: Direct PHP Backend endpoint on princeapps.com
-        if (!data) {
-          try {
-            res = await fetch('https://princeapps.com/StoryGram/verify_user.php', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'X-API-KEY': 'StoryGramSecretKey_9874981488'
-              },
-              body: JSON.stringify(payload)
-            });
-            if (res && res.ok) {
-              data = await res.json();
-            }
-          } catch (e) {
-            console.error("Direct PHP backend verify error:", e);
-          }
+        } catch (e) {
+          console.error("User verify error:", e);
         }
 
         if (data) {
