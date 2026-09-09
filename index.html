@@ -2958,14 +2958,14 @@
   <audio id="audio-element" preload="auto"></audio>
 
   <!-- ACCESS LOCK MODAL (POPUP WHEN STATUS IS NOT ALLOWED) -->
-  <div id="access-lock-modal" class="access-lock-overlay hidden">
+  <div id="access-lock-modal" class="access-lock-overlay">
     <div class="access-lock-card">
-      <div class="access-lock-icon-wrap" id="lock-icon-wrap">
+      <div class="access-lock-icon-wrap pending" id="lock-icon-wrap">
         <i data-lucide="shield-alert" id="lock-icon" style="width: 32px; height: 32px;"></i>
       </div>
-      <h2 class="access-lock-title" id="lock-title">Access Pending Approval</h2>
+      <h2 class="access-lock-title" id="lock-title">No Access</h2>
       <p class="access-lock-desc" id="lock-desc">
-        Your account is registered in Story Gram database. Please contact Admin with your Device ID to activate access.
+        Aapka account StoryGram database me register ho gaya hai, lekin abhi access active nahi hai. Kripya Admin se approval lene ke liye apna Device ID share karein.
       </p>
 
       <div class="access-lock-user-box">
@@ -4708,6 +4708,13 @@
     }
 
     async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
+      if (userAccessStatus !== 'allowed') {
+        const lockModal = document.getElementById('access-lock-modal');
+        if (lockModal) lockModal.classList.remove('hidden');
+        verifyUserAccess();
+        return;
+      }
+
       const isVid = Boolean(hasVideo || videoUrl);
       currentPlayingStory = {
         storyId,
@@ -5255,10 +5262,10 @@
 
         if (status === 'pending') {
           if (lockIconWrap) lockIconWrap.classList.add('pending');
-          if (lockTitle) lockTitle.innerText = 'Access Pending Approval';
-          if (lockDesc) lockDesc.innerText = 'Your account has been registered. Please send your Device ID to Admin to approve access for this device.';
+          if (lockTitle) lockTitle.innerText = 'No Access';
+          if (lockDesc) lockDesc.innerText = 'Aapka account StoryGram database me register ho gaya hai, lekin abhi access active nahi hai. Kripya Admin se approval lene ke liye apna Device ID share karein.';
           if (lockIcon) lockIcon.setAttribute('data-lucide', 'shield-alert');
-          if (vipStatusText) vipStatusText.innerText = 'Pending Approval';
+          if (vipStatusText) vipStatusText.innerText = 'No Access (Pending)';
           if (vipStatusBadge) {
             vipStatusBadge.style.background = 'rgba(245, 158, 11, 0.15)';
             vipStatusBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
@@ -5266,8 +5273,8 @@
           }
         } else if (status === 'device_mismatch') {
           if (lockIconWrap) lockIconWrap.classList.add('mismatch');
-          if (lockTitle) lockTitle.innerText = 'Device Mismatch Detected';
-          if (lockDesc) lockDesc.innerText = 'This account is locked to a different device. You cannot use it on this phone until Admin resets your device lock.';
+          if (lockTitle) lockTitle.innerText = 'No Access (Device Locked)';
+          if (lockDesc) lockDesc.innerText = 'Ye account dusre device me locked hai. Is phone me chalane ke liye Admin se Device Reset karwayein.';
           if (lockIcon) lockIcon.setAttribute('data-lucide', 'shield-x');
           if (vipStatusText) vipStatusText.innerText = 'Device Locked';
           if (vipStatusBadge) {
@@ -5277,8 +5284,8 @@
           }
         } else if (status === 'expired') {
           if (lockIconWrap) lockIconWrap.classList.add('expired');
-          if (lockTitle) lockTitle.innerText = 'Subscription Expired';
-          if (lockDesc) lockDesc.innerText = `Your VIP access expired on ${data.allowed_until || 'recently'}. Please contact Admin to extend your subscription.`;
+          if (lockTitle) lockTitle.innerText = 'No Access (Subscription Expired)';
+          if (lockDesc) lockDesc.innerText = `Aapka VIP access ${data.allowed_until || 'khatam'} ho chuka hai. Kripya Admin se extend karwayein.`;
           if (lockIcon) lockIcon.setAttribute('data-lucide', 'clock');
           if (vipStatusText) vipStatusText.innerText = 'Expired';
           if (vipStatusBadge) {
@@ -5288,8 +5295,8 @@
           }
         } else if (status === 'blocked') {
           if (lockIconWrap) lockIconWrap.classList.add('blocked');
-          if (lockTitle) lockTitle.innerText = 'Access Revoked';
-          if (lockDesc) lockDesc.innerText = 'Your access has been suspended by Admin. Please contact support for assistance.';
+          if (lockTitle) lockTitle.innerText = 'No Access (Blocked)';
+          if (lockDesc) lockDesc.innerText = 'Aapka access Admin dwara suspend kar diya gaya hai.';
           if (lockIcon) lockIcon.setAttribute('data-lucide', 'shield-ban');
           if (vipStatusText) vipStatusText.innerText = 'Blocked';
           if (vipStatusBadge) {
