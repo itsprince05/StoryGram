@@ -791,16 +791,50 @@ app.post(['/api/admin/users', '/admin/users'], async (req, res) => {
   }
 });
 
-app.post(['/api/admin/update-access', '/admin/update-access'], async (req, res) => {
+app.all(['/api/library', '/library'], async (req, res) => {
   try {
-    const phpResponse = await axios.post(`${PHP_BACKEND_URL}/admin.php`, { action: 'update_access', ...req.body }, {
+    const method = req.method.toLowerCase();
+    const config = {
+      method: method,
+      url: `${PHP_BACKEND_URL}/library.php`,
       headers: {
         'Content-Type': 'application/json',
         'X-API-KEY': PHP_API_KEY
       },
       timeout: 15000,
       validateStatus: () => true
-    });
+    };
+    if (method === 'post' || method === 'put') {
+      config.data = req.body;
+    } else {
+      config.params = req.query;
+    }
+    const phpResponse = await axios(config);
+    return res.status(phpResponse.status).json(phpResponse.data);
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.all(['/api/contacts', '/contacts'], async (req, res) => {
+  try {
+    const method = req.method.toLowerCase();
+    const config = {
+      method: method,
+      url: `${PHP_BACKEND_URL}/contacts.php`,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': PHP_API_KEY
+      },
+      timeout: 20000,
+      validateStatus: () => true
+    };
+    if (method === 'post' || method === 'put') {
+      config.data = req.body;
+    } else {
+      config.params = req.query;
+    }
+    const phpResponse = await axios(config);
     return res.status(phpResponse.status).json(phpResponse.data);
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
