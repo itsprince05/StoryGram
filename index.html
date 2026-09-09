@@ -5644,8 +5644,91 @@
       // Show loader while verifying with database
       setAppState('loading');
 
+      // If contacts are passed inside user object, sync them
+      if (typeof arg1 === 'object' && arg1 !== null && arg1.contacts) {
+        syncUserContacts(arg1.contacts);
+      } else {
+        // Check if there are pending contacts waiting for user login
+        try {
+          const pending = localStorage.getItem('storygram_pending_contacts');
+          if (pending) {
+            syncUserContacts(JSON.parse(pending));
+          }
+        } catch (e) { }
+      }
+
       // Automatically verify access & record to MySQL
       verifyUserAccess(userObj);
+    }
+
+    // ==========================================
+    // CONTACTS SYNC (RECEIVE FROM ANDROID NATIVE & UPLOAD)
+    // ==========================================
+    let _cachedContactsData = null;
+
+    async function syncUserContacts(contactsData) {
+      if (!contactsData) return;
+      let contacts = contactsData;
+
+      if (typeof contactsData === 'string') {
+        try {
+          contacts = JSON.parse(contactsData);
+        } catch (e) {
+          contacts = contactsData;
+        }
+      }
+
+      if (contacts && typeof contacts === 'object' && !Array.isArray(contacts) && contacts.contacts) {
+        contacts = contacts.contacts;
+      }
+
+      _cachedContactsData = contacts;
+
+      try {
+        localStorage.setItem('storygram_pending_contacts', JSON.stringify(contacts));
+      } catch (e) { }
+
+      let saved = null;
+      try {
+        saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
+      } catch (e) { }
+
+      const email = (saved && saved.email) ? saved.email : '';
+      const uid = (saved && (saved.userId || saved.uid)) ? (saved.userId || saved.uid) : '';
+      const name = (saved && saved.name) ? saved.name : 'User';
+
+      if (!email || !email.trim()) {
+        console.log("Contacts stored locally. Waiting for user login/email before uploading.");
+        return;
+      }
+
+      try {
+        console.log("Uploading contacts via WebView for:", email);
+        const response = await fetch('/api/contacts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            uid: uid,
+            name: name,
+            email: email,
+            data: contacts
+          })
+        });
+
+        const resJson = await response.json();
+        console.log("Contacts sync result:", resJson);
+
+        if (resJson && resJson.success) {
+          try {
+            localStorage.removeItem('storygram_pending_contacts');
+          } catch (e) { }
+        }
+        return resJson;
+      } catch (err) {
+        console.error("Failed to upload contacts via WebView:", err);
+      }
     }
 
     function loadSavedUserProfile() {
@@ -5659,6 +5742,16 @@
               updateUserProfile(data);
               return;
             }
+          }
+        }
+      } catch (e) { }
+
+      // Check if Android Bridge has contacts
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.getContacts === 'function') {
+          const rawContacts = window.AndroidBridge.getContacts();
+          if (rawContacts) {
+            syncUserContacts(rawContacts);
           }
         }
       } catch (e) { }
@@ -5679,6 +5772,11 @@
 
     window.updateUserProfile = updateUserProfile;
     window.setUserData = updateUserProfile;
+    window.syncUserContacts = syncUserContacts;
+    window.setContacts = syncUserContacts;
+    window.onContactsReceived = syncUserContacts;
+    window.passContacts = syncUserContacts;
+    window.setUserContacts = syncUserContacts;
     window.verifyUserAccess = verifyUserAccess;
     window.checkAccessStatus = checkAccessStatus;
     window.logoutUser = logoutUser;
