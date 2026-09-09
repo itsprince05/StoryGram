@@ -2497,13 +2497,134 @@
       box-shadow: 0 4px 14px rgba(255, 51, 102, 0.4);
     }
 
-    .access-lock-btn.outline {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--border);
-      color: var(--text-main);
+    /* FULLSCREEN AUTH & RESTRICTED SCREENS */
+    .app-fullscreen-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: var(--bg-main);
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      overflow-y: auto;
     }
 
-    .access-lock-btn:active {
+    .splash-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .splash-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: rgba(225, 29, 72, 0.15);
+      border: 1px solid rgba(225, 29, 72, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .login-screen-card {
+      width: 90%;
+      max-width: 360px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .btn-google-sign-in {
+      width: 100%;
+      background: #ffffff;
+      color: #1f2937;
+      border: none;
+      border-radius: var(--radius-full);
+      padding: 13px 20px;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      transition: all 0.2s;
+    }
+
+    .btn-google-sign-in:active {
+      transform: scale(0.96);
+      background: #f3f4f6;
+    }
+
+    .restricted-container {
+      width: 90%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 0 30px;
+      box-sizing: border-box;
+      margin-top: 10px;
+    }
+
+    .restricted-status-card {
+      width: 100%;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: var(--radius-md);
+      padding: 16px 14px;
+      text-align: center;
+      margin-top: 14px;
+      box-sizing: border-box;
+    }
+
+    .restricted-status-badge {
+      font-size: 16px;
+      font-weight: 800;
+      color: #f87171;
+      margin-bottom: 4px;
+    }
+
+    .restricted-status-subtext {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .btn-check-status {
+      width: 100%;
+      background: var(--primary-gradient);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-full);
+      padding: 13px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(255, 51, 102, 0.4);
+      transition: all 0.2s;
+    }
+
+    .btn-check-status:active {
       transform: scale(0.96);
     }
   </style>
@@ -2511,7 +2632,108 @@
 
 <body>
 
-  <div class="app-frame" id="app-frame">
+  <!-- 1. FULLSCREEN LOADING SPLASH -->
+  <div id="app-loading-screen" class="app-fullscreen-screen">
+    <div class="splash-content">
+      <div class="brand-logo splash-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <path fill="#e11d48" d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0"></path>
+        </svg>
+      </div>
+      <h2 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 4px;">Story Gram</h2>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Loading StoryGram...</p>
+      <div class="spinner" style="width: 28px; height: 28px; border-width: 3px;"></div>
+    </div>
+  </div>
+
+  <!-- 2. LOGIN SCREEN (WHEN NOT LOGGED IN) -->
+  <div id="app-login-screen" class="app-fullscreen-screen" style="display: none;">
+    <div class="login-screen-card">
+      <div class="brand-logo splash-logo" style="margin-bottom: 12px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none">
+          <path fill="#e11d48" d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0"></path>
+        </svg>
+      </div>
+      <h2 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 6px;">Welcome to Story Gram</h2>
+      <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5;">
+        Sign in to listen to unlimited audio series, episodes & stories.
+      </p>
+
+      <button class="btn-google-sign-in" id="btn-google-sign-in" onclick="triggerAppLogin()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        <span id="btn-login-text">Sign In with Google</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 3. RESTRICTED SCREEN (LOGGED IN BUT NO ACCESS / PENDING / MISMATCH / EXPIRED) -->
+  <div id="app-restricted-screen" class="app-fullscreen-screen" style="display: none; justify-content: flex-start;">
+    <!-- Top Action Bar Only -->
+    <header class="action-bar" style="display: flex; width: 100%;">
+      <div class="action-bar-top" style="justify-content: center; width: 100%;">
+        <div class="brand">
+          <div class="brand-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path fill="#e11d48" d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0"></path>
+            </svg>
+          </div>
+          <span class="brand-name">Story Gram</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="restricted-container">
+      <!-- User Profile Card -->
+      <div class="account-profile-card" style="width: 100%; margin-top: 10px;">
+        <div class="account-avatar" id="restricted-avatar-container">
+          <svg id="restricted-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="5" />
+            <path d="M20 21a8 8 0 0 0-16 0" />
+          </svg>
+          <img id="restricted-avatar-img" src="" alt="Avatar" style="display: none;">
+        </div>
+        <div class="account-user-info">
+          <div class="account-user-name" id="restricted-user-name">User Name</div>
+          <div class="account-user-email" id="restricted-user-email">useremail@mail.com</div>
+        </div>
+      </div>
+
+      <!-- Access Status Card -->
+      <div class="restricted-status-card" id="restricted-status-card">
+        <div class="restricted-status-badge" id="restricted-status-badge">No Access</div>
+        <div class="restricted-status-subtext" id="restricted-status-subtext">Pending Admin Approval</div>
+      </div>
+
+      <!-- Device ID Box -->
+      <div class="access-lock-device-box" style="margin-top: 14px;">
+        <div class="device-box-header">
+          <span>Your Device ID</span>
+          <span class="device-copy-badge" onclick="copyAccountDeviceId()">
+            <i data-lucide="copy" style="width: 10px; height: 10px;"></i> Copy
+          </span>
+        </div>
+        <div class="device-box-id" id="restricted-device-id">Fetching...</div>
+      </div>
+
+      <!-- Check Status Button -->
+      <button class="btn-check-status" onclick="checkAccessStatus()" style="margin-top: 18px;">
+        <i data-lucide="refresh-cw" id="restricted-refresh-icon"></i> Check Access Status
+      </button>
+
+      <!-- Log Out Button -->
+      <button class="account-danger-btn" onclick="logoutUser()" style="margin-top: 12px; width: 100%; padding: 13px; font-weight: 700; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; border-radius: var(--radius-md);">
+        <i data-lucide="log-out"></i> Log Out
+      </button>
+    </div>
+  </div>
+
+  <!-- 4. MAIN APP CONTENT (ONLY ACTIVE & VISIBLE WHEN ALLOWED) -->
+  <div class="app-frame" id="app-frame" style="display: none;">
     <!-- ACTION BAR -->
     <header class="action-bar">
       <div class="action-bar-top">
@@ -5129,7 +5351,6 @@
           }
         }
       } catch (e) { }
-
       // 3. LocalStorage persistent fallback
       let localDevId = localStorage.getItem('storygram_device_id');
       if (!localDevId) {
@@ -5141,11 +5362,190 @@
     }
 
     // ========================================================
-    // USER ACCESS VERIFICATION WITH MYSQL VIA SERVER.JS PROXY
+    // APP STATE MANAGER (4 STATES: LOADING, LOGIN, RESTRICTED, ALLOWED)
     // ========================================================
+    let currentAppState = 'loading'; // 'loading' | 'login' | 'restricted' | 'allowed'
     let userAccessStatus = 'checking';
     let currentUserAccessData = null;
+    let homeFeedLoaded = false;
 
+    function setAppState(state, data = {}) {
+      currentAppState = state;
+      const loadingScreen = document.getElementById('app-loading-screen');
+      const loginScreen = document.getElementById('app-login-screen');
+      const restrictedScreen = document.getElementById('app-restricted-screen');
+      const appFrame = document.getElementById('app-frame');
+
+      if (state === 'loading') {
+        if (loadingScreen) loadingScreen.style.display = 'flex';
+        if (loginScreen) loginScreen.style.display = 'none';
+        if (restrictedScreen) restrictedScreen.style.display = 'none';
+        if (appFrame) appFrame.style.display = 'none';
+      } else if (state === 'login') {
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        if (loginScreen) loginScreen.style.display = 'flex';
+        if (restrictedScreen) restrictedScreen.style.display = 'none';
+        if (appFrame) appFrame.style.display = 'none';
+
+        const loginBtn = document.getElementById('btn-google-sign-in');
+        const loginTxt = document.getElementById('btn-login-text');
+        if (loginBtn) loginBtn.disabled = false;
+        if (loginTxt) loginTxt.innerText = 'Sign In with Google';
+      } else if (state === 'restricted') {
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        if (loginScreen) loginScreen.style.display = 'none';
+        if (restrictedScreen) restrictedScreen.style.display = 'flex';
+        if (appFrame) appFrame.style.display = 'none';
+
+        // Pause any running media
+        try {
+          const active = getActiveMediaElement();
+          if (active && !active.paused) active.pause();
+          closePlayerBar();
+        } catch (e) { }
+
+        // Populate user profile info in restricted screen
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+        const name = data.name || saved.name || 'User';
+        const email = data.email || saved.email || 'user@mail.com';
+        const photoUrl = data.photoUrl || data.photo_url || saved.avatarUrl || saved.photoUrl || '';
+        const deviceId = data.deviceId || data.device_id || saved.deviceId || getDeviceId();
+        const status = data.status || saved.status || 'pending';
+
+        const rName = document.getElementById('restricted-user-name');
+        const rEmail = document.getElementById('restricted-user-email');
+        const rDevId = document.getElementById('restricted-device-id');
+        const rAvatarImg = document.getElementById('restricted-avatar-img');
+        const rAvatarSvg = document.getElementById('restricted-avatar-svg');
+        const rAvatarCont = document.getElementById('restricted-avatar-container');
+        const rBadge = document.getElementById('restricted-status-badge');
+        const rSubtext = document.getElementById('restricted-status-subtext');
+        const rCard = document.getElementById('restricted-status-card');
+
+        if (rName) rName.innerText = name;
+        if (rEmail) rEmail.innerText = email;
+        if (rDevId) rDevId.innerText = deviceId;
+
+        if (photoUrl && photoUrl.trim()) {
+          if (rAvatarImg) {
+            rAvatarImg.src = photoUrl.trim();
+            rAvatarImg.style.display = 'block';
+          }
+          if (rAvatarSvg) rAvatarSvg.style.display = 'none';
+          if (rAvatarCont) rAvatarCont.style.background = 'transparent';
+        } else if (name && name.trim()) {
+          if (rAvatarSvg) rAvatarSvg.style.display = 'none';
+          if (rAvatarImg) rAvatarImg.style.display = 'none';
+          if (rAvatarCont) {
+            rAvatarCont.style.background = '#E11D48';
+            rAvatarCont.innerText = name.trim().charAt(0).toUpperCase();
+          }
+        }
+
+        if (status === 'device_mismatch') {
+          if (rBadge) {
+            rBadge.innerText = 'Device Not Matched';
+            rBadge.style.color = '#f87171';
+          }
+          if (rSubtext) rSubtext.innerText = 'Registered with another device. Contact Admin.';
+          if (rCard) {
+            rCard.style.background = 'rgba(239, 68, 68, 0.12)';
+            rCard.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          }
+        } else if (status === 'expired') {
+          if (rBadge) {
+            rBadge.innerText = 'Validity Expired';
+            rBadge.style.color = '#fb923c';
+          }
+          if (rSubtext) rSubtext.innerText = data.allowed_until ? `Subscription expired on ${data.allowed_until}` : 'Your VIP subscription has expired.';
+          if (rCard) {
+            rCard.style.background = 'rgba(249, 115, 22, 0.12)';
+            rCard.style.borderColor = 'rgba(249, 115, 22, 0.3)';
+          }
+        } else if (status === 'blocked') {
+          if (rBadge) {
+            rBadge.innerText = 'Blocked';
+            rBadge.style.color = '#f87171';
+          }
+          if (rSubtext) rSubtext.innerText = 'Access suspended by administrator.';
+          if (rCard) {
+            rCard.style.background = 'rgba(239, 68, 68, 0.12)';
+            rCard.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          }
+        } else {
+          // Pending / New User
+          if (rBadge) {
+            rBadge.innerText = 'No Access';
+            rBadge.style.color = '#f87171';
+          }
+          if (rSubtext) rSubtext.innerText = 'Pending Admin Approval';
+          if (rCard) {
+            rCard.style.background = 'rgba(239, 68, 68, 0.12)';
+            rCard.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          }
+        }
+      } else if (state === 'allowed') {
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        if (loginScreen) loginScreen.style.display = 'none';
+        if (restrictedScreen) restrictedScreen.style.display = 'none';
+        if (appFrame) appFrame.style.display = 'flex';
+
+        // Update account tab details
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+        const name = data.name || saved.name || 'User';
+        const email = data.email || saved.email || 'user@mail.com';
+        const photoUrl = data.photoUrl || data.photo_url || saved.avatarUrl || saved.photoUrl || '';
+        const deviceId = data.deviceId || data.device_id || saved.deviceId || getDeviceId();
+
+        const accName = document.getElementById('account-user-name');
+        const accEmail = document.getElementById('account-user-email');
+        const accDevId = document.getElementById('account-device-id-label');
+        const accAvatarImg = document.getElementById('account-avatar-img');
+        const accAvatarSvg = document.getElementById('account-avatar-svg');
+        const accAvatarCont = document.getElementById('account-avatar-container');
+        const accBadge = document.getElementById('account-vip-badge');
+        const accText = document.getElementById('account-vip-status-text');
+        const accExpiry = document.getElementById('account-vip-expiry');
+
+        if (accName) accName.innerText = name;
+        if (accEmail) accEmail.innerText = email;
+        if (accDevId) accDevId.innerText = deviceId;
+        if (photoUrl && photoUrl.trim()) {
+          if (accAvatarImg) {
+            accAvatarImg.src = photoUrl.trim();
+            accAvatarImg.style.display = 'block';
+          }
+          if (accAvatarSvg) accAvatarSvg.style.display = 'none';
+          if (accAvatarCont) accAvatarCont.style.background = 'transparent';
+        } else if (name && name.trim()) {
+          if (accAvatarSvg) accAvatarSvg.style.display = 'none';
+          if (accAvatarImg) accAvatarImg.style.display = 'none';
+          if (accAvatarCont) {
+            accAvatarCont.style.background = '#E11D48';
+            accAvatarCont.innerText = name.trim().charAt(0).toUpperCase();
+          }
+        }
+        if (accBadge) {
+          accBadge.style.background = 'rgba(34, 197, 94, 0.15)';
+          accBadge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+          accBadge.style.color = '#4ade80';
+        }
+        if (accText) accText.innerText = 'VIP Active';
+        if (accExpiry) accExpiry.innerText = data.allowed_until ? data.allowed_until : 'Lifetime Access';
+
+        if (!homeFeedLoaded) {
+          homeFeedLoaded = true;
+          fetchHomeFeed();
+        }
+      }
+      refreshIcons();
+    }
+
+    // ========================================================
+    // USER ACCESS VERIFICATION WITH MYSQL VIA SERVER.JS PROXY
+    // ========================================================
     async function verifyUserAccess(userInfo = null) {
       try {
         const deviceId = getDeviceId();
@@ -5160,30 +5560,21 @@
         const email = (user && user.email) ? user.email.trim() : '';
         const name = (user && user.name) ? user.name.trim() : 'User';
         const photoUrl = (user && (user.avatarUrl || user.photoUrl)) ? (user.avatarUrl || user.photoUrl) : '';
+        const userId = (user && (user.userId || user.user_id)) ? (user.userId || user.user_id) : '';
 
-        // Update Device ID labels in UI
-        const lockDevIdEl = document.getElementById('lock-device-id');
-        if (lockDevIdEl) lockDevIdEl.innerText = deviceId;
-        const accDevIdEl = document.getElementById('account-device-id-label');
-        if (accDevIdEl) accDevIdEl.innerText = deviceId;
-
-        // Only verify with database if real user email is provided from App login
+        // If no user email, directly send to login screen (never record dummy data)
         if (!email) {
-          console.log("No user logged in yet. Waiting for App login.");
-          const lockUserName = document.getElementById('lock-user-name');
-          const lockUserEmail = document.getElementById('lock-user-email');
-          if (lockUserName) lockUserName.innerText = 'Login Required';
-          if (lockUserEmail) lockUserEmail.innerText = 'Please sign in with Google in the app';
-          return;
+          setAppState('login');
+          return null;
         }
 
         const res = await fetch('/api/user/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId: user && (user.userId || user.user_id) ? (user.userId || user.user_id) : '',
+            userId: userId,
             email: email,
-            name: name || 'User',
+            name: name,
             photoUrl: photoUrl,
             deviceId: deviceId
           })
@@ -5192,120 +5583,54 @@
         if (res.ok) {
           const data = await res.json();
           currentUserAccessData = data;
-          handleAccessVerificationResult(data, name, email, photoUrl, deviceId);
+          userAccessStatus = data.status || 'pending';
+
+          const mergedData = {
+            ...data,
+            name: (data.user && data.user.name) || name,
+            email: (data.user && data.user.email) || email,
+            photoUrl: (data.user && data.user.photo_url) || photoUrl,
+            deviceId: (data.user && data.user.device_id) || deviceId,
+            status: data.status || 'pending',
+            allowed_until: (data.user && data.user.allowed_until) || data.allowed_until || null
+          };
+
+          if (data.status === 'allowed') {
+            setAppState('allowed', mergedData);
+          } else {
+            setAppState('restricted', mergedData);
+          }
           return data;
         } else {
           console.warn("Verify user access returned HTTP error:", res.status);
+          setAppState('restricted', { name, email, photoUrl, deviceId, status: 'pending' });
         }
       } catch (err) {
         console.error("Failed to verify user access:", err);
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+        setAppState('restricted', { ...saved, status: 'pending' });
       }
     }
 
-    function handleAccessVerificationResult(data, name, email, photoUrl, deviceId) {
-      const vipStatusBadge = document.getElementById('account-vip-badge');
-      const vipStatusText = document.getElementById('account-vip-status-text');
-      const vipExpiryEl = document.getElementById('account-vip-expiry');
-      const devIdEl = document.getElementById('account-device-id-label');
-      const bottomNav = document.querySelector('.bottom-nav');
-      const actionBar = document.querySelector('.action-bar');
+    function triggerAppLogin() {
+      const btn = document.getElementById('btn-google-sign-in');
+      const txt = document.getElementById('btn-login-text');
+      if (btn) btn.disabled = true;
+      if (txt) txt.innerText = 'Connecting...';
 
-      const nameEl = document.getElementById('account-user-name');
-      const emailEl = document.getElementById('account-user-email');
-      const avatarSvg = document.getElementById('account-avatar-svg');
-      const avatarImg = document.getElementById('account-avatar-img');
-      const avatarContainer = document.getElementById('account-avatar-container');
-
-      if (name && name.trim()) {
-        if (nameEl) nameEl.innerText = name.trim();
-      }
-      if (email && email.trim()) {
-        if (emailEl) emailEl.innerText = email.trim();
-      }
-      if (photoUrl && photoUrl.trim()) {
-        if (avatarImg) {
-          avatarImg.src = photoUrl.trim();
-          avatarImg.style.display = 'block';
-        }
-        if (avatarSvg) avatarSvg.style.display = 'none';
-        if (avatarContainer) avatarContainer.style.background = 'transparent';
-      } else if (name && name.trim()) {
-        const initial = name.trim().charAt(0).toUpperCase();
-        if (avatarSvg) avatarSvg.style.display = 'none';
-        if (avatarImg) avatarImg.style.display = 'none';
-        if (avatarContainer) {
-          avatarContainer.style.background = '#E11D48';
-          avatarContainer.innerText = initial;
-        }
+      // 1. Android Bridge explicit method
+      if (window.AndroidBridge && typeof window.AndroidBridge.requestLogin === 'function') {
+        window.AndroidBridge.requestLogin();
+        return;
       }
 
-      if (devIdEl) devIdEl.innerText = deviceId;
-
-      const status = data.status || 'pending';
-      userAccessStatus = status;
-
-      if (status === 'allowed') {
-        // Access Allowed: Restore Full Navigation
-        if (bottomNav) bottomNav.style.display = 'flex';
-        if (actionBar) actionBar.style.display = 'flex';
-
-        if (vipStatusBadge) {
-          vipStatusBadge.style.background = 'rgba(34, 197, 94, 0.15)';
-          vipStatusBadge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
-          vipStatusBadge.style.color = '#4ade80';
-        }
-        if (vipStatusText) vipStatusText.innerText = 'VIP Active';
-        if (vipExpiryEl) {
-          vipExpiryEl.innerText = data.allowed_until ? data.allowed_until : 'Lifetime Access';
-        }
-      } else {
-        // Access Denied / Pending: Lock firmly on Account View
-        try {
-          const active = getActiveMediaElement();
-          if (active && !active.paused) active.pause();
-          closePlayerBar();
-        } catch (e) { }
-
-        if (bottomNav) bottomNav.style.display = 'none';
-        if (actionBar) actionBar.style.display = 'none';
-
-        switchTab('account', false, false);
-
-        if (status === 'pending') {
-          if (vipStatusText) vipStatusText.innerText = 'No Access';
-          if (vipStatusBadge) {
-            vipStatusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
-            vipStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-            vipStatusBadge.style.color = '#f87171';
-          }
-          if (vipExpiryEl) vipExpiryEl.innerText = 'Pending Admin Approval';
-        } else if (status === 'device_mismatch') {
-          if (vipStatusText) vipStatusText.innerText = 'Device Locked';
-          if (vipStatusBadge) {
-            vipStatusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
-            vipStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-            vipStatusBadge.style.color = '#f87171';
-          }
-          if (vipExpiryEl) vipExpiryEl.innerText = 'Locked to Another Phone';
-        } else if (status === 'expired') {
-          if (vipStatusText) vipStatusText.innerText = 'Expired';
-          if (vipStatusBadge) {
-            vipStatusBadge.style.background = 'rgba(249, 115, 22, 0.15)';
-            vipStatusBadge.style.borderColor = 'rgba(249, 115, 22, 0.3)';
-            vipStatusBadge.style.color = '#fb923c';
-          }
-          if (vipExpiryEl) vipExpiryEl.innerText = data.allowed_until || 'Expired';
-        } else if (status === 'blocked') {
-          if (vipStatusText) vipStatusText.innerText = 'Blocked';
-          if (vipStatusBadge) {
-            vipStatusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
-            vipStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-            vipStatusBadge.style.color = '#f87171';
-          }
-          if (vipExpiryEl) vipExpiryEl.innerText = 'Access Suspended';
-        }
-      }
-      refreshIcons();
+      // Fallback for browser testing
+      console.log("AndroidBridge.requestLogin() invoked.");
+      setTimeout(() => {
+        if (btn) btn.disabled = false;
+        if (txt) txt.innerText = 'Sign In with Google';
+      }, 3000);
     }
 
     function logoutUser() {
@@ -5321,66 +5646,36 @@
           }
         } catch (e) { }
 
-        const nameEl = document.getElementById('account-user-name');
-        const emailEl = document.getElementById('account-user-email');
-        const avatarSvg = document.getElementById('account-avatar-svg');
-        const avatarImg = document.getElementById('account-avatar-img');
-        const avatarContainer = document.getElementById('account-avatar-container');
-
-        if (nameEl) nameEl.innerText = 'User';
-        if (emailEl) emailEl.innerText = 'Logged Out';
-        if (avatarImg) avatarImg.style.display = 'none';
-        if (avatarSvg) avatarSvg.style.display = 'block';
-        if (avatarContainer) avatarContainer.style.background = '#1e293b';
-
-        const vipStatusText = document.getElementById('account-vip-status-text');
-        const vipStatusBadge = document.getElementById('account-vip-badge');
-        const vipExpiryEl = document.getElementById('account-vip-expiry');
-
-        if (vipStatusText) vipStatusText.innerText = 'No Access';
-        if (vipStatusBadge) {
-          vipStatusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
-          vipStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-          vipStatusBadge.style.color = '#f87171';
-        }
-        if (vipExpiryEl) vipExpiryEl.innerText = 'Login Required';
+        try {
+          const active = getActiveMediaElement();
+          if (active && !active.paused) active.pause();
+          closePlayerBar();
+        } catch (e) { }
 
         userAccessStatus = 'logged_out';
-        const bottomNav = document.querySelector('.bottom-nav');
-        const actionBar = document.querySelector('.action-bar');
-        if (bottomNav) bottomNav.style.display = 'none';
-        if (actionBar) actionBar.style.display = 'none';
-
-        switchTab('account', false, false);
+        homeFeedLoaded = false;
+        setAppState('login');
       }
     }
 
-    async function checkAccessStatus(isFromAccount = false) {
-      const btnIcon = document.getElementById(isFromAccount ? 'account-sync-icon' : 'btn-check-icon');
-      if (btnIcon) btnIcon.classList.add('spin-animation');
+    async function checkAccessStatus() {
+      const icon = document.getElementById('restricted-refresh-icon');
+      if (icon) icon.classList.add('spin-animation');
 
       let saved = null;
       try {
         saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
       } catch (e) { }
 
-      await verifyUserAccess(saved);
+      if (saved && saved.email) {
+        await verifyUserAccess(saved);
+      } else {
+        setAppState('login');
+      }
 
       setTimeout(() => {
-        if (btnIcon) btnIcon.classList.remove('spin-animation');
+        if (icon) icon.classList.remove('spin-animation');
       }, 700);
-    }
-
-    function copyLockDeviceId() {
-      const devId = getDeviceId();
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(devId);
-      }
-      const copyText = document.getElementById('lock-copy-text');
-      if (copyText) {
-        copyText.innerText = 'Copied!';
-        setTimeout(() => { copyText.innerText = 'Copy'; }, 2000);
-      }
     }
 
     function copyAccountDeviceId() {
@@ -5388,63 +5683,26 @@
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(devId);
       }
-    }
-
-    function copyFullAccountInfo() {
-      let saved = {};
-      try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
-      const devId = getDeviceId();
-      const text = `Story Gram Device Access Request:\nName: ${saved.name || 'User'}\nEmail: ${saved.email || 'N/A'}\nDevice ID: ${devId}`;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text);
-      }
-      const copyText = document.getElementById('lock-copy-text');
-      if (copyText) {
-        copyText.innerText = 'Info Copied!';
-        setTimeout(() => { copyText.innerText = 'Copy'; }, 2000);
-      }
+      const badges = document.querySelectorAll('.device-copy-badge');
+      badges.forEach(b => {
+        const orig = b.innerHTML;
+        b.innerHTML = '<i data-lucide="check" style="width: 10px; height: 10px;"></i> Copied!';
+        refreshIcons();
+        setTimeout(() => { b.innerHTML = orig; refreshIcons(); }, 2000);
+      });
     }
 
     // ==========================================
     // USER PROFILE (ANDROID BRIDGE & PERSISTENCE)
     // ==========================================
     function updateUserProfile(name, email, avatarUrl, deviceId, userId) {
-      const nameEl = document.getElementById('account-user-name');
-      const emailEl = document.getElementById('account-user-email');
-      const avatarSvg = document.getElementById('account-avatar-svg');
-      const avatarImg = document.getElementById('account-avatar-img');
-      const avatarContainer = document.getElementById('account-avatar-container');
-
-      if (name && name.trim()) {
-        if (nameEl) nameEl.innerText = name.trim();
-      }
-      if (email && email.trim()) {
-        if (emailEl) emailEl.innerText = email.trim();
-      }
-      if (avatarUrl && avatarUrl.trim()) {
-        if (avatarImg) {
-          avatarImg.src = avatarUrl.trim();
-          avatarImg.style.display = 'block';
-        }
-        if (avatarSvg) avatarSvg.style.display = 'none';
-        if (avatarContainer) avatarContainer.style.background = 'transparent';
-      } else if (name && name.trim()) {
-        const initial = name.trim().charAt(0).toUpperCase();
-        if (avatarSvg) avatarSvg.style.display = 'none';
-        if (avatarImg) avatarImg.style.display = 'none';
-        if (avatarContainer) {
-          avatarContainer.style.background = '#E11D48';
-          avatarContainer.innerText = initial;
-        }
-      }
-
       if (deviceId && deviceId.trim()) {
         try { localStorage.setItem('storygram_device_id', deviceId.trim()); } catch (e) { }
       }
 
       const userObj = {
         userId: userId || '',
-        name: name || '',
+        name: name || 'User',
         email: email || '',
         avatarUrl: avatarUrl || '',
         deviceId: deviceId || getDeviceId()
@@ -5454,7 +5712,15 @@
         localStorage.setItem('storygram_user', JSON.stringify(userObj));
       } catch (e) { }
 
-      // Automatically verify access on user update
+      if (!email || !email.trim()) {
+        setAppState('login');
+        return;
+      }
+
+      // Show loader while verifying with database
+      setAppState('loading');
+
+      // Automatically verify access & record to MySQL
       verifyUserAccess(userObj);
     }
 
@@ -5465,8 +5731,13 @@
           const rawData = window.AndroidBridge.getUserData();
           if (rawData) {
             const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-            if (data && (data.email || data.name)) {
-              updateUserProfile(data.name || data.displayName, data.email, data.avatarUrl || data.photoUrl, data.deviceId || data.device_id, data.userId || data.user_id || data.id);
+            if (data && (data.email || data.user_email)) {
+              const uEmail = data.email || data.user_email;
+              const uName = data.name || data.displayName || 'User';
+              const uAvatar = data.avatarUrl || data.photoUrl || data.photo_url || '';
+              const uDevId = data.deviceId || data.device_id || getDeviceId();
+              const uId = data.userId || data.user_id || data.id || '';
+              updateUserProfile(uName, uEmail, uAvatar, uDevId, uId);
               return;
             }
           }
@@ -5476,11 +5747,15 @@
       // 2. Check localStorage
       try {
         const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
-        if (saved && (saved.name || saved.email || saved.avatarUrl)) {
-          updateUserProfile(saved.name, saved.email, saved.avatarUrl, saved.deviceId, saved.userId);
+        if (saved && saved.email && saved.email.trim()) {
+          setAppState('loading');
+          verifyUserAccess(saved);
           return;
         }
       } catch (e) { }
+
+      // 3. Not logged in -> Show login screen directly
+      setAppState('login');
     }
 
     window.updateUserProfile = updateUserProfile;
@@ -5489,17 +5764,18 @@
     window.checkAccessStatus = checkAccessStatus;
     window.logoutUser = logoutUser;
     window.getDeviceId = getDeviceId;
+    window.triggerAppLogin = triggerAppLogin;
+    window.setAppState = setAppState;
 
     window.addEventListener('DOMContentLoaded', () => {
-      loadSavedUserProfile();
       initShakaPlayer();
       refreshIcons();
-      fetchHomeFeed();
+      loadSavedUserProfile();
 
       window.addEventListener('online', () => {
-        if (currentTabName === 'home') {
+        if (currentAppState === 'allowed' && currentTabName === 'home') {
           fetchHomeFeed();
-        } else if (currentTabName === 'show-detail' && currentShowId) {
+        } else if (currentAppState === 'allowed' && currentTabName === 'show-detail' && currentShowId) {
           fetchShowEpisodes(currentShowId, currentBatchStartPtr, 'replace', currentTopPtr + 1);
         }
       });
