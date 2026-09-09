@@ -249,14 +249,14 @@
       border-radius: var(--radius-full);
     }
 
-    /* LANGUAGE MODAL */
+    /* LANGUAGE / SPEED / TIMER / EPISODE MODALS */
     .modal-backdrop {
       position: fixed;
       inset: 0;
       background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      z-index: 250;
+      z-index: 500;
       display: none;
       align-items: flex-end;
       justify-content: center;
@@ -1503,8 +1503,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 16px 14px;
-      gap: 8px;
+      padding: 15px;
+      gap: 10px;
       box-sizing: border-box;
       min-height: 0;
     }
@@ -1555,7 +1555,7 @@
       aspect-ratio: 1 / 1;
       border-radius: var(--radius-lg);
       overflow: hidden;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 51, 102, 0.18);
+      box-shadow: none;
       border: 1px solid rgba(255, 255, 255, 0.12);
       flex-shrink: 0;
       position: relative;
@@ -1683,7 +1683,7 @@
       font-weight: 700;
       color: rgba(255, 255, 255, 0.75);
       font-variant-numeric: tabular-nums;
-      padding: 0 2px;
+      padding: 5px 2px;
     }
 
     .fs-controls-row {
@@ -2245,7 +2245,11 @@
       <div class="action-bar-top">
         <a href="#" class="brand" id="action-bar-brand" onclick="switchTab('home')">
           <div class="brand-logo" id="action-bar-logo">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill="#e11d48" d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0"></path></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path fill="#e11d48"
+                d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0">
+              </path>
+            </svg>
           </div>
           <span class="brand-name" id="action-bar-title">Story Gram</span>
         </a>
@@ -2370,7 +2374,12 @@
         <div class="account-page-wrap">
           <div class="account-profile-card">
             <div class="account-avatar">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="lucide lucide-user-round">
+                <circle cx="12" cy="8" r="5" />
+                <path d="M20 21a8 8 0 0 0-16 0" />
+              </svg>
             </div>
             <div class="account-user-info">
               <div class="account-user-name">Story Gram Listener</div>
@@ -2556,7 +2565,8 @@
               <i data-lucide="gauge"></i>
               <span id="fs-btn-speed-val">1x</span>
             </button>
-            <button class="fs-action-pill-btn" id="fs-btn-timer-pill" onclick="openSleepTimerModal()" title="Sleep Timer">
+            <button class="fs-action-pill-btn" id="fs-btn-timer-pill" onclick="openSleepTimerModal()"
+              title="Sleep Timer">
               <i data-lucide="moon"></i>
               <span id="fs-btn-timer-val">Timer</span>
             </button>
@@ -2580,7 +2590,12 @@
         <span>Library</span>
       </div>
       <div class="nav-item" onclick="switchTab('account')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+          class="lucide lucide-user-round">
+          <circle cx="12" cy="8" r="5" />
+          <path d="M20 21a8 8 0 0 0-16 0" />
+        </svg>
         <span>Account</span>
       </div>
     </nav>
