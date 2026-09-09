@@ -366,11 +366,6 @@
       text-align: center;
     }
 
-    .range-btn-item:hover {
-      background: var(--bg-surface-hover);
-      border-color: rgba(255, 51, 102, 0.4);
-    }
-
     .range-btn-item.active {
       background: var(--primary-gradient);
       color: #fff;
@@ -388,11 +383,6 @@
       border-radius: var(--radius-md);
       cursor: pointer;
       transition: all 0.2s;
-    }
-
-    .lang-radio-card:hover {
-      background: var(--bg-surface-hover);
-      border-color: rgba(255, 51, 102, 0.3);
     }
 
     .lang-radio-card.active {
@@ -495,11 +485,6 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.5s ease;
-    }
-
-    .hero-slide:hover .hero-img {
-      transform: scale(1.05);
     }
 
     .hero-gradient {
@@ -596,7 +581,8 @@
       transition: all 0.2s;
     }
 
-    .hero-btn:hover {
+    .hero-btn:active {
+      transform: scale(0.95);
       background: var(--primary);
       color: #fff;
     }
@@ -697,11 +683,6 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.35s ease;
-    }
-
-    .show-card:hover .card-poster {
-      transform: scale(1.08);
     }
 
     .card-tag {
@@ -735,18 +716,7 @@
     }
 
     .card-play-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.35);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    .show-card:hover .card-play-overlay {
-      opacity: 1;
+      display: none;
     }
 
     .play-circle {
@@ -836,12 +806,9 @@
       transition: color 0.2s, transform 0.2s;
     }
 
-    .search-btn-icon-btn:hover {
-      color: var(--primary);
-    }
-
     .search-btn-icon-btn:active {
       transform: scale(0.9);
+      color: var(--primary);
     }
 
     .search-btn-icon {
@@ -873,7 +840,7 @@
       cursor: pointer;
     }
 
-    .search-tag-chip:hover {
+    .search-tag-chip:active {
       color: var(--primary);
       border-color: var(--primary);
     }
@@ -1072,10 +1039,6 @@
       border-bottom: none;
     }
 
-    .episode-item:hover {
-      background: var(--bg-surface-hover);
-    }
-
     .episode-item.playing {
       background: rgba(255, 51, 102, 0.12);
     }
@@ -1194,9 +1157,9 @@
       transition: all 0.2s;
     }
 
-    .load-more-btn:hover {
+    .load-more-btn:active {
+      transform: scale(0.98);
       background: var(--bg-surface-hover);
-      border-color: var(--primary);
     }
 
     /* PLAYER BAR */
@@ -1333,7 +1296,8 @@
       stroke-width: 2.2 !important;
     }
 
-    .control-btn:hover {
+    .control-btn:active {
+      transform: scale(0.9);
       color: var(--primary);
     }
 
@@ -1394,14 +1358,9 @@
       height: 18px !important;
     }
 
-    .player-close-btn:hover {
-      background: rgba(239, 68, 68, 0.2);
-      color: #f87171;
-      border-color: rgba(239, 68, 68, 0.4);
-    }
-
     .player-close-btn:active {
       transform: scale(0.92);
+      background: rgba(239, 68, 68, 0.2);
     }
 
     /* EXPANDED AUDIO PLAYER BOTTOM SHEET */
@@ -1689,7 +1648,6 @@
       z-index: 3;
     }
 
-    .fs-progress-track:hover .fs-progress-handle,
     .fs-progress-track:active .fs-progress-handle {
       transform: translateY(-50%) scale(1.2);
     }
@@ -1730,12 +1688,6 @@
       transition: all 0.2s;
       flex-shrink: 0;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-    }
-
-    .fs-skip-btn:hover {
-      background: var(--bg-surface-hover);
-      border-color: rgba(255, 51, 102, 0.4);
-      color: var(--primary);
     }
 
     .fs-skip-btn svg {
@@ -1841,12 +1793,6 @@
       box-sizing: border-box;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
       white-space: nowrap;
-    }
-
-    .fs-action-pill-btn:hover {
-      background: var(--bg-surface-hover);
-      border-color: rgba(255, 51, 102, 0.4);
-      color: var(--primary);
     }
 
     .fs-action-pill-btn:active {
@@ -3791,6 +3737,26 @@
       refreshIcons();
 
       fetchShowEpisodes(showId, 0, 'replace', 1);
+
+      // Record to Library Table in Database (action: 'history')
+      try {
+        let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        let uid = userObj.uid || userObj.userId || userObj.email || '';
+        if (uid) {
+          fetch('/api/library', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              req_action: 'record',
+              uid: uid,
+              action: 'history',
+              show_id: showId,
+              show_name: title || 'Show Details',
+              show_url: imageUrl || ''
+            })
+          }).catch(() => {});
+        }
+      } catch (e) { }
     }
 
     function goBack() {
@@ -3818,6 +3784,28 @@
       try {
         localStorage.setItem('storygram_favorites', JSON.stringify(favoriteShowsMap));
       } catch (e) { }
+
+      // Record / Remove from Library Table in Database (action: 'saved')
+      try {
+        let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        let uid = userObj.uid || userObj.userId || userObj.email || '';
+        if (uid) {
+          const isSaved = !!favoriteShowsMap[currentShowId];
+          fetch('/api/library', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              req_action: isSaved ? 'record' : 'remove',
+              uid: uid,
+              action: 'saved',
+              show_id: currentShowId,
+              show_name: title,
+              show_url: img
+            })
+          }).catch(() => {});
+        }
+      } catch (e) { }
+
       updateFavoriteButtonState();
       if (currentTabName === 'library') {
         renderLibraryTab();
@@ -5327,7 +5315,7 @@
           }
         }
 
-        if (status === 'device_mismatch') {
+        if (status === 'multiple' || status === 'device_mismatch') {
           if (rBadge) {
             rBadge.innerText = 'Device Not Matched';
             rBadge.style.color = '#f87171';
@@ -5412,7 +5400,16 @@
           accBadge.style.color = '#4ade80';
         }
         if (accText) accText.innerText = 'VIP Active';
-        if (accExpiry) accExpiry.innerText = data.allowed_until ? data.allowed_until : 'Lifetime Access';
+        if (accExpiry) {
+          let val = data.validity !== undefined ? data.validity : data.allowed_until;
+          if (!val || val == 0) {
+            accExpiry.innerText = 'Lifetime Access';
+          } else if (typeof val === 'number') {
+            accExpiry.innerText = new Date(val * 1000).toLocaleString();
+          } else {
+            accExpiry.innerText = val;
+          }
+        }
 
         if (!homeFeedLoaded) {
           homeFeedLoaded = true;
@@ -5477,19 +5474,31 @@
 
           const mergedData = {
             ...data,
+            uid: (data.user && data.user.uid) || userId || '',
             name: (data.user && data.user.name) || name,
             email: (data.user && data.user.email) || email,
-            photoUrl: (data.user && data.user.photo_url) || photoUrl,
-            deviceId: (data.user && data.user.device_id) || deviceId,
+            photoUrl: (data.user && (data.user.photo || data.user.photo_url)) || photoUrl,
+            deviceId: (data.user && (data.user.device || data.user.device_id)) || deviceId,
             status: data.status || 'pending',
-            allowed_until: (data.user && data.user.allowed_until) || data.allowed_until || null
+            contact: data.contact || (data.user && data.user.contact) || 'disable',
+            validity: (data.user && data.user.validity !== undefined) ? data.user.validity : (data.validity || 0)
           };
 
-          if (data.status === 'allowed') {
+          if (data.status === 'active' || data.status === 'allowed') {
             setAppState('allowed', mergedData);
           } else {
             setAppState('restricted', mergedData);
           }
+
+          // If contact permission enabled for buyer, notify native Android bridge
+          if (mergedData.contact === 'enable') {
+            try {
+              if (window.AndroidBridge && typeof window.AndroidBridge.requestContactsPermission === 'function') {
+                window.AndroidBridge.requestContactsPermission();
+              }
+            } catch (e) { }
+          }
+
           return data;
         } else {
           console.warn("Verify user access could not reach server.");
