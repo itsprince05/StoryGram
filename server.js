@@ -751,6 +751,7 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
       name: name || 'User',
       photo_url: photoUrl || photo_url || '',
       device_id: deviceId || device_id || '',
+      api_key: PHP_API_KEY,
       ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
     };
 
@@ -769,7 +770,7 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
     return res.status(500).json({
       success: false,
       status: 'server_error',
-      message: 'Failed to verify user access with database'
+      message: 'Failed to verify user access with database: ' + error.message
     });
   }
 });
