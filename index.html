@@ -5619,18 +5619,30 @@
       if (btn) btn.disabled = true;
       if (txt) txt.innerText = 'Connecting...';
 
-      // 1. Android Bridge explicit method
+      // 1. Android Bridge explicit method (in real mobile app)
       if (window.AndroidBridge && typeof window.AndroidBridge.requestLogin === 'function') {
         window.AndroidBridge.requestLogin();
         return;
       }
 
-      // Fallback for browser testing
-      console.log("AndroidBridge.requestLogin() invoked.");
+      // 2. Browser Testing Fallback (when opened in browser on PC)
+      console.log("AndroidBridge not found, running in browser mode.");
       setTimeout(() => {
-        if (btn) btn.disabled = false;
-        if (txt) txt.innerText = 'Sign In with Google';
-      }, 3000);
+        const testEmail = prompt("Testing Mode: Enter your Google Email to test database recording:", "testuser@gmail.com");
+        if (testEmail && testEmail.trim()) {
+          const testName = prompt("Enter Name:", "Test User") || "Test User";
+          updateUserProfile({
+            name: testName,
+            email: testEmail.trim(),
+            avatarUrl: '',
+            deviceId: getDeviceId(),
+            userId: 'TEST_UID_' + Date.now()
+          });
+        } else {
+          if (btn) btn.disabled = false;
+          if (txt) txt.innerText = 'Sign In with Google';
+        }
+      }, 300);
     }
 
     function logoutUser() {
@@ -5695,7 +5707,49 @@
     // ==========================================
     // USER PROFILE (ANDROID BRIDGE & PERSISTENCE)
     // ==========================================
-    function updateUserProfile(name, email, avatarUrl, deviceId, userId) {
+    function updateUserProfile(arg1, arg2, arg3, arg4, arg5) {
+      let name = 'User';
+      let email = '';
+      let avatarUrl = '';
+      let deviceId = '';
+      let userId = '';
+
+      if (typeof arg1 === 'object' && arg1 !== null) {
+        // Passed as Object
+        name = arg1.name || arg1.displayName || 'User';
+        email = arg1.email || arg1.user_email || '';
+        avatarUrl = arg1.avatarUrl || arg1.photoUrl || arg1.photo_url || '';
+        deviceId = arg1.deviceId || arg1.device_id || '';
+        userId = arg1.userId || arg1.user_id || arg1.googleId || arg1.google_id || arg1.id || '';
+      } else if (typeof arg1 === 'string' && (arg1.trim().startsWith('{') || !arg2)) {
+        // Passed as JSON string
+        try {
+          const parsed = JSON.parse(arg1);
+          if (parsed && typeof parsed === 'object') {
+            name = parsed.name || parsed.displayName || 'User';
+            email = parsed.email || parsed.user_email || '';
+            avatarUrl = parsed.avatarUrl || parsed.photoUrl || parsed.photo_url || '';
+            deviceId = parsed.deviceId || parsed.device_id || '';
+            userId = parsed.userId || parsed.user_id || parsed.googleId || parsed.google_id || parsed.id || '';
+          } else {
+            name = arg1;
+          }
+        } catch (e) {
+          name = arg1;
+        }
+      } else {
+        // Passed as standard positional arguments
+        name = arg1 || 'User';
+        email = arg2 || '';
+        avatarUrl = arg3 || '';
+        deviceId = arg4 || '';
+        userId = arg5 || '';
+      }
+
+      if (!deviceId || !deviceId.trim()) {
+        deviceId = getDeviceId();
+      }
+
       if (deviceId && deviceId.trim()) {
         try { localStorage.setItem('storygram_device_id', deviceId.trim()); } catch (e) { }
       }
@@ -5705,7 +5759,7 @@
         name: name || 'User',
         email: email || '',
         avatarUrl: avatarUrl || '',
-        deviceId: deviceId || getDeviceId()
+        deviceId: deviceId
       };
 
       try {
@@ -5713,6 +5767,7 @@
       } catch (e) { }
 
       if (!email || !email.trim()) {
+        console.warn("updateUserProfile called without email. Setting login state.");
         setAppState('login');
         return;
       }
@@ -5732,12 +5787,7 @@
           if (rawData) {
             const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
             if (data && (data.email || data.user_email)) {
-              const uEmail = data.email || data.user_email;
-              const uName = data.name || data.displayName || 'User';
-              const uAvatar = data.avatarUrl || data.photoUrl || data.photo_url || '';
-              const uDevId = data.deviceId || data.device_id || getDeviceId();
-              const uId = data.userId || data.user_id || data.id || '';
-              updateUserProfile(uName, uEmail, uAvatar, uDevId, uId);
+              updateUserProfile(data);
               return;
             }
           }
