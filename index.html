@@ -4802,16 +4802,15 @@
     }
 
     function loadSavedUserProfile() {
-      // 1. Check URL parameters (?name=...&email=...&avatar=...)
+      // 1. Check Android Javascript Interface (if injected)
       try {
-        const params = new URLSearchParams(window.location.search);
-        const qName = params.get('name') || params.get('userName') || params.get('user_name') || params.get('displayName');
-        const qEmail = params.get('email') || params.get('userEmail') || params.get('user_email');
-        const qAvatar = params.get('avatar') || params.get('photoUrl') || params.get('photo_url') || params.get('avatarUrl');
-
-        if (qName || qEmail || qAvatar) {
-          updateUserProfile(qName || '', qEmail || '', qAvatar || '');
-          return;
+        if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
+          const rawData = window.AndroidBridge.getUserData();
+          if (rawData) {
+            const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+            updateUserProfile(data.name || data.displayName, data.email, data.avatarUrl || data.photoUrl);
+            return;
+          }
         }
       } catch (e) { }
 
@@ -4821,17 +4820,6 @@
         if (saved && (saved.name || saved.email || saved.avatarUrl)) {
           updateUserProfile(saved.name, saved.email, saved.avatarUrl);
           return;
-        }
-      } catch (e) { }
-
-      // 3. Check Android Javascript Interface (if injected)
-      try {
-        if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
-          const rawData = window.AndroidBridge.getUserData();
-          if (rawData) {
-            const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-            updateUserProfile(data.name || data.displayName, data.email, data.avatarUrl || data.photoUrl);
-          }
         }
       } catch (e) { }
     }
