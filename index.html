@@ -1683,7 +1683,7 @@
       font-weight: 700;
       color: rgba(255, 255, 255, 0.75);
       font-variant-numeric: tabular-nums;
-      padding: 5px 2px;
+      padding: 4px 2px 0;
     }
 
     .fs-controls-row {
@@ -1693,7 +1693,8 @@
       width: 100%;
       max-width: 360px;
       gap: 8px;
-      margin: 0;
+      margin-top: -10px;
+      margin-bottom: 0;
       flex-shrink: 0;
     }
 
@@ -1800,9 +1801,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-top: 6px;
-      margin-bottom: 4px;
+      gap: 10px;
       flex-shrink: 0;
     }
 
@@ -2880,9 +2879,12 @@
       }
     };
 
-    function switchTab(tabName, updateNav = true) {
+    function switchTab(tabName, updateNav = true, pushHistory = true) {
       const actionBar = document.querySelector('.action-bar');
       if (tabName !== 'show-detail') {
+        if (currentTabName && currentTabName !== 'show-detail' && currentTabName !== tabName) {
+          previousTab = currentTabName;
+        }
         currentTabName = tabName;
         if (actionBar) actionBar.style.display = 'flex';
 
@@ -2911,6 +2913,12 @@
           const navItems = document.querySelectorAll('.nav-item');
           if (navItems[index]) navItems[index].classList.add('active');
         }
+      }
+
+      if (pushHistory && tabName !== 'home') {
+        try {
+          history.pushState({ tab: tabName }, '');
+        } catch (e) { }
       }
 
       if (tabName === 'search') {
@@ -2945,10 +2953,15 @@
       { id: 'french', name: 'French' }
     ];
 
-    function openLanguageModal() {
+    function openLanguageModal(pushHistory = true) {
       renderLanguageGrid();
       const modal = document.getElementById('language-modal');
-      if (modal) modal.classList.add('show');
+      if (modal && !modal.classList.contains('show')) {
+        modal.classList.add('show');
+        if (pushHistory) {
+          try { history.pushState({ modal: 'language' }, ''); } catch (e) { }
+        }
+      }
       refreshIcons();
     }
 
@@ -2994,10 +3007,15 @@
       fetchHomeFeed();
     }
 
-    function openEpisodeRangeModal() {
+    function openEpisodeRangeModal(pushHistory = true) {
       renderEpisodeRangesGrid();
       const modal = document.getElementById('episodes-range-modal');
-      if (modal) modal.classList.add('show');
+      if (modal && !modal.classList.contains('show')) {
+        modal.classList.add('show');
+        if (pushHistory) {
+          try { history.pushState({ modal: 'episodes-range' }, ''); } catch (e) { }
+        }
+      }
       refreshIcons();
     }
 
@@ -3265,7 +3283,7 @@
       openShowPage(showId, "Show Details", "");
     }
 
-    function openShowPage(showId, title, imageUrl) {
+    function openShowPage(showId, title, imageUrl, pushHistory = true) {
       if (!showId) return;
       previousTab = (currentTabName && currentTabName !== 'show-detail') ? currentTabName : 'home';
       currentShowId = showId;
@@ -3296,7 +3314,12 @@
       }
 
       updateFavoriteButtonState();
-      switchTab('show-detail', false);
+      switchTab('show-detail', false, false);
+      if (pushHistory) {
+        try {
+          history.pushState({ view: 'show-detail', showId }, '');
+        } catch (e) { }
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
       refreshIcons();
 
@@ -3304,7 +3327,7 @@
     }
 
     function goBack() {
-      switchTab(previousTab || 'home', true);
+      switchTab(previousTab || 'home', true, false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -3681,10 +3704,15 @@
       { label: '2.0x', speed: 2.0 }
     ];
 
-    function openSpeedModal() {
+    function openSpeedModal(pushHistory = true) {
       renderSpeedOptionsList();
       const modal = document.getElementById('speed-modal');
-      if (modal) modal.classList.add('show');
+      if (modal && !modal.classList.contains('show')) {
+        modal.classList.add('show');
+        if (pushHistory) {
+          try { history.pushState({ modal: 'speed' }, ''); } catch (e) { }
+        }
+      }
       refreshIcons();
     }
 
@@ -3739,10 +3767,15 @@
       { label: '2 Hours', minutes: 120 }
     ];
 
-    function openSleepTimerModal() {
+    function openSleepTimerModal(pushHistory = true) {
       renderSleepTimerOptionsList();
       const modal = document.getElementById('sleep-timer-modal');
-      if (modal) modal.classList.add('show');
+      if (modal && !modal.classList.contains('show')) {
+        modal.classList.add('show');
+        if (pushHistory) {
+          try { history.pushState({ modal: 'sleep-timer' }, ''); } catch (e) { }
+        }
+      }
       refreshIcons();
     }
 
@@ -3839,7 +3872,7 @@
       }
     }
 
-    function openFullscreenPlayer() {
+    function openFullscreenPlayer(pushHistory = true) {
       if (!currentPlayingStory) return;
 
       const backdrop = document.getElementById('player-modal-backdrop');
@@ -3855,7 +3888,12 @@
       if (showTitle) showTitle.innerText = currentPlayingStory.showTitle || "Story Gram";
 
       updateFullscreenPlayerUI();
-      if (backdrop) backdrop.classList.add('show');
+      if (backdrop && !backdrop.classList.contains('show')) {
+        backdrop.classList.add('show');
+        if (pushHistory) {
+          try { history.pushState({ modal: 'fullscreen-player' }, ''); } catch (e) { }
+        }
+      }
       refreshIcons();
     }
 
@@ -3869,6 +3907,64 @@
         closeFullscreenPlayer();
       }
     }
+
+    // ==========================================
+    // NATIVE-LIKE ANDROID / WEBVIEW BACK NAVIGATION
+    // ==========================================
+    try {
+      history.replaceState({ tab: 'home' }, '');
+    } catch (e) { }
+
+    window.addEventListener('popstate', (event) => {
+      // 1. If any small popup bottom-sheet is open (Speed, Timer, Language, Episodes Range), close it first
+      const speedModal = document.getElementById('speed-modal');
+      const timerModal = document.getElementById('sleep-timer-modal');
+      const langModal = document.getElementById('language-modal');
+      const epRangeModal = document.getElementById('episodes-range-modal');
+
+      let closedAnyPopup = false;
+      if (speedModal && speedModal.classList.contains('show')) {
+        speedModal.classList.remove('show');
+        closedAnyPopup = true;
+      }
+      if (timerModal && timerModal.classList.contains('show')) {
+        timerModal.classList.remove('show');
+        closedAnyPopup = true;
+      }
+      if (langModal && langModal.classList.contains('show')) {
+        langModal.classList.remove('show');
+        closedAnyPopup = true;
+      }
+      if (epRangeModal && epRangeModal.classList.contains('show')) {
+        epRangeModal.classList.remove('show');
+        closedAnyPopup = true;
+      }
+
+      if (closedAnyPopup) return;
+
+      // 2. If expanded bottom-sheet player is open, hide / minimize it
+      const playerBackdrop = document.getElementById('player-modal-backdrop');
+      if (playerBackdrop && playerBackdrop.classList.contains('show')) {
+        playerBackdrop.classList.remove('show');
+        return;
+      }
+
+      // 3. If on Show Details page, go back to previous tab or Home
+      if (currentTabName === 'show-detail') {
+        switchTab(previousTab || 'home', true, false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // 4. If on any other tab (search, library, account), go back to Home
+      if (currentTabName !== 'home') {
+        switchTab('home', true, false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // 5. If already on Home with no modals or player open, allow natural exit
+    });
 
     async function stopAndUnloadAudio() {
       if (shakaPlayer) {
