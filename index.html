@@ -2761,9 +2761,12 @@
             </div>
           </div>
 
-          <div class="section" style="margin-top: 10px;">
-            <button class="account-danger-btn" onclick="clearAllAppData()">
-              <i data-lucide="trash-2"></i> Clear History & App Cache
+          <div class="section" style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px;">
+            <button class="account-danger-btn" onclick="logoutUser()" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; font-weight: 700; padding: 13px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; width: 100%;">
+              <i data-lucide="log-out"></i> Log Out
+            </button>
+            <button class="account-danger-btn" onclick="clearAllAppData()" style="opacity: 0.7; font-size: 11px;">
+              <i data-lucide="trash-2"></i> Clear History & Cache
             </button>
           </div>
         </div>
@@ -2974,46 +2977,6 @@
 
   <!-- AUDIO ELEMENT -->
   <audio id="audio-element" preload="auto"></audio>
-
-  <!-- ACCESS LOCK MODAL (POPUP WHEN STATUS IS NOT ALLOWED) -->
-  <div id="access-lock-modal" class="access-lock-overlay">
-    <div class="access-lock-card">
-      <div class="access-lock-icon-wrap pending" id="lock-icon-wrap">
-        <i data-lucide="shield-alert" id="lock-icon" style="width: 32px; height: 32px;"></i>
-      </div>
-      <h2 class="access-lock-title" id="lock-title">No Access</h2>
-      <p class="access-lock-desc" id="lock-desc">
-        Aapka account StoryGram database me register ho gaya hai, lekin abhi access active nahi hai. Kripya Admin se approval lene ke liye apna Device ID share karein.
-      </p>
-
-      <div class="access-lock-user-box">
-        <div class="lock-user-avatar" id="lock-user-avatar">U</div>
-        <div class="lock-user-details">
-          <div class="lock-user-name" id="lock-user-name">User Name</div>
-          <div class="lock-user-email" id="lock-user-email">useremail@mail.com</div>
-        </div>
-      </div>
-
-      <div class="access-lock-device-box">
-        <div class="device-box-header">
-          <span>Your Device ID</span>
-          <span class="device-copy-badge" id="device-copy-badge" onclick="copyLockDeviceId()">
-            <i data-lucide="copy" style="width: 11px; height: 11px;"></i> <span id="lock-copy-text">Copy</span>
-          </span>
-        </div>
-        <div class="device-box-id" id="lock-device-id">Fetching Device ID...</div>
-      </div>
-
-      <div class="access-lock-actions">
-        <button class="access-lock-btn primary" id="btn-check-access" onclick="checkAccessStatus()">
-          <i data-lucide="refresh-cw" id="btn-check-icon"></i> Check Access Status
-        </button>
-        <button class="access-lock-btn outline" onclick="copyFullAccountInfo()">
-          <i data-lucide="share-2"></i> Copy Info for Admin
-        </button>
-      </div>
-    </div>
-  </div>
 
   <script>
     let currentLanguage = 'hindi';
@@ -3257,7 +3220,17 @@
     };
 
     function switchTab(tabName, updateNav = true, pushHistory = true) {
+      if (userAccessStatus !== 'allowed') {
+        tabName = 'account';
+      }
+
       const actionBar = document.querySelector('.action-bar');
+      const bottomNav = document.querySelector('.bottom-nav');
+
+      if (userAccessStatus !== 'allowed') {
+        if (actionBar) actionBar.style.display = 'none';
+        if (bottomNav) bottomNav.style.display = 'none';
+      }
       if (currentTabName && currentTabName !== 'show-detail' && tabName === 'show-detail') {
         previousTab = currentTabName;
       } else if (currentTabName && currentTabName !== 'show-detail' && currentTabName !== tabName && tabName !== 'show-detail') {
@@ -5230,38 +5203,52 @@
     }
 
     function handleAccessVerificationResult(data, name, email, photoUrl, deviceId) {
-      const lockModal = document.getElementById('access-lock-modal');
-      const lockTitle = document.getElementById('lock-title');
-      const lockDesc = document.getElementById('lock-desc');
-      const lockIconWrap = document.getElementById('lock-icon-wrap');
-      const lockIcon = document.getElementById('lock-icon');
-      const lockUserName = document.getElementById('lock-user-name');
-      const lockUserEmail = document.getElementById('lock-user-email');
-      const lockUserAvatar = document.getElementById('lock-user-avatar');
-
       const vipStatusBadge = document.getElementById('account-vip-badge');
       const vipStatusText = document.getElementById('account-vip-status-text');
       const vipExpiryEl = document.getElementById('account-vip-expiry');
+      const devIdEl = document.getElementById('account-device-id-label');
+      const bottomNav = document.querySelector('.bottom-nav');
+      const actionBar = document.querySelector('.action-bar');
 
-      if (lockUserName) lockUserName.innerText = name || 'User';
-      if (lockUserEmail) lockUserEmail.innerText = email || 'user@email.com';
+      const nameEl = document.getElementById('account-user-name');
+      const emailEl = document.getElementById('account-user-email');
+      const avatarSvg = document.getElementById('account-avatar-svg');
+      const avatarImg = document.getElementById('account-avatar-img');
+      const avatarContainer = document.getElementById('account-avatar-container');
 
-      if (lockUserAvatar) {
-        if (photoUrl) {
-          lockUserAvatar.innerHTML = `<img src="${photoUrl}" alt="Avatar">`;
-        } else {
-          lockUserAvatar.innerText = (name || 'U').charAt(0).toUpperCase();
+      if (name && name.trim()) {
+        if (nameEl) nameEl.innerText = name.trim();
+      }
+      if (email && email.trim()) {
+        if (emailEl) emailEl.innerText = email.trim();
+      }
+      if (photoUrl && photoUrl.trim()) {
+        if (avatarImg) {
+          avatarImg.src = photoUrl.trim();
+          avatarImg.style.display = 'block';
+        }
+        if (avatarSvg) avatarSvg.style.display = 'none';
+        if (avatarContainer) avatarContainer.style.background = 'transparent';
+      } else if (name && name.trim()) {
+        const initial = name.trim().charAt(0).toUpperCase();
+        if (avatarSvg) avatarSvg.style.display = 'none';
+        if (avatarImg) avatarImg.style.display = 'none';
+        if (avatarContainer) {
+          avatarContainer.style.background = '#E11D48';
+          avatarContainer.innerText = initial;
         }
       }
+
+      if (devIdEl) devIdEl.innerText = deviceId;
 
       const status = data.status || 'pending';
       userAccessStatus = status;
 
       if (status === 'allowed') {
-        // Hide Lock Modal
-        if (lockModal) lockModal.classList.add('hidden');
+        // Access Allowed: Restore Full Navigation
+        if (bottomNav) bottomNav.style.display = 'flex';
+        if (actionBar) actionBar.style.display = 'flex';
 
-        // Update Account Tab
         if (vipStatusBadge) {
           vipStatusBadge.style.background = 'rgba(34, 197, 94, 0.15)';
           vipStatusBadge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
@@ -5272,71 +5259,100 @@
           vipExpiryEl.innerText = data.allowed_until ? data.allowed_until : 'Lifetime Access';
         }
       } else {
-        // Access Denied / Pending: Pause player immediately
+        // Access Denied / Pending: Lock firmly on Account View
         try {
           const active = getActiveMediaElement();
           if (active && !active.paused) active.pause();
           closePlayerBar();
         } catch (e) { }
 
-        // Configure Lock Modal based on status
-        if (lockModal) lockModal.classList.remove('hidden');
+        if (bottomNav) bottomNav.style.display = 'none';
+        if (actionBar) actionBar.style.display = 'none';
 
-        if (lockIconWrap) {
-          lockIconWrap.className = 'access-lock-icon-wrap';
-        }
+        switchTab('account', false, false);
 
         if (status === 'pending') {
-          if (lockIconWrap) lockIconWrap.classList.add('pending');
-          if (lockTitle) lockTitle.innerText = 'No Access';
-          if (lockDesc) lockDesc.innerText = 'Aapka account StoryGram database me register ho gaya hai, lekin abhi access active nahi hai. Kripya Admin se approval lene ke liye apna Device ID share karein.';
-          if (lockIcon) lockIcon.setAttribute('data-lucide', 'shield-alert');
-          if (vipStatusText) vipStatusText.innerText = 'No Access (Pending)';
+          if (vipStatusText) vipStatusText.innerText = 'No Access';
           if (vipStatusBadge) {
-            vipStatusBadge.style.background = 'rgba(245, 158, 11, 0.15)';
-            vipStatusBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-            vipStatusBadge.style.color = '#fbbf24';
+            vipStatusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+            vipStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+            vipStatusBadge.style.color = '#f87171';
           }
+          if (vipExpiryEl) vipExpiryEl.innerText = 'Pending Admin Approval';
         } else if (status === 'device_mismatch') {
-          if (lockIconWrap) lockIconWrap.classList.add('mismatch');
-          if (lockTitle) lockTitle.innerText = 'No Access (Device Locked)';
-          if (lockDesc) lockDesc.innerText = 'Ye account dusre device me locked hai. Is phone me chalane ke liye Admin se Device Reset karwayein.';
-          if (lockIcon) lockIcon.setAttribute('data-lucide', 'shield-x');
           if (vipStatusText) vipStatusText.innerText = 'Device Locked';
           if (vipStatusBadge) {
             vipStatusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
             vipStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
             vipStatusBadge.style.color = '#f87171';
           }
+          if (vipExpiryEl) vipExpiryEl.innerText = 'Locked to Another Phone';
         } else if (status === 'expired') {
-          if (lockIconWrap) lockIconWrap.classList.add('expired');
-          if (lockTitle) lockTitle.innerText = 'No Access (Subscription Expired)';
-          if (lockDesc) lockDesc.innerText = `Aapka VIP access ${data.allowed_until || 'khatam'} ho chuka hai. Kripya Admin se extend karwayein.`;
-          if (lockIcon) lockIcon.setAttribute('data-lucide', 'clock');
           if (vipStatusText) vipStatusText.innerText = 'Expired';
           if (vipStatusBadge) {
             vipStatusBadge.style.background = 'rgba(249, 115, 22, 0.15)';
             vipStatusBadge.style.borderColor = 'rgba(249, 115, 22, 0.3)';
             vipStatusBadge.style.color = '#fb923c';
           }
+          if (vipExpiryEl) vipExpiryEl.innerText = data.allowed_until || 'Expired';
         } else if (status === 'blocked') {
-          if (lockIconWrap) lockIconWrap.classList.add('blocked');
-          if (lockTitle) lockTitle.innerText = 'No Access (Blocked)';
-          if (lockDesc) lockDesc.innerText = 'Aapka access Admin dwara suspend kar diya gaya hai.';
-          if (lockIcon) lockIcon.setAttribute('data-lucide', 'shield-ban');
           if (vipStatusText) vipStatusText.innerText = 'Blocked';
           if (vipStatusBadge) {
             vipStatusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
             vipStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
             vipStatusBadge.style.color = '#f87171';
           }
-        }
-
-        if (vipExpiryEl) {
-          vipExpiryEl.innerText = data.allowed_until ? data.allowed_until : 'No Access';
+          if (vipExpiryEl) vipExpiryEl.innerText = 'Access Suspended';
         }
       }
       refreshIcons();
+    }
+
+    function logoutUser() {
+      if (confirm("Are you sure you want to log out?")) {
+        try {
+          localStorage.removeItem('storygram_user');
+          localStorage.removeItem('storygram_history');
+        } catch (e) { }
+
+        try {
+          if (window.AndroidBridge && typeof window.AndroidBridge.requestLogout === 'function') {
+            window.AndroidBridge.requestLogout();
+          }
+        } catch (e) { }
+
+        const nameEl = document.getElementById('account-user-name');
+        const emailEl = document.getElementById('account-user-email');
+        const avatarSvg = document.getElementById('account-avatar-svg');
+        const avatarImg = document.getElementById('account-avatar-img');
+        const avatarContainer = document.getElementById('account-avatar-container');
+
+        if (nameEl) nameEl.innerText = 'User';
+        if (emailEl) emailEl.innerText = 'Logged Out';
+        if (avatarImg) avatarImg.style.display = 'none';
+        if (avatarSvg) avatarSvg.style.display = 'block';
+        if (avatarContainer) avatarContainer.style.background = '#1e293b';
+
+        const vipStatusText = document.getElementById('account-vip-status-text');
+        const vipStatusBadge = document.getElementById('account-vip-badge');
+        const vipExpiryEl = document.getElementById('account-vip-expiry');
+
+        if (vipStatusText) vipStatusText.innerText = 'No Access';
+        if (vipStatusBadge) {
+          vipStatusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+          vipStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          vipStatusBadge.style.color = '#f87171';
+        }
+        if (vipExpiryEl) vipExpiryEl.innerText = 'Login Required';
+
+        userAccessStatus = 'logged_out';
+        const bottomNav = document.querySelector('.bottom-nav');
+        const actionBar = document.querySelector('.action-bar');
+        if (bottomNav) bottomNav.style.display = 'none';
+        if (actionBar) actionBar.style.display = 'none';
+
+        switchTab('account', false, false);
+      }
     }
 
     async function checkAccessStatus(isFromAccount = false) {
@@ -5471,6 +5487,7 @@
     window.setUserData = updateUserProfile;
     window.verifyUserAccess = verifyUserAccess;
     window.checkAccessStatus = checkAccessStatus;
+    window.logoutUser = logoutUser;
     window.getDeviceId = getDeviceId;
 
     window.addEventListener('DOMContentLoaded', () => {
