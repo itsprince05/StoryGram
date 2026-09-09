@@ -1795,146 +1795,66 @@
       fill: #fff;
     }
 
-    .fs-speed-section {
+    /* FULLSCREEN PLAYER ACTION PILL BUTTONS */
+    .fs-bottom-actions-row {
       width: 100%;
+      max-width: 380px;
       display: flex;
-      flex-direction: column;
-      padding: 0 2px;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 6px;
+      margin-bottom: 4px;
       flex-shrink: 0;
     }
 
-    .fs-speed-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .fs-speed-label {
+    .fs-action-pill-btn {
+      flex: 1;
+      height: 40px;
+      border-radius: var(--radius-full);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text-main);
       font-size: 12px;
       font-weight: 700;
-      color: var(--text-muted);
-      display: flex;
+      display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .fs-speed-slider-wrap {
-      position: relative;
-      width: 100%;
-      height: 30px;
-      display: flex;
-      align-items: center;
-    }
-
-    .fs-speed-track {
-      width: 100%;
-      height: 6px;
-      background: rgba(255, 255, 255, 0.16);
-      border-radius: var(--radius-full);
-      position: relative;
       cursor: pointer;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .fs-speed-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #ff3366 0%, #ff527b 100%);
-      border-radius: var(--radius-full);
-      width: 0%;
-      pointer-events: none;
-      box-shadow: 0 0 8px rgba(255, 51, 102, 0.5);
-      transition: width 0.2s ease;
-    }
-
-    .fs-speed-handle {
-      position: absolute;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #ffffff;
-      border: 3px solid #ff3366;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 12px #ff3366;
-      pointer-events: none;
-      transition: left 0.2s ease, transform 0.15s ease;
-      z-index: 3;
-    }
-
-    .fs-speed-track:hover .fs-speed-handle,
-    .fs-speed-track:active .fs-speed-handle {
-      transform: translate(-50%, -50%) scale(1.15);
-    }
-
-    .fs-speed-dots {
-      position: absolute;
-      top: 50%;
-      left: 0;
-      right: 0;
-      transform: translateY(-50%);
-      display: flex;
-      justify-content: space-between;
-      pointer-events: none;
-      padding: 0;
-      z-index: 2;
-    }
-
-    .fs-speed-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.25);
-      border: 2px solid rgba(255, 255, 255, 0.1);
       transition: all 0.2s ease;
-      flex-shrink: 0;
+      box-sizing: border-box;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
 
-    .fs-speed-dot.active {
-      background: #ff3366;
-      border-color: rgba(255, 51, 102, 0.6);
-      box-shadow: 0 0 6px rgba(255, 51, 102, 0.5);
+    .fs-action-pill-btn:hover {
+      background: var(--bg-surface-hover);
+      border-color: rgba(255, 51, 102, 0.4);
+      color: var(--primary);
     }
 
-    .fs-speed-dot.passed {
-      background: rgba(255, 51, 102, 0.5);
-      border-color: rgba(255, 51, 102, 0.3);
+    .fs-action-pill-btn:active {
+      transform: scale(0.95);
     }
 
-    .fs-speed-labels {
+    .fs-action-pill-btn.active {
+      background: rgba(255, 51, 102, 0.18);
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: 0 0 12px rgba(255, 51, 102, 0.35);
+    }
+
+    .fs-action-pill-btn svg,
+    .fs-action-pill-btn .lucide {
+      width: 16px !important;
+      height: 16px !important;
+      stroke-width: 2.2 !important;
+    }
+
+    .radio-options-list {
       display: flex;
-      justify-content: space-between;
-      padding: 0;
-      margin-top: 2px;
-    }
-
-    .fs-speed-label-item {
-      font-size: 11px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.4);
-      cursor: pointer;
-      transition: color 0.2s ease;
-      text-align: center;
-      width: 36px;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    .fs-speed-label-item:first-child {
-      text-align: left;
-    }
-
-    .fs-speed-label-item:last-child {
-      text-align: right;
-    }
-
-    .fs-speed-label-item.active {
-      color: #ff3366;
-    }
-
-    .fs-speed-label-item:hover {
-      color: var(--text-main);
+      flex-direction: column;
+      gap: 8px;
     }
 
     /* BOTTOM NAV */
@@ -2632,35 +2552,19 @@
             </button>
           </div>
 
-          <div class="fs-speed-section">
-            <div class="fs-speed-header">
-              <span class="fs-speed-label"><i data-lucide="gauge"
-                  style="width: 16px; height: 16px; color: var(--primary);"></i> Speed</span>
-              <span id="fs-current-speed-text"
-                style="color: var(--primary); font-weight: 700; font-size: 14px;">1.0x</span>
-            </div>
-            <div class="fs-speed-slider-wrap">
-              <div class="fs-speed-track" id="fs-speed-track">
-                <div class="fs-speed-fill" id="fs-speed-fill"></div>
-                <div class="fs-speed-handle" id="fs-speed-handle"></div>
-                <div class="fs-speed-dots">
-                  <div class="fs-speed-dot" data-speed="0.75"></div>
-                  <div class="fs-speed-dot active" data-speed="1"></div>
-                  <div class="fs-speed-dot" data-speed="1.25"></div>
-                  <div class="fs-speed-dot" data-speed="1.5"></div>
-                  <div class="fs-speed-dot" data-speed="1.75"></div>
-                  <div class="fs-speed-dot" data-speed="2"></div>
-                </div>
-              </div>
-            </div>
-            <div class="fs-speed-labels">
-              <span class="fs-speed-label-item" onclick="setPlaybackSpeed(0.75)">0.75x</span>
-              <span class="fs-speed-label-item active" onclick="setPlaybackSpeed(1)">1x</span>
-              <span class="fs-speed-label-item" onclick="setPlaybackSpeed(1.25)">1.25x</span>
-              <span class="fs-speed-label-item" onclick="setPlaybackSpeed(1.5)">1.5x</span>
-              <span class="fs-speed-label-item" onclick="setPlaybackSpeed(1.75)">1.75x</span>
-              <span class="fs-speed-label-item" onclick="setPlaybackSpeed(2)">2x</span>
-            </div>
+          <div class="fs-bottom-actions-row">
+            <button class="fs-action-pill-btn" onclick="openSpeedModal()" title="Playback Speed">
+              <i data-lucide="gauge"></i>
+              <span id="fs-btn-speed-val">1x</span>
+            </button>
+            <button class="fs-action-pill-btn" id="fs-btn-timer-pill" onclick="openSleepTimerModal()" title="Sleep Timer">
+              <i data-lucide="moon"></i>
+              <span id="fs-btn-timer-val">Timer</span>
+            </button>
+            <button class="fs-action-pill-btn" onclick="openFullscreenEpisodeSelector()" title="Episodes">
+              <i data-lucide="list-ordered"></i>
+              <span>Episodes</span>
+            </button>
           </div>
         </div>
       </div>
@@ -2708,6 +2612,28 @@
         <button class="modal-close-btn" onclick="closeEpisodeRangeModal()"><i data-lucide="x"></i></button>
       </div>
       <div class="range-grid" id="episodes-range-grid"></div>
+    </div>
+  </div>
+
+  <!-- SPEED SELECTION MODAL POPUP -->
+  <div id="speed-modal" class="modal-backdrop" onclick="closeSpeedModalOnBackdrop(event)">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title"><i data-lucide="gauge" style="color: var(--primary);"></i> Playback Speed</div>
+        <button class="modal-close-btn" onclick="closeSpeedModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="radio-options-list" id="speed-options-list"></div>
+    </div>
+  </div>
+
+  <!-- SLEEP TIMER MODAL POPUP -->
+  <div id="sleep-timer-modal" class="modal-backdrop" onclick="closeSleepTimerModalOnBackdrop(event)">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title"><i data-lucide="moon" style="color: var(--primary);"></i> Sleep Timer</div>
+        <button class="modal-close-btn" onclick="closeSleepTimerModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="radio-options-list" id="sleep-timer-options-list"></div>
     </div>
   </div>
 
@@ -3731,98 +3657,172 @@
       return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }
 
+    // ==========================================
+    // PLAYBACK SPEED MODAL & LOGIC
+    // ==========================================
     let currentPlaybackSpeed = 1.0;
-    const speedSteps = [0.75, 1, 1.25, 1.5, 1.75, 2];
+    const SPEED_OPTIONS = [
+      { label: '0.75x', speed: 0.75 },
+      { label: '1.0x (Normal)', speed: 1.0 },
+      { label: '1.25x', speed: 1.25 },
+      { label: '1.5x', speed: 1.5 },
+      { label: '1.75x', speed: 1.75 },
+      { label: '2.0x', speed: 2.0 }
+    ];
 
-    function updateSpeedSliderUI(speed) {
-      const idx = speedSteps.indexOf(speed);
-      if (idx === -1) return;
-      const pct = (idx / (speedSteps.length - 1)) * 100;
-
-      const fill = document.getElementById('fs-speed-fill');
-      const handle = document.getElementById('fs-speed-handle');
-      if (fill) fill.style.width = pct + '%';
-      if (handle) handle.style.left = pct + '%';
-
-      document.querySelectorAll('.fs-speed-dot').forEach(dot => {
-        const dotSpeed = parseFloat(dot.dataset.speed);
-        const dotIdx = speedSteps.indexOf(dotSpeed);
-        dot.classList.remove('active', 'passed');
-        if (dotIdx === idx) dot.classList.add('active');
-        else if (dotIdx < idx) dot.classList.add('passed');
-      });
-
-      document.querySelectorAll('.fs-speed-label-item').forEach((lbl, i) => {
-        lbl.classList.toggle('active', i === idx);
-      });
-
-      const speedText = document.getElementById('fs-current-speed-text');
-      if (speedText) speedText.innerText = speed + 'x';
+    function openSpeedModal() {
+      renderSpeedOptionsList();
+      const modal = document.getElementById('speed-modal');
+      if (modal) modal.classList.add('show');
+      refreshIcons();
     }
 
-    function setPlaybackSpeed(speed) {
-      if (!speedSteps.includes(speed)) return;
+    function closeSpeedModal() {
+      const modal = document.getElementById('speed-modal');
+      if (modal) modal.classList.remove('show');
+    }
+
+    function closeSpeedModalOnBackdrop(e) {
+      if (e.target.id === 'speed-modal') {
+        closeSpeedModal();
+      }
+    }
+
+    function renderSpeedOptionsList() {
+      const list = document.getElementById('speed-options-list');
+      if (!list) return;
+      list.innerHTML = SPEED_OPTIONS.map(opt => `
+        <div class="lang-radio-card ${currentPlaybackSpeed === opt.speed ? 'active' : ''}" onclick="selectPlaybackSpeed(${opt.speed})">
+          <span class="lang-name">${opt.label}</span>
+          <div class="custom-radio">
+            <div class="custom-radio-inner"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectPlaybackSpeed(speed) {
       currentPlaybackSpeed = speed;
       if (audioElement) audioElement.playbackRate = speed;
       if (videoElement) videoElement.playbackRate = speed;
-      updateSpeedSliderUI(speed);
+      const speedBtnVal = document.getElementById('fs-btn-speed-val');
+      if (speedBtnVal) speedBtnVal.innerText = speed === 1.0 ? '1x' : `${speed}x`;
+      renderSpeedOptionsList();
+      closeSpeedModal();
     }
 
-    (function initSpeedSlider() {
-      function getSpeedFromX(clientX) {
-        const track = document.getElementById('fs-speed-track');
-        if (!track) return null;
-        const rect = track.getBoundingClientRect();
-        const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-        const ratio = x / rect.width;
-        const idx = Math.round(ratio * (speedSteps.length - 1));
-        return speedSteps[idx];
+    // ==========================================
+    // SLEEP TIMER MODAL & COUNTDOWN LOGIC
+    // ==========================================
+    let currentSleepTimerMinutes = 0;
+    let sleepTimerTargetTimestamp = 0;
+    let sleepTimerInterval = null;
+
+    const SLEEP_TIMER_OPTIONS = [
+      { label: 'Off', minutes: 0 },
+      { label: '15 Minutes', minutes: 15 },
+      { label: '30 Minutes', minutes: 30 },
+      { label: '45 Minutes', minutes: 45 },
+      { label: '1 Hour', minutes: 60 },
+      { label: '1.5 Hours', minutes: 90 },
+      { label: '2 Hours', minutes: 120 }
+    ];
+
+    function openSleepTimerModal() {
+      renderSleepTimerOptionsList();
+      const modal = document.getElementById('sleep-timer-modal');
+      if (modal) modal.classList.add('show');
+      refreshIcons();
+    }
+
+    function closeSleepTimerModal() {
+      const modal = document.getElementById('sleep-timer-modal');
+      if (modal) modal.classList.remove('show');
+    }
+
+    function closeSleepTimerModalOnBackdrop(e) {
+      if (e.target.id === 'sleep-timer-modal') {
+        closeSleepTimerModal();
+      }
+    }
+
+    function renderSleepTimerOptionsList() {
+      const list = document.getElementById('sleep-timer-options-list');
+      if (!list) return;
+      list.innerHTML = SLEEP_TIMER_OPTIONS.map(opt => `
+        <div class="lang-radio-card ${currentSleepTimerMinutes === opt.minutes ? 'active' : ''}" onclick="selectSleepTimer(${opt.minutes})">
+          <span class="lang-name">${opt.label}</span>
+          <div class="custom-radio">
+            <div class="custom-radio-inner"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectSleepTimer(minutes) {
+      currentSleepTimerMinutes = minutes;
+      clearInterval(sleepTimerInterval);
+
+      const pillBtn = document.getElementById('fs-btn-timer-pill');
+      const timerVal = document.getElementById('fs-btn-timer-val');
+
+      if (minutes === 0) {
+        sleepTimerTargetTimestamp = 0;
+        if (timerVal) timerVal.innerText = 'Timer';
+        if (pillBtn) pillBtn.classList.remove('active');
+      } else {
+        sleepTimerTargetTimestamp = Date.now() + minutes * 60 * 1000;
+        if (pillBtn) pillBtn.classList.add('active');
+        updateSleepTimerDisplay();
+
+        sleepTimerInterval = setInterval(() => {
+          const remainingMs = sleepTimerTargetTimestamp - Date.now();
+          if (remainingMs <= 0) {
+            clearInterval(sleepTimerInterval);
+            currentSleepTimerMinutes = 0;
+            sleepTimerTargetTimestamp = 0;
+            if (timerVal) timerVal.innerText = 'Timer';
+            if (pillBtn) pillBtn.classList.remove('active');
+
+            if (audioElement) audioElement.pause();
+            if (videoElement) videoElement.pause();
+            isPlaying = false;
+            updatePlayPauseButton();
+          } else {
+            updateSleepTimerDisplay();
+          }
+        }, 1000);
       }
 
-      document.addEventListener('click', function (e) {
-        const track = document.getElementById('fs-speed-track');
-        if (!track || !track.contains(e.target)) return;
-        const speed = getSpeedFromX(e.clientX);
-        if (speed !== null) setPlaybackSpeed(speed);
-      });
+      renderSleepTimerOptionsList();
+      closeSleepTimerModal();
+    }
 
-      let isDraggingSpeed = false;
-      document.addEventListener('touchstart', function (e) {
-        const track = document.getElementById('fs-speed-track');
-        if (!track || !track.contains(e.target)) return;
-        isDraggingSpeed = true;
-        const speed = getSpeedFromX(e.touches[0].clientX);
-        if (speed !== null) setPlaybackSpeed(speed);
-      }, { passive: true });
+    function updateSleepTimerDisplay() {
+      const timerVal = document.getElementById('fs-btn-timer-val');
+      if (!timerVal || sleepTimerTargetTimestamp === 0) return;
+      const remainingMs = Math.max(0, sleepTimerTargetTimestamp - Date.now());
+      const remainingSecs = Math.ceil(remainingMs / 1000);
+      const mins = Math.floor(remainingSecs / 60);
+      const secs = remainingSecs % 60;
+      if (mins >= 60) {
+        const hrs = (mins / 60).toFixed(1).replace('.0', '');
+        timerVal.innerText = `${hrs}h`;
+      } else if (mins > 0) {
+        timerVal.innerText = `${mins}m`;
+      } else {
+        timerVal.innerText = `${secs}s`;
+      }
+    }
 
-      document.addEventListener('touchmove', function (e) {
-        if (!isDraggingSpeed) return;
-        const speed = getSpeedFromX(e.touches[0].clientX);
-        if (speed !== null) setPlaybackSpeed(speed);
-      }, { passive: true });
-
-      document.addEventListener('touchend', function () {
-        isDraggingSpeed = false;
-      }, { passive: true });
-
-      document.addEventListener('mousedown', function (e) {
-        const track = document.getElementById('fs-speed-track');
-        if (!track || !track.contains(e.target)) return;
-        isDraggingSpeed = true;
-      });
-
-      document.addEventListener('mousemove', function (e) {
-        if (!isDraggingSpeed) return;
-        const speed = getSpeedFromX(e.clientX);
-        if (speed !== null) setPlaybackSpeed(speed);
-      });
-
-      document.addEventListener('mouseup', function () {
-        isDraggingSpeed = false;
-      });
-
-      setTimeout(() => updateSpeedSliderUI(1), 100);
-    })();
+    function openFullscreenEpisodeSelector() {
+      if (currentShowId) {
+        openEpisodeRangeModal();
+      } else {
+        closeFullscreenPlayer();
+        switchTab('home');
+      }
+    }
 
     function openFullscreenPlayer() {
       if (!currentPlayingStory) return;
