@@ -1969,9 +1969,20 @@
       align-items: center;
       justify-content: center;
       color: #fff;
-      font-size: 24px;
+      font-size: 22px;
+      font-weight: 800;
       box-shadow: 0 6px 18px rgba(225, 29, 72, 0.45);
       flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .account-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 50%;
     }
 
     .account-avatar svg {
@@ -2381,13 +2392,14 @@
       <div id="tab-account" class="tab-content">
         <div class="account-page-wrap">
           <div class="account-profile-card">
-            <div class="account-avatar">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+            <div class="account-avatar" id="account-avatar-container">
+              <svg id="account-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                 class="lucide lucide-user-round">
                 <circle cx="12" cy="8" r="5" />
                 <path d="M20 21a8 8 0 0 0-16 0" />
               </svg>
+              <img id="account-avatar-img" src="" alt="User Avatar" style="display: none;">
             </div>
             <div class="account-user-info">
               <div class="account-user-name" id="account-user-name">User Name</div>
@@ -4747,7 +4759,88 @@
       return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
+    // ==========================================
+    // USER PROFILE (ANDROID BRIDGE & PERSISTENCE)
+    // ==========================================
+    function updateUserProfile(name, email, avatarUrl) {
+      const nameEl = document.getElementById('account-user-name');
+      const emailEl = document.getElementById('account-user-email');
+      const avatarSvg = document.getElementById('account-avatar-svg');
+      const avatarImg = document.getElementById('account-avatar-img');
+      const avatarContainer = document.getElementById('account-avatar-container');
+
+      if (name && name.trim()) {
+        if (nameEl) nameEl.innerText = name.trim();
+      }
+      if (email && email.trim()) {
+        if (emailEl) emailEl.innerText = email.trim();
+      }
+      if (avatarUrl && avatarUrl.trim()) {
+        if (avatarImg) {
+          avatarImg.src = avatarUrl.trim();
+          avatarImg.style.display = 'block';
+        }
+        if (avatarSvg) avatarSvg.style.display = 'none';
+        if (avatarContainer) avatarContainer.style.background = 'transparent';
+      } else if (name && name.trim()) {
+        const initial = name.trim().charAt(0).toUpperCase();
+        if (avatarSvg) avatarSvg.style.display = 'none';
+        if (avatarImg) avatarImg.style.display = 'none';
+        if (avatarContainer) {
+          avatarContainer.style.background = '#E11D48';
+          avatarContainer.innerText = initial;
+        }
+      }
+
+      try {
+        localStorage.setItem('storygram_user', JSON.stringify({
+          name: name || '',
+          email: email || '',
+          avatarUrl: avatarUrl || ''
+        }));
+      } catch (e) { }
+    }
+
+    function loadSavedUserProfile() {
+      // 1. Check URL parameters (?name=...&email=...&avatar=...)
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const qName = params.get('name') || params.get('userName') || params.get('user_name') || params.get('displayName');
+        const qEmail = params.get('email') || params.get('userEmail') || params.get('user_email');
+        const qAvatar = params.get('avatar') || params.get('photoUrl') || params.get('photo_url') || params.get('avatarUrl');
+
+        if (qName || qEmail || qAvatar) {
+          updateUserProfile(qName || '', qEmail || '', qAvatar || '');
+          return;
+        }
+      } catch (e) { }
+
+      // 2. Check localStorage
+      try {
+        const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
+        if (saved && (saved.name || saved.email || saved.avatarUrl)) {
+          updateUserProfile(saved.name, saved.email, saved.avatarUrl);
+          return;
+        }
+      } catch (e) { }
+
+      // 3. Check Android Javascript Interface (if injected)
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
+          const rawData = window.AndroidBridge.getUserData();
+          if (rawData) {
+            const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+            updateUserProfile(data.name || data.displayName, data.email, data.avatarUrl || data.photoUrl);
+          }
+        }
+      } catch (e) { }
+    }
+
+    window.updateUserProfile = updateUserProfile;
+    window.setUserData = updateUserProfile;
+
     window.addEventListener('DOMContentLoaded', () => {
+      loadSavedUserProfile();
       initShakaPlayer();
       refreshIcons();
       fetchHomeFeed();
