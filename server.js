@@ -735,7 +735,7 @@ const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
 
 app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
   try {
-    const { email, name, photoUrl, photo_url, deviceId, device_id } = req.body;
+    const { email, name, photoUrl, photo_url, deviceId, device_id, userId, user_id, google_id } = req.body;
     
     if (!email) {
       return res.status(400).json({
@@ -746,6 +746,7 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
     }
 
     const payload = {
+      user_id: user_id || userId || google_id || '',
       email,
       name: name || 'User',
       photo_url: photoUrl || photo_url || '',
