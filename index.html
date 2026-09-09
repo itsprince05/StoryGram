@@ -5473,20 +5473,56 @@
           return null;
         }
 
-        const res = await fetch('/api/user/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: userId,
-            email: email,
-            name: name,
-            photoUrl: photoUrl,
-            deviceId: deviceId
-          })
-        });
+        const payload = {
+          userId: userId,
+          user_id: userId,
+          email: email,
+          name: name,
+          photoUrl: photoUrl,
+          photo_url: photoUrl,
+          deviceId: deviceId,
+          device_id: deviceId,
+          api_key: 'StoryGramSecretKey_9874981488'
+        };
 
-        if (res.ok) {
-          const data = await res.json();
+        let res = null;
+        let data = null;
+
+        // Try 1: Local / API proxy endpoint
+        try {
+          res = await fetch('/api/user/verify', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-API-KEY': 'StoryGramSecretKey_9874981488'
+            },
+            body: JSON.stringify(payload)
+          });
+          if (res && res.ok) {
+            data = await res.json();
+          }
+        } catch (e) { }
+
+        // Try 2: Direct PHP Backend endpoint on princeapps.com
+        if (!data) {
+          try {
+            res = await fetch('https://princeapps.com/StoryGram/verify_user.php', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'X-API-KEY': 'StoryGramSecretKey_9874981488'
+              },
+              body: JSON.stringify(payload)
+            });
+            if (res && res.ok) {
+              data = await res.json();
+            }
+          } catch (e) {
+            console.error("Direct PHP backend verify error:", e);
+          }
+        }
+
+        if (data) {
           currentUserAccessData = data;
           userAccessStatus = data.status || 'pending';
 
@@ -5507,7 +5543,7 @@
           }
           return data;
         } else {
-          console.warn("Verify user access returned HTTP error:", res.status);
+          console.warn("Verify user access could not reach server.");
           setAppState('restricted', { name, email, photoUrl, deviceId, status: 'pending' });
         }
       } catch (err) {
