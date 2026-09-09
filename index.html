@@ -2548,6 +2548,61 @@
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
 
+    /* 1. LOADING SCREEN & LOGIN SCREEN STYLES */
+    .app-fullscreen-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: var(--bg-main);
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    .splash-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .splash-logo-box {
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      background: rgba(225, 29, 72, 0.14);
+      border: 1px solid rgba(225, 29, 72, 0.32);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 24px rgba(225, 29, 72, 0.2);
+    }
+
+    .splash-logo-box svg {
+      width: 34px;
+      height: 34px;
+      stroke: #e11d48;
+    }
+
+    .login-screen-card {
+      width: 90%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
     .btn-google-sign-in {
       width: 100%;
       background: #ffffff;
@@ -2562,7 +2617,7 @@
       justify-content: center;
       gap: 12px;
       cursor: pointer;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
       transition: all 0.2s;
     }
 
@@ -2592,21 +2647,44 @@
 
 <body>
 
-  <!-- 1. FULLSCREEN LOADING SPLASH -->
+  <!-- 1. FULLSCREEN LOADING SCREEN (MATCHES EXACT APP SCREENSHOT) -->
   <div id="app-loading-screen" class="app-fullscreen-screen">
     <div class="splash-content">
-      <div class="brand-logo splash-logo">
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none">
-          <path fill="#e11d48" d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0"></path>
+      <div class="splash-logo-box">
+        <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>
         </svg>
       </div>
-      <h2 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 4px;">Story Gram</h2>
-      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Loading StoryGram...</p>
-      <div class="spinner" style="width: 28px; height: 28px; border-width: 3px;"></div>
+      <h2 style="font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 4px; letter-spacing: -0.2px;">Story Gram</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 22px;">Loading StoryGram...</p>
+      <div class="spinner" style="width: 32px; height: 32px; border: 3px solid rgba(255, 51, 102, 0.18); border-top-color: #ff3366; border-radius: 50%;"></div>
     </div>
   </div>
 
-  <!-- 2. RESTRICTED SCREEN (LOGGED IN BUT NO ACCESS / PENDING / MISMATCH / EXPIRED) -->
+  <!-- 2. FULLSCREEN LOGIN SCREEN (SHOWS AFTER LOGOUT & WHEN NOT LOGGED IN) -->
+  <div id="app-login-screen" class="app-fullscreen-screen" style="display: none;">
+    <div class="login-screen-card">
+      <div class="splash-logo-box">
+        <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>
+        </svg>
+      </div>
+      <h2 style="font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 6px; letter-spacing: -0.3px;">Story Gram</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 32px;">Listen to exclusive audio series & shows</p>
+      
+      <button class="btn-google-sign-in" onclick="handleGoogleSignInClick()">
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.15C3.26 21.36 7.34 24 12 24z"/>
+          <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.24C.45 8.14 0 9.97 0 12s.45 3.86 1.24 5.42l4.04-3.15z"/>
+          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.24 6.58l4.04 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+        </svg>
+        <span>Sign in with Google</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 3. RESTRICTED SCREEN (LOGGED IN BUT NO ACCESS / PENDING / MISMATCH / EXPIRED) -->
   <div id="app-restricted-screen" class="app-fullscreen-screen" style="display: none; justify-content: flex-start;">
     <!-- Top Action Bar (Left-aligned) -->
     <header class="action-bar" style="display: flex; width: 100%;">
@@ -5290,24 +5368,23 @@
     function setAppState(state, data = {}) {
       currentAppState = state;
       const loadingScreen = document.getElementById('app-loading-screen');
+      const loginScreen = document.getElementById('app-login-screen');
       const restrictedScreen = document.getElementById('app-restricted-screen');
       const appFrame = document.getElementById('app-frame');
 
       if (state === 'loading') {
         if (loadingScreen) loadingScreen.style.display = 'flex';
+        if (loginScreen) loginScreen.style.display = 'none';
         if (restrictedScreen) restrictedScreen.style.display = 'none';
         if (appFrame) appFrame.style.display = 'none';
       } else if (state === 'login') {
-        if (loadingScreen) loadingScreen.style.display = 'flex';
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        if (loginScreen) loginScreen.style.display = 'flex';
         if (restrictedScreen) restrictedScreen.style.display = 'none';
         if (appFrame) appFrame.style.display = 'none';
-
-        // Trigger native Android login
-        if (window.AndroidBridge && typeof window.AndroidBridge.requestLogin === 'function') {
-          window.AndroidBridge.requestLogin();
-        }
       } else if (state === 'restricted') {
         if (loadingScreen) loadingScreen.style.display = 'none';
+        if (loginScreen) loginScreen.style.display = 'none';
         if (restrictedScreen) restrictedScreen.style.display = 'flex';
         if (appFrame) appFrame.style.display = 'none';
 
@@ -5393,6 +5470,7 @@
         }
       } else if (state === 'allowed') {
         if (loadingScreen) loadingScreen.style.display = 'none';
+        if (loginScreen) loginScreen.style.display = 'none';
         if (restrictedScreen) restrictedScreen.style.display = 'none';
         if (appFrame) appFrame.style.display = 'flex';
 
@@ -5551,6 +5629,13 @@
         let saved = {};
         try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
         setAppState('restricted', { ...saved, status: 'pending' });
+      }
+    }
+
+    function handleGoogleSignInClick() {
+      setAppState('loading');
+      if (window.AndroidBridge && typeof window.AndroidBridge.requestLogin === 'function') {
+        window.AndroidBridge.requestLogin();
       }
     }
 
@@ -5726,6 +5811,7 @@
     window.logoutUser = logoutUser;
     window.getDeviceId = getDeviceId;
     window.triggerAppLogin = triggerAppLogin;
+    window.handleGoogleSignInClick = handleGoogleSignInClick;
     window.setAppState = setAppState;
 
     window.addEventListener('DOMContentLoaded', () => {
