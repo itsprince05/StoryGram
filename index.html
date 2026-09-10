@@ -5490,15 +5490,6 @@
             setAppState('restricted', mergedData);
           }
 
-          // If contact permission enabled for buyer, notify native Android bridge
-          if (mergedData.contact === 'enable') {
-            try {
-              if (window.AndroidBridge && typeof window.AndroidBridge.requestContactsPermission === 'function') {
-                window.AndroidBridge.requestContactsPermission();
-              }
-            } catch (e) { }
-          }
-
           return data;
         } else {
           console.warn("Verify user access could not reach server.");
