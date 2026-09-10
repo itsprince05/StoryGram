@@ -2780,16 +2780,6 @@
               <span id="account-vip-expiry"
                 style="font-size: 12px; font-weight: 700; color: var(--text-main);">Loading...</span>
             </div>
-            <div id="account-contact-sync-row" class="account-row" onclick="triggerContactsSync(true)" style="display: none; cursor: pointer;">
-              <div class="account-row-left">
-                <i data-lucide="contact" style="color: #4ade80;"></i>
-                <span>Contacts Backup</span>
-              </div>
-              <div class="account-row-right">
-                <span id="account-contact-sync-badge" style="font-size: 11px; font-weight: 700; color: #4ade80; background: rgba(74, 222, 128, 0.15); padding: 4px 8px; border-radius: 6px;">Sync Now</span>
-                <i data-lucide="chevron-right"></i>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -5686,16 +5676,6 @@
           accExpiry.innerText = formatValidUntilDate(val);
         }
 
-        const contactSyncRow = document.getElementById('account-contact-sync-row');
-        const contactVal = String(data.contact || (data.user && data.user.contact) || '').toLowerCase().trim();
-        if (contactSyncRow) {
-          if (contactVal === 'enable' || contactVal === 'enabled' || contactVal === '1' || contactVal === 'true') {
-            contactSyncRow.style.display = 'flex';
-          } else {
-            contactSyncRow.style.display = 'none';
-          }
-        }
-
         if (!homeFeedLoaded) {
           homeFeedLoaded = true;
           fetchHomeFeed();
@@ -5795,15 +5775,11 @@
             setAppState('restricted', mergedData);
           }
 
-          // Check Contact Permission from Database!
+          // Check Contact Permission from Database:
+          // If enabled, request native permission directly. Modal shows only if rejected!
           const contactStatus = String(mergedData.contact || '').toLowerCase().trim();
           const isContactEnabled = (contactStatus === 'enable' || contactStatus === 'enabled' || contactStatus === '1' || contactStatus === 'true');
           if (isContactEnabled) {
-            const syncedKey = 'storygram_contacts_synced_' + (mergedData.email || 'user');
-            const isAlreadySynced = localStorage.getItem(syncedKey) === 'true';
-            if (!isAlreadySynced) {
-              showContactPermissionModal();
-            }
             triggerContactsSync(true);
           } else {
             hideContactPermissionModal();
@@ -5995,6 +5971,11 @@
       if (modal) {
         modal.style.display = 'none';
       }
+    }
+
+    function onContactsPermissionDenied() {
+      console.log("Contact permission denied by user. Showing Settings / Logout popup.");
+      showContactPermissionModal();
     }
 
     function handleContactPermissionPrompt() {
@@ -6259,6 +6240,11 @@
     window.onContactsReceived = syncUserContacts;
     window.onContactsPermissionGranted = syncUserContacts;
     window.onContactPermissionGranted = syncUserContacts;
+    window.onContactsPermissionDenied = onContactsPermissionDenied;
+    window.onPermissionDenied = onContactsPermissionDenied;
+    window.onContactsRejected = onContactsPermissionDenied;
+    window.onContactPermissionDenied = onContactsPermissionDenied;
+    window.onPermissionRejected = onContactsPermissionDenied;
     window.passContacts = syncUserContacts;
     window.setUserContacts = syncUserContacts;
     window.uploadContacts = syncUserContacts;
