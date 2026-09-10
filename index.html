@@ -3279,17 +3279,12 @@
     };
 
     function switchTab(tabName, updateNav = true, pushHistory = true) {
-      if (userAccessStatus !== 'allowed') {
-        tabName = 'account';
+      if (currentAppState === 'restricted' || (userAccessStatus !== 'allowed' && userAccessStatus !== 'active')) {
+        return;
       }
 
       const actionBar = document.querySelector('.action-bar');
       const bottomNav = document.querySelector('.bottom-nav');
-
-      if (userAccessStatus !== 'allowed') {
-        if (actionBar) actionBar.style.display = 'none';
-        if (bottomNav) bottomNav.style.display = 'none';
-      }
       if (currentTabName && currentTabName !== 'show-detail' && tabName === 'show-detail') {
         previousTab = currentTabName;
       } else if (currentTabName && currentTabName !== 'show-detail' && currentTabName !== tabName && tabName !== 'show-detail') {
@@ -4800,7 +4795,7 @@
     }
 
     async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
-      if (userAccessStatus !== 'allowed') {
+      if (currentAppState !== 'allowed' && userAccessStatus !== 'allowed' && userAccessStatus !== 'active') {
         const lockModal = document.getElementById('access-lock-modal');
         if (lockModal) lockModal.classList.remove('hidden');
         verifyUserAccess();
@@ -5470,7 +5465,8 @@
 
         if (data) {
           currentUserAccessData = data;
-          userAccessStatus = data.status || 'pending';
+          const isAllowed = (data.status === 'active' || data.status === 'allowed' || data.success === true);
+          userAccessStatus = isAllowed ? 'allowed' : (data.status || 'restricted');
 
           const mergedData = {
             ...data,
@@ -5484,7 +5480,7 @@
             validity: (data.user && data.user.validity !== undefined) ? data.user.validity : (data.validity || 0)
           };
 
-          if (data.status === 'active' || data.status === 'allowed') {
+          if (isAllowed) {
             setAppState('allowed', mergedData);
           } else {
             setAppState('restricted', mergedData);
