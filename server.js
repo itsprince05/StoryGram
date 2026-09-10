@@ -48,7 +48,6 @@ let isRefreshing = false;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname));
 
 async function fetchDailyCookiesFromWebsite() {
   const targetUrls = [
@@ -854,7 +853,7 @@ app.all('/api/proxy/*', (req, res) => {
 
 const NGINX_404_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>404 Not Found</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#fff;color:#222;padding:40px 20px;max-width:600px;margin:0 auto;line-height:1.6;}h1{font-size:24px;font-weight:600;color:#111;margin-bottom:8px;border-bottom:1px solid #eaeaea;padding-bottom:12px;}p{font-size:14px;color:#555;margin-bottom:20px;}hr{border:none;border-top:1px solid #eaeaea;margin:20px 0;}address{font-size:12px;color:#888;font-style:normal;}</style></head><body><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p><hr><address>nginx / 1.24.0</address></body></html>`;
 
-app.get('/', (req, res) => {
+app.get(['/', '/index.html'], (req, res) => {
   const ua = req.headers['user-agent'] || '';
   const isApp = Boolean(
     ua.includes('StoryGramApp') ||
@@ -868,6 +867,10 @@ app.get('/', (req, res) => {
   }
 
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.use((req, res) => {
+  res.status(404).send(NGINX_404_HTML);
 });
 
 app.listen(PORT, () => {
