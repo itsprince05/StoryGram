@@ -2208,9 +2208,6 @@
       height: 16px;
     }
 
-    /* ==========================================
-       ACCESS CONTROL & DEVICE LOCK MODAL STYLES
-       ========================================== */
     /* CONTACT PERMISSION OVERLAY */
     .contact-permission-overlay {
       position: fixed;
@@ -3004,21 +3001,42 @@
 
   <!-- CONTACT PERMISSION REQUIRED MODAL POPUP (OPEN SETTINGS / LOGOUT) -->
   <div id="contact-permission-modal" class="contact-permission-overlay" style="display: none;">
-    <div class="modal-card" style="background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; width: 90%; max-width: 360px; padding: 24px 20px; text-align: center; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8); animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
-      <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(225, 29, 72, 0.15); border: 1px solid rgba(225, 29, 72, 0.3); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: #e11d48;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <div class="modal-card"
+      style="background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; width: 90%; max-width: 360px; padding: 24px 20px; text-align: center; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8); animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+      <div
+        style="width: 60px; height: 60px; border-radius: 50%; background: rgba(225, 29, 72, 0.15); border: 1px solid rgba(225, 29, 72, 0.3); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: #e11d48;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
       </div>
       <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Permission Required</h3>
       <p style="font-size: 13px; color: #94a3b8; line-height: 1.5; margin-bottom: 22px;">
-        Contact permission is required to verify your account and enable VIP access. Please grant permission in settings.
+        Contact permission is required to verify your account and enable VIP access. Please grant permission in
+        settings.
       </p>
       <div style="display: flex; flex-direction: column; gap: 10px;">
-        <button id="btn-open-settings-perm" onclick="handleContactPermissionPrompt()" style="width: 100%; padding: 13px; border-radius: 12px; background: #e11d48; color: #fff; border: none; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        <button id="btn-open-settings-perm" onclick="handleContactPermissionPrompt()"
+          style="width: 100%; padding: 13px; border-radius: 12px; background: #e11d48; color: #fff; border: none; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
           <span>Open Settings</span>
         </button>
-        <button onclick="logoutUser()" style="width: 100%; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+        <button onclick="logoutUser()"
+          style="width: 100%; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" x2="9" y1="12" y2="12" />
+          </svg>
           <span>Logout</span>
         </button>
       </div>
@@ -6017,13 +6035,13 @@
       const bridges = getNativeBridges();
       for (const bridge of bridges) {
         if (typeof bridge.openAppSettings === 'function') {
-          try { bridge.openAppSettings(); } catch(e){}
+          try { bridge.openAppSettings(); } catch (e) { }
         } else if (typeof bridge.openSettings === 'function') {
-          try { bridge.openSettings(); } catch(e){}
+          try { bridge.openSettings(); } catch (e) { }
         } else if (typeof bridge.requestContactsPermission === 'function') {
-          try { bridge.requestContactsPermission(); } catch(e){}
+          try { bridge.requestContactsPermission(); } catch (e) { }
         } else if (typeof bridge.requestContactPermission === 'function') {
-          try { bridge.requestContactPermission(); } catch(e){}
+          try { bridge.requestContactPermission(); } catch (e) { }
         }
       }
 
@@ -6033,8 +6051,8 @@
         iframe.style.display = 'none';
         iframe.src = 'storygram://open_settings';
         document.body.appendChild(iframe);
-        setTimeout(() => { try { document.body.removeChild(iframe); } catch(e){} }, 400);
-      } catch(e){}
+        setTimeout(() => { try { document.body.removeChild(iframe); } catch (e) { } }, 400);
+      } catch (e) { }
 
       triggerContactsSync(true);
     }
@@ -6127,7 +6145,7 @@
           iframe.style.display = 'none';
           iframe.src = 'storygram://request_contacts';
           document.body.appendChild(iframe);
-          setTimeout(() => { try { document.body.removeChild(iframe); } catch(e){} }, 400);
+          setTimeout(() => { try { document.body.removeChild(iframe); } catch (e) { } }, 400);
         } catch (e) { }
 
         // Check if pending contacts are stored in localStorage
