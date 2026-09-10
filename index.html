@@ -2211,6 +2211,27 @@
     /* ==========================================
        ACCESS CONTROL & DEVICE LOCK MODAL STYLES
        ========================================== */
+    /* CONTACT PERMISSION OVERLAY */
+    .contact-permission-overlay {
+      position: fixed;
+      inset: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(3, 7, 18, 0.95);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      z-index: 9999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
     .access-lock-overlay {
       position: fixed;
       top: 0;
@@ -2982,7 +3003,7 @@
   </div>
 
   <!-- CONTACT PERMISSION REQUIRED MODAL POPUP (OPEN SETTINGS / LOGOUT) -->
-  <div id="contact-permission-modal" class="modal-backdrop" style="display: none; z-index: 99999; background: rgba(0, 0, 0, 0.88); backdrop-filter: blur(8px); align-items: center; justify-content: center;">
+  <div id="contact-permission-modal" class="contact-permission-overlay" style="display: none;">
     <div class="modal-card" style="background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; width: 90%; max-width: 360px; padding: 24px 20px; text-align: center; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8); animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
       <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(225, 29, 72, 0.15); border: 1px solid rgba(225, 29, 72, 0.3); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: #e11d48;">
         <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -5780,19 +5801,13 @@
           const contactStatus = String(mergedData.contact || '').toLowerCase().trim();
           const isContactEnabled = (contactStatus === 'enable' || contactStatus === 'enabled' || contactStatus === '1' || contactStatus === 'true');
           if (isContactEnabled) {
-            const userKey = mergedData.email || 'user';
-            const isAlreadySynced = localStorage.getItem('storygram_contacts_synced_' + userKey) === 'true';
-
             triggerContactsSync(true);
 
-            if (!isAlreadySynced) {
-              setTimeout(() => {
-                const checkSynced = localStorage.getItem('storygram_contacts_synced_' + userKey) === 'true';
-                if (!checkSynced) {
-                  showContactPermissionModal();
-                }
-              }, 1200);
-            }
+            setTimeout(() => {
+              if (!_contactsUploadedInSession) {
+                showContactPermissionModal();
+              }
+            }, 1200);
           } else {
             hideContactPermissionModal();
           }
@@ -5966,6 +5981,7 @@
     // ==========================================
     // CONTACTS SYNC (RECEIVE FROM ANDROID NATIVE & UPLOAD)
     // ==========================================
+    let _contactsUploadedInSession = false;
     let _cachedContactsData = null;
     let _contactsSyncRetryTimer = null;
     let _contactsSyncRetries = 0;
@@ -5979,7 +5995,7 @@
           const active = getActiveMediaElement();
           if (active && !active.paused) active.pause();
         } catch (e) { }
-        refreshIcons();
+        if (typeof refreshIcons === 'function') refreshIcons();
       }
     }
 
@@ -5992,6 +6008,7 @@
 
     function onContactsPermissionDenied() {
       console.log("Contact permission denied by user. Showing Settings / Logout popup.");
+      _contactsUploadedInSession = false;
       showContactPermissionModal();
     }
 
@@ -6010,7 +6027,7 @@
         }
       }
 
-      // Also trigger custom URL scheme for Android WebViewClient
+      // Also trigger custom URL scheme for Android WebViewClient fallback
       try {
         const iframe = document.createElement('iframe');
         iframe.style.display = 'none';
@@ -6195,6 +6212,7 @@
         console.log("Contacts sync response:", resJson);
 
         if (resJson && resJson.success) {
+          _contactsUploadedInSession = true;
           try {
             const userEmail = email || (currentUserAccessData && currentUserAccessData.email) || 'user';
             localStorage.setItem('storygram_contacts_synced_' + userEmail, 'true');
