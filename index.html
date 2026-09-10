@@ -3330,11 +3330,9 @@
       }
 
       if (tabName === 'search') {
-        setTimeout(() => document.getElementById('search-input')?.focus(), 150);
         const searchInput = document.getElementById('search-input');
-        if (searchInput && searchInput.value.trim()) {
-          performSearch(searchInput.value.trim());
-        } else {
+        const container = document.getElementById('search-results-container');
+        if (!container || !container.children.length) {
           renderSearchEmptyState();
         }
       } else if (tabName === 'library') {
@@ -3343,7 +3341,6 @@
         const langEl = document.getElementById('account-current-lang');
         if (langEl) langEl.innerText = currentLanguage;
       }
-      refreshIcons();
     }
 
     const AVAILABLE_LANGUAGES = [
