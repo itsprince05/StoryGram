@@ -3097,38 +3097,23 @@
           if (shaka.Player.isBrowserSupported()) {
             shakaPlayer = new shaka.Player(audioElement);
             
-            // Networking filter to support DRM license requests in WebView & Cross-Origin
-            const netEngine = shakaPlayer.getNetworkingEngine();
-            if (netEngine) {
-              netEngine.registerRequestFilter((type, request) => {
-                if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
-                  request.allowCrossSiteCredentials = true;
-                }
-              });
-            }
-
             shakaPlayer.configure({
               abr: {
-                enabled: false,
-                defaultBandwidthEstimate: 128000,
-                restrictions: {
-                  minBandwidth: 120000,
-                  maxBandwidth: 135000
-                }
+                enabled: true
               },
               streaming: {
+                bufferingGoal: 60,
                 rebufferingGoal: 2,
-                bufferingGoal: 45,
                 bufferBehind: 30,
                 retryParameters: {
-                  maxAttempts: 3,
+                  maxAttempts: 4,
                   baseDelay: 1000,
                   backoffFactor: 2
                 }
               },
               drm: {
                 retryParameters: {
-                  maxAttempts: 3,
+                  maxAttempts: 4,
                   baseDelay: 1000,
                   backoffFactor: 2
                 }
@@ -4215,7 +4200,7 @@
                     </div>
                     <div class="ep-info">
                       <div class="ep-title">${escapeHtml(item.title)}</div>
-                      <div class="ep-duration" style="color: var(--primary); font-weight: 600;"><i data-lucide="headphones" style="width: 12px; height: 12px;"></i> ${escapeHtml(item.showTitle)}</div>
+                      <div class="ep-show-name" style="font-size: 11.5px; color: var(--text-muted); font-weight: 600; margin-top: 2px;">${escapeHtml(item.showTitle)}</div>
                     </div>
                   </div>
                 </div>
@@ -4684,10 +4669,11 @@
                 if (licRes.ok) {
                   const licData = await licRes.json();
                   if (licData.success && licData.license_url) {
+                    const proxiedLicenseUrl = `/api/widevine-license?url=${encodeURIComponent(licData.license_url)}`;
                     shakaPlayer.configure({
                       drm: {
                         servers: {
-                          'com.widevine.alpha': licData.license_url
+                          'com.widevine.alpha': proxiedLicenseUrl
                         },
                         advanced: {
                           'com.widevine.alpha': {
@@ -4715,19 +4701,6 @@
           }
 
           await shakaPlayer.load(streamUrl, startTime);
-
-          const variantTracks = shakaPlayer.getVariantTracks();
-          if (variantTracks && variantTracks.length > 0) {
-            const track128 = variantTracks.find(t => t.bandwidth === 128000 || (t.bandwidth >= 120000 && t.bandwidth <= 135000));
-            if (track128) {
-              shakaPlayer.configure({ abr: { enabled: false } });
-              shakaPlayer.selectVariantTrack(track128, /* clearBuffer= */ false);
-            } else {
-              const sorted = variantTracks.slice().sort((a, b) => Math.abs(a.bandwidth - 128000) - Math.abs(b.bandwidth - 128000));
-              shakaPlayer.configure({ abr: { enabled: false } });
-              shakaPlayer.selectVariantTrack(sorted[0], /* clearBuffer= */ false);
-            }
-          }
 
           audioElement.playbackRate = currentPlaybackSpeed;
           if (startTime > 0) {
