@@ -757,10 +757,6 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
   }
 });
 
-// =======================================================
-// STORYGRAM MYSQL / PHP USER ACCESS & DEVICE LOCK PROXY
-// Database: u563285099_StoryGram on princeapps.com/StoryGram
-// =======================================================
 const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/StoryGram';
 const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
 
@@ -849,31 +845,6 @@ app.all(['/api/library', '/library'], async (req, res) => {
   }
 });
 
-app.all(['/api/contacts', '/contacts'], async (req, res) => {
-  try {
-    const method = req.method.toLowerCase();
-    const config = {
-      method: method,
-      url: `${PHP_BACKEND_URL}/contacts.php`,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-KEY': PHP_API_KEY
-      },
-      timeout: 20000,
-      validateStatus: () => true
-    };
-    if (method === 'post' || method === 'put') {
-      config.data = typeof req.body === 'object' && req.body !== null ? { ...req.body, api_key: PHP_API_KEY } : req.body;
-    } else {
-      config.params = { ...(req.query || {}), api_key: PHP_API_KEY };
-    }
-    const phpResponse = await axios(config);
-    return res.status(phpResponse.status).json(phpResponse.data);
-  } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 app.all('/api/proxy/*', (req, res) => {
   const endpointPath = req.params[0];
   const queryParams = new URLSearchParams(req.query).toString();
@@ -881,7 +852,21 @@ app.all('/api/proxy/*', (req, res) => {
   return forwardToPocketFM(url, req, res);
 });
 
+const NGINX_404_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>404 Not Found</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#fff;color:#222;padding:40px 20px;max-width:600px;margin:0 auto;line-height:1.6;}h1{font-size:24px;font-weight:600;color:#111;margin-bottom:8px;border-bottom:1px solid #eaeaea;padding-bottom:12px;}p{font-size:14px;color:#555;margin-bottom:20px;}hr{border:none;border-top:1px solid #eaeaea;margin:20px 0;}address{font-size:12px;color:#888;font-style:normal;}</style></head><body><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p><hr><address>nginx / 1.24.0</address></body></html>`;
+
 app.get('/', (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  const isApp = Boolean(
+    ua.includes('StoryGramApp') ||
+    ua.includes('wv') ||
+    req.query.mode === 'app' ||
+    req.headers['x-requested-with']
+  );
+
+  if (!isApp) {
+    return res.status(404).send(NGINX_404_HTML);
+  }
+
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
