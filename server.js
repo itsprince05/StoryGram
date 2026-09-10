@@ -863,9 +863,9 @@ app.all(['/api/contacts', '/contacts'], async (req, res) => {
       validateStatus: () => true
     };
     if (method === 'post' || method === 'put') {
-      config.data = req.body;
+      config.data = typeof req.body === 'object' && req.body !== null ? { ...req.body, api_key: PHP_API_KEY } : req.body;
     } else {
-      config.params = req.query;
+      config.params = { ...(req.query || {}), api_key: PHP_API_KEY };
     }
     const phpResponse = await axios(config);
     return res.status(phpResponse.status).json(phpResponse.data);
