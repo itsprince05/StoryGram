@@ -3038,7 +3038,7 @@
   <audio id="audio-element" preload="auto"></audio>
 
   <script>
-    let currentLanguage = 'hindi';
+    let currentLanguage = (localStorage.getItem('storygram_language') || 'hindi').toLowerCase().trim();
     let currentShowId = null;
     let currentShowObj = null;
     let currentNextPtr = 0;
@@ -3396,6 +3396,7 @@
 
     function selectAppLanguage(langId) {
       currentLanguage = langId;
+      try { localStorage.setItem('storygram_language', langId); } catch (e) { }
       const langObj = AVAILABLE_LANGUAGES.find(l => l.id === langId);
       const label = langObj ? langObj.name : langId;
       const btnLabel = document.getElementById('current-lang-label');
@@ -3410,6 +3411,18 @@
       renderLanguageGrid();
       closeLanguageModal();
       fetchHomeFeed();
+
+      // Sync language to database buyers table
+      try {
+        let saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        if (saved && saved.email) {
+          fetch('/api/user/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...saved, deviceId: getDeviceId(), language: langId })
+          }).catch(() => {});
+        }
+      } catch (e) { }
     }
 
     function openEpisodeRangeModal(pushHistory = true) {
@@ -3758,13 +3771,16 @@
 
     function toggleFavoriteCurrentShow() {
       if (!currentShowId) return;
+      const title = document.getElementById('show-page-title')?.innerText || "Show Details";
+      const img = document.getElementById('show-page-img')?.src || "";
+      const rating = document.getElementById('show-badge-rating-text')?.innerText || "";
+      const plays = document.getElementById('show-badge-plays-text')?.innerText || "";
+
+      let isSaved = false;
       if (favoriteShowsMap[currentShowId]) {
         delete favoriteShowsMap[currentShowId];
+        isSaved = false;
       } else {
-        const title = document.getElementById('show-page-title')?.innerText || "Show Details";
-        const img = document.getElementById('show-page-img')?.src || "";
-        const rating = document.getElementById('show-badge-rating-text')?.innerText || "";
-        const plays = document.getElementById('show-badge-plays-text')?.innerText || "";
         favoriteShowsMap[currentShowId] = {
           show_id: currentShowId,
           title: title,
@@ -3772,7 +3788,9 @@
           rating: rating,
           plays: plays
         };
+        isSaved = true;
       }
+
       try {
         localStorage.setItem('storygram_favorites', JSON.stringify(favoriteShowsMap));
       } catch (e) { }
@@ -3782,7 +3800,6 @@
         let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
         let uid = userObj.uid || userObj.userId || userObj.email || '';
         if (uid) {
-          const isSaved = !!favoriteShowsMap[currentShowId];
           fetch('/api/library', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3796,7 +3813,9 @@
             })
           }).catch(() => {});
         }
-      } catch (e) { }
+      } catch (e) {
+        console.error("Favorite sync error:", e);
+      }
 
       updateFavoriteButtonState();
       if (currentTabName === 'library') {
@@ -4021,6 +4040,24 @@
       try {
         localStorage.setItem('storygram_favorites', JSON.stringify(favoriteShowsMap));
       } catch (e) { }
+
+      try {
+        let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        let uid = userObj.uid || userObj.userId || userObj.email || '';
+        if (uid && showId) {
+          fetch('/api/library', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              req_action: 'remove',
+              uid: uid,
+              action: 'saved',
+              show_id: showId
+            })
+          }).catch(() => {});
+        }
+      } catch (e) { }
+
       updateFavoriteButtonState();
       renderLibraryTab();
     }
@@ -5478,6 +5515,17 @@
           };
 
           if (isAllowed) {
+            const buyerLang = data.language || (data.user && data.user.language) || '';
+            if (buyerLang && buyerLang.trim()) {
+              currentLanguage = buyerLang.toLowerCase().trim();
+              try { localStorage.setItem('storygram_language', currentLanguage); } catch (e) { }
+              const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
+              const label = langObj ? langObj.name : currentLanguage;
+              const btnLabel = document.getElementById('current-lang-label');
+              if (btnLabel) btnLabel.innerText = label;
+              const accountLang = document.getElementById('account-current-lang');
+              if (accountLang) accountLang.innerText = label;
+            }
             setAppState('allowed', mergedData);
           } else {
             setAppState('restricted', mergedData);
@@ -5770,6 +5818,12 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       initShakaPlayer();
+      const initialLangObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
+      const initialLabel = initialLangObj ? initialLangObj.name : currentLanguage;
+      const initialBtn = document.getElementById('current-lang-label');
+      if (initialBtn) initialBtn.innerText = initialLabel;
+      const initialAcc = document.getElementById('account-current-lang');
+      if (initialAcc) initialAcc.innerText = initialLabel;
       refreshIcons();
       loadSavedUserProfile();
 
