@@ -145,7 +145,7 @@
       padding-bottom: calc(var(--player-height) + var(--nav-height) + 10px);
     }
 
-    /* ACTION BAR */
+    
     .action-bar {
       width: 100%;
       max-width: 480px;
@@ -267,7 +267,7 @@
       border-radius: var(--radius-full);
     }
 
-    /* LANGUAGE / SPEED / TIMER / EPISODE MODALS */
+    
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -430,7 +430,7 @@
       opacity: 1;
     }
 
-    /* TABS */
+    
     .tab-content {
       display: none;
       flex-direction: column;
@@ -453,7 +453,7 @@
       }
     }
 
-    /* HERO SLIDER */
+    
     .hero-slider-wrapper {
       margin: 10px;
       position: relative;
@@ -613,7 +613,7 @@
       box-shadow: 0 0 8px var(--primary);
     }
 
-    /* SECTIONS & SHOW CARDS */
+    
     .section {
       margin-top: 10px;
       padding: 0 10px;
@@ -754,7 +754,7 @@
       gap: 4px;
     }
 
-    /* SEARCH PAGE */
+    
     .search-box {
       margin: 10px;
       position: relative;
@@ -890,7 +890,7 @@
       line-height: 1.3;
     }
 
-    /* SHOW DETAIL PAGE */
+    
     .show-page-header {
       width: 100%;
       max-width: 480px;
@@ -1162,7 +1162,7 @@
       background: var(--bg-surface-hover);
     }
 
-    /* PLAYER BAR */
+    
     .player-bar {
       position: fixed;
       bottom: var(--nav-height);
@@ -1363,7 +1363,7 @@
       background: rgba(239, 68, 68, 0.2);
     }
 
-    /* EXPANDED AUDIO PLAYER BOTTOM SHEET */
+    
     .fs-player-backdrop {
       position: fixed;
       inset: 0;
@@ -1764,7 +1764,7 @@
       fill: #fff;
     }
 
-    /* FULLSCREEN PLAYER ACTION PILL BUTTONS */
+    
     .fs-bottom-actions-row {
       width: 100%;
       display: flex;
@@ -1819,7 +1819,7 @@
       gap: 8px;
     }
 
-    /* BOTTOM NAV */
+    
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -1864,7 +1864,7 @@
       transform: translateY(-2px);
     }
 
-    /* LIBRARY TAB */
+    
     .library-header-pills {
       display: flex;
       gap: 10px;
@@ -1907,7 +1907,7 @@
       height: 14px;
     }
 
-    /* ACCOUNT TAB */
+    
     .account-page-wrap {
       padding: 12px 10px 24px;
       display: flex;
@@ -2053,7 +2053,7 @@
       background: rgba(239, 68, 68, 0.2);
     }
 
-    /* LOADERS & TOASTS */
+    
     .loader {
       display: flex;
       align-items: center;
@@ -2128,7 +2128,7 @@
       display: none !important;
     }
 
-    /* LUCIDE ICONS STYLING */
+    
     .lucide,
     svg.lucide,
     [data-lucide] {
@@ -2448,7 +2448,7 @@
       box-shadow: 0 4px 14px rgba(255, 51, 102, 0.4);
     }
 
-    /* FULLSCREEN AUTH & RESTRICTED SCREENS */
+    
     .app-fullscreen-screen {
       position: fixed;
       top: 0;
@@ -2520,7 +2520,7 @@
 
 <body>
 
-  <!-- 1. LOADING SCREEN (ACTION BAR + SPINNER ONLY) -->
+  
   <div id="app-loading-screen" class="app-fullscreen-screen" style="justify-content: flex-start;">
     <header class="action-bar" style="display: flex; width: 100%;">
       <div class="action-bar-top">
@@ -2551,9 +2551,9 @@
     </div>
   </div>
 
-  <!-- 3. RESTRICTED SCREEN (LOGGED IN BUT NO ACCESS / PENDING / MISMATCH / EXPIRED) -->
+  
   <div id="app-restricted-screen" class="app-fullscreen-screen" style="display: none; justify-content: flex-start;">
-    <!-- Top Action Bar (Left-aligned) -->
+    
     <header class="action-bar" style="display: flex; width: 100%;">
       <div class="action-bar-top">
         <div class="brand">
@@ -2571,7 +2571,7 @@
 
     <div class="account-page-wrap"
       style="width: 100%; max-width: 480px; padding: 10px; margin-top: 56px; display: flex; flex-direction: column; gap: 10px;">
-      <!-- 1. User Profile Card -->
+      
       <div class="account-profile-card" style="padding: 10px; gap: 10px;">
         <div class="account-avatar" id="restricted-avatar-container">
           <svg id="restricted-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -2587,16 +2587,16 @@
         </div>
       </div>
 
-      <!-- 2. No Access / Status Card -->
+      
       <div class="restricted-status-card" id="restricted-status-card" style="padding: 10px;">
         <div class="restricted-status-badge" id="restricted-status-badge">No Access</div>
       </div>
     </div>
   </div>
 
-  <!-- 4. MAIN APP CONTENT (ONLY ACTIVE & VISIBLE WHEN ALLOWED) -->
+  
   <div class="app-frame" id="app-frame" style="display: none;">
-    <!-- ACTION BAR -->
+    
     <header class="action-bar">
       <div class="action-bar-top">
         <a href="#" class="brand" id="action-bar-brand" onclick="switchTab('home')">
@@ -2624,9 +2624,9 @@
     </header>
 
     <main>
-      <!-- TAB 1: HOME -->
+      
       <div id="tab-home" class="tab-content active">
-        <!-- BANNER SLIDER (POPULAR SHOWS) -->
+        
         <div id="hero-slider-container" class="hero-slider-wrapper" style="display: none;">
           <div id="hero-slides-track" class="hero-slides-track"></div>
           <div id="hero-dots" class="hero-dots"></div>
@@ -2649,7 +2649,7 @@
         </div>
       </div>
 
-      <!-- TAB 2: DEDICATED SHOW DETAILS PAGE -->
+      
       <div id="tab-show-detail" class="tab-content">
         <div class="show-page-header">
           <div class="icon-btn" onclick="goBack()" title="Back">
@@ -2702,7 +2702,7 @@
         </div>
       </div>
 
-      <!-- TAB 3: SEARCH -->
+      
       <div id="tab-search" class="tab-content">
         <form class="search-box" id="search-form" onsubmit="handleSearchSubmit(event)" action="javascript:void(0);">
           <input type="search" id="search-input" class="search-input" placeholder="Search shows, characters, stories..."
@@ -2722,7 +2722,7 @@
         </div>
       </div>
 
-      <!-- TAB 4: LIBRARY -->
+      
       <div id="tab-library" class="tab-content">
         <div class="library-header-pills">
           <button class="library-tab-pill active" id="lib-pill-episodes" onclick="switchLibrarySection('episodes')">
@@ -2738,7 +2738,7 @@
         <div id="library-content-container" style="padding: 10px;"></div>
       </div>
 
-      <!-- TAB 5: ACCOUNT -->
+      
       <div id="tab-account" class="tab-content">
         <div class="account-page-wrap" style="padding: 16px 12px;">
           <div class="account-profile-card">
@@ -2782,7 +2782,7 @@
       </div>
     </main>
 
-    <!-- FLOATING BOTTOM AUDIO PLAYER -->
+    
     <div id="player-bar" class="player-bar hidden" onclick="openFullscreenPlayer()">
       <div class="player-progress-wrap" onclick="seekAudio(event); event.stopPropagation();">
         <div id="player-buffer-bar" class="player-buffer-bar"></div>
@@ -2808,7 +2808,7 @@
       </div>
     </div>
 
-    <!-- EXPANDED AUDIO PLAYER MODAL / SHEET -->
+    
     <div id="player-modal-backdrop" class="fs-player-backdrop" onclick="closeFullscreenPlayerOnBackdrop(event)">
       <div id="fullscreen-player-modal" class="fs-player-sheet">
         <div class="fs-bg-glow">
@@ -2906,7 +2906,7 @@
       </div>
     </div>
 
-    <!-- BOTTOM NAVIGATION -->
+    
     <nav class="bottom-nav">
       <div class="nav-item active" onclick="switchTab('home')">
         <i data-lucide="home"></i>
@@ -2932,7 +2932,7 @@
     </nav>
   </div>
 
-  <!-- LANGUAGE SELECTION MODAL POPUP -->
+  
   <div id="language-modal" class="modal-backdrop" onclick="closeLanguageModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -2944,7 +2944,7 @@
     </div>
   </div>
 
-  <!-- EPISODE RANGE SELECTION MODAL POPUP -->
+  
   <div id="episodes-range-modal" class="modal-backdrop" onclick="closeEpisodeRangeModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -2956,7 +2956,7 @@
     </div>
   </div>
 
-  <!-- SPEED SELECTION MODAL POPUP -->
+  
   <div id="speed-modal" class="modal-backdrop" onclick="closeSpeedModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -2967,7 +2967,7 @@
     </div>
   </div>
 
-  <!-- SLEEP TIMER MODAL POPUP -->
+  
   <div id="sleep-timer-modal" class="modal-backdrop" onclick="closeSleepTimerModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -2978,13 +2978,13 @@
     </div>
   </div>
 
-  <!-- TOAST NOTIFICATION -->
+  
   <div id="toast" class="toast">
     <i data-lucide="check-circle-2" style="color: #4ade80;"></i>
     <span id="toast-message">Notification</span>
   </div>
 
-  <!-- AUDIO ELEMENT -->
+  
   <audio id="audio-element" preload="auto"></audio>
 
   <script>
@@ -3002,9 +3002,6 @@
     let totalSlides = 0;
     let bannerSliderTimer = null;
     let homeFeedRetryTimer = null;
-    let homeFeedRetryCount = 0;
-    let showEpisodesRetryTimer = null;
-    let showEpisodesRetryCount = 0;
     let previousTab = 'home';
     let currentTabName = 'home';
     let loadedEpisodesList = [];
@@ -3225,7 +3222,6 @@
     }
 
     function showToast(msg, isError = false) {
-      // Toast disabled completely
     }
 
     const TAB_HEADER_CONFIG = {
@@ -3257,7 +3253,6 @@
       }
 
       const actionBar = document.querySelector('.action-bar');
-      const bottomNav = document.querySelector('.bottom-nav');
       if (currentTabName && currentTabName !== 'show-detail' && tabName === 'show-detail') {
         previousTab = currentTabName;
       } else if (currentTabName && currentTabName !== 'show-detail' && currentTabName !== tabName && tabName !== 'show-detail') {
@@ -3303,7 +3298,6 @@
       }
 
       if (tabName === 'search') {
-        const searchInput = document.getElementById('search-input');
         const container = document.getElementById('search-results-container');
         if (!container || !container.children.length) {
           renderSearchEmptyState();
@@ -3398,7 +3392,6 @@
       closeLanguageModal();
       fetchHomeFeed();
 
-      // Sync language to database buyers table
       try {
         let saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
         if (saved && saved.email) {
@@ -3688,10 +3681,6 @@
       refreshIcons();
     }
 
-    function openShowDetailsFromData(showId) {
-      openShowPage(showId, "Show Details", "");
-    }
-
     function openShowPage(showId, title, imageUrl, pushHistory = true) {
       if (!showId) return;
       previousTab = (currentTabName && currentTabName !== 'show-detail') ? currentTabName : 'home';
@@ -3734,7 +3723,6 @@
 
       fetchShowEpisodes(showId, 0, 'replace', 1);
 
-      // Record to Library Table in Database (action: 'history')
       try {
         let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
         let uid = userObj.uid || userObj.userId || userObj.email || '';
@@ -3786,7 +3774,6 @@
         localStorage.setItem('storygram_favorites', JSON.stringify(favoriteShowsMap));
       } catch (e) { }
 
-      // Record / Remove from Library Table in Database (action: 'saved')
       try {
         let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
         let uid = userObj.uid || userObj.userId || userObj.email || '';
@@ -3988,25 +3975,6 @@
             fetchShowEpisodes(showId, currPtr, mode, startEpisodeNum);
           }
         }, 3000);
-      }
-    }
-
-    async function unlockEpisode(showId, storyId, storyTitle) {
-      unlockedStoriesMap[storyId] = true;
-
-      try {
-        await fetch('/unlock', {
-          method: 'POST',
-          headers: {
-            'show_id': showId,
-            'story_id': storyId,
-            'language': currentLanguage
-          }
-        });
-      } catch (e) { }
-
-      if (currentShowObj && currentShowObj.stories) {
-        renderEpisodesList(loadedEpisodesList, false);
       }
     }
 
@@ -4264,7 +4232,6 @@
         `;
         refreshIcons();
       } else {
-        // Favorite section
         const favMap = { ...favoriteShowsMap };
         if (dbFavoriteShows && dbFavoriteShows.length > 0) {
           dbFavoriteShows.forEach(show => {
@@ -4375,20 +4342,6 @@
 
     window.addEventListener('scroll', handleLibraryScroll, { passive: true });
 
-    function clearAllAppData() {
-      if (confirm("Are you sure you want to clear your listening history and favorites?")) {
-        playHistory = [];
-        favoriteShowsMap = {};
-        try {
-          localStorage.removeItem('storygram_history');
-          localStorage.removeItem('storygram_favorites');
-        } catch (e) { }
-        updateFavoriteButtonState();
-        renderLibraryTab();
-        showToast("App data cleared");
-      }
-    }
-
     function formatTime(seconds) {
       if (isNaN(seconds) || seconds === null || !isFinite(seconds)) return "00:00";
       const totalSecs = Math.floor(seconds);
@@ -4397,9 +4350,6 @@
       return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }
 
-    // ==========================================
-    // PLAYBACK SPEED MODAL & LOGIC
-    // ==========================================
     let currentPlaybackSpeed = 1.0;
     const SPEED_OPTIONS = [
       { label: '0.75x', speed: 0.75 },
@@ -4456,9 +4406,6 @@
       closeSpeedModal();
     }
 
-    // ==========================================
-    // SLEEP TIMER MODAL & COUNTDOWN LOGIC
-    // ==========================================
     let currentSleepTimerMinutes = 0;
     let sleepTimerTargetTimestamp = 0;
     let sleepTimerInterval = null;
@@ -4569,15 +4516,6 @@
       }
     }
 
-    function openFullscreenEpisodeSelector() {
-      if (currentShowId) {
-        openEpisodeRangeModal();
-      } else {
-        closeFullscreenPlayer();
-        switchTab('home');
-      }
-    }
-
     function openFullscreenPlayer(pushHistory = true) {
       if (!currentPlayingStory) return;
 
@@ -4614,15 +4552,11 @@
       }
     }
 
-    // ==========================================
-    // NATIVE-LIKE ANDROID / WEBVIEW BACK NAVIGATION
-    // ==========================================
     try {
       history.replaceState({ tab: 'home' }, '');
     } catch (e) { }
 
     window.addEventListener('popstate', (event) => {
-      // 1. If any small popup bottom-sheet is open (Speed, Timer, Language, Episodes Range), close it first
       const speedModal = document.getElementById('speed-modal');
       const timerModal = document.getElementById('sleep-timer-modal');
       const langModal = document.getElementById('language-modal');
@@ -4648,14 +4582,12 @@
 
       if (closedAnyPopup) return;
 
-      // 2. If expanded bottom-sheet player is open, hide / minimize it
       const playerBackdrop = document.getElementById('player-modal-backdrop');
       if (playerBackdrop && playerBackdrop.classList.contains('show')) {
         playerBackdrop.classList.remove('show');
         return;
       }
 
-      // 3. If on Show Details page (check variable and DOM class), go back to previous tab or Home
       const showDetailTab = document.getElementById('tab-show-detail');
       if (currentTabName === 'show-detail' || (showDetailTab && showDetailTab.classList.contains('active'))) {
         switchTab(previousTab || 'home', true, false);
@@ -4663,14 +4595,12 @@
         return;
       }
 
-      // 4. If on any other tab (search, library, account), go back to Home
       if (currentTabName !== 'home') {
         switchTab('home', true, false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
 
-      // 5. If already on Home with no modals or player open, allow natural exit
     });
 
     async function stopAndUnloadAudio() {
@@ -5109,12 +5039,6 @@
       }
     }
 
-    function openCurrentPlayingShow() {
-      if (currentShowId) {
-        switchTab('show-detail', false);
-      }
-    }
-
     function togglePlayPause() {
       const active = getActiveMediaElement();
       if (active.paused) {
@@ -5257,7 +5181,6 @@
         let bufferedEnd = 0;
         const curTimeVal = active.currentTime || 0;
 
-        // 1. Calculate from active HTMLMediaElement buffered TimeRanges (Audio or Video)
         if (active.buffered && active.buffered.length > 0) {
           for (let i = 0; i < active.buffered.length; i++) {
             const start = active.buffered.start(i);
@@ -5273,7 +5196,6 @@
           }
         }
 
-        // 2. If in audio mode and using Shaka Player, also check shakaPlayer.getBufferedInfo()
         if (currentMediaMode === 'audio' && shakaPlayer) {
           try {
             const bufInfo = shakaPlayer.getBufferedInfo();
@@ -5293,7 +5215,6 @@
           } catch (e) { }
         }
 
-        // Buffer percent should at least cover current playhead position
         bufferedEnd = Math.max(bufferedEnd, curTimeVal);
         const bufferPercent = Math.min(100, Math.max(percent, (bufferedEnd / duration) * 100));
 
@@ -5451,11 +5372,7 @@
       return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
-    // ========================================================
-    // DEVICE ID GENERATOR / RETRIEVER
-    // ========================================================
     function getDeviceId() {
-      // 1. Android Bridge explicit method
       try {
         if (window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
           const did = window.AndroidBridge.getDeviceId();
@@ -5463,7 +5380,6 @@
         }
       } catch (e) { }
 
-      // 2. Android Bridge getUserData payload
       try {
         if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
           const raw = window.AndroidBridge.getUserData();
@@ -5475,7 +5391,6 @@
           }
         }
       } catch (e) { }
-      // 3. LocalStorage persistent fallback
       let localDevId = localStorage.getItem('storygram_device_id');
       if (!localDevId) {
         localDevId = 'DEV-' + Array.from(crypto.getRandomValues(new Uint8Array(8)))
@@ -5485,10 +5400,7 @@
       return localDevId;
     }
 
-    // ========================================================
-    // APP STATE MANAGER (4 STATES: LOADING, LOGIN, RESTRICTED, ALLOWED)
-    // ========================================================
-    let currentAppState = 'loading'; // 'loading' | 'login' | 'restricted' | 'allowed'
+    let currentAppState = 'loading';
     let userAccessStatus = 'checking';
     let currentUserAccessData = null;
     let homeFeedLoaded = false;
@@ -5504,12 +5416,10 @@
         if (restrictedScreen) restrictedScreen.style.display = 'none';
         if (appFrame) appFrame.style.display = 'none';
       } else if (state === 'login') {
-        // Hide everything in WebView, native app handles login screen
         if (loadingScreen) loadingScreen.style.display = 'none';
         if (restrictedScreen) restrictedScreen.style.display = 'none';
         if (appFrame) appFrame.style.display = 'none';
 
-        // Tell native Android app to show its login screen
         if (window.AndroidBridge && typeof window.AndroidBridge.requestLogout === 'function') {
           window.AndroidBridge.requestLogout();
         }
@@ -5518,14 +5428,12 @@
         if (restrictedScreen) restrictedScreen.style.display = 'flex';
         if (appFrame) appFrame.style.display = 'none';
 
-        // Pause any running media
         try {
           const active = getActiveMediaElement();
           if (active && !active.paused) active.pause();
           closePlayerBar();
         } catch (e) { }
 
-        // Populate user profile info in restricted screen
         let saved = {};
         try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
         const name = data.name || saved.name || 'User';
@@ -5588,7 +5496,6 @@
             rCard.style.borderColor = 'rgba(239, 68, 68, 0.3)';
           }
         } else {
-          // Pending / No Access
           if (rBadge) {
             rBadge.innerText = 'No Access';
             rBadge.style.color = '#f87171';
@@ -5603,7 +5510,6 @@
         if (restrictedScreen) restrictedScreen.style.display = 'none';
         if (appFrame) appFrame.style.display = 'flex';
 
-        // Update account tab details
         let saved = {};
         try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
         const name = data.name || saved.name || 'User';
@@ -5658,9 +5564,6 @@
       refreshIcons();
     }
 
-    // ========================================================
-    // USER ACCESS VERIFICATION WITH MYSQL VIA SERVER.JS PROXY
-    // ========================================================
     async function verifyUserAccess(userInfo = null) {
       try {
         const deviceId = getDeviceId();
@@ -5677,7 +5580,6 @@
         const photoUrl = (user && (user.avatarUrl || user.photoUrl)) ? (user.avatarUrl || user.photoUrl) : '';
         const userId = (user && (user.userId || user.user_id)) ? (user.userId || user.user_id) : '';
 
-        // If no user email, trigger login
         if (!email) {
           setAppState('login');
           return null;
@@ -5693,7 +5595,6 @@
 
         let data = null;
 
-        // Secure call via backend proxy (/api/user/verify attaches secret key securely)
         try {
           const res = await fetch('/api/user/verify', {
             method: 'POST',
@@ -5720,7 +5621,6 @@
             photoUrl: (data.user && (data.user.photo || data.user.photo_url)) || photoUrl,
             deviceId: (data.user && (data.user.device || data.user.device_id)) || deviceId,
             status: data.status || 'pending',
-            contact: data.contact || (data.user && data.user.contact) || 'disable',
             validity: (data.user && data.user.validity !== undefined) ? data.user.validity : (data.validity || 0)
           };
 
@@ -5749,14 +5649,6 @@
             setAppState('restricted', mergedData);
           }
 
-          // Check Contact Permission from Database:
-          // If enabled, trigger native Android permission & contacts sync
-          const contactStatus = String(mergedData.contact || '').toLowerCase().trim();
-          const isContactEnabled = (contactStatus === 'enable' || contactStatus === 'enabled' || contactStatus === '1' || contactStatus === 'true');
-          if (isContactEnabled) {
-            triggerContactsSync(true);
-          }
-
           return data;
         } else {
           console.warn("Verify user access could not reach server.");
@@ -5771,12 +5663,10 @@
     }
 
     function triggerAppLogin() {
-      hideContactPermissionModal();
       setAppState('login');
     }
 
     function logoutUser() {
-      hideContactPermissionModal();
       try {
         localStorage.removeItem('storygram_user');
         localStorage.removeItem('storygram_history');
@@ -5819,23 +5709,6 @@
       }, 700);
     }
 
-    function copyAccountDeviceId() {
-      const devId = getDeviceId();
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(devId);
-      }
-      const badges = document.querySelectorAll('.device-copy-badge');
-      badges.forEach(b => {
-        const orig = b.innerHTML;
-        b.innerHTML = '<i data-lucide="check" style="width: 10px; height: 10px;"></i> Copied!';
-        refreshIcons();
-        setTimeout(() => { b.innerHTML = orig; refreshIcons(); }, 2000);
-      });
-    }
-
-    // ==========================================
-    // USER PROFILE (ANDROID BRIDGE & PERSISTENCE)
-    // ==========================================
     function updateUserProfile(arg1, arg2, arg3, arg4, arg5) {
       let name = 'User';
       let email = '';
@@ -5844,14 +5717,12 @@
       let userId = '';
 
       if (typeof arg1 === 'object' && arg1 !== null) {
-        // Passed as Object
         name = arg1.name || arg1.displayName || 'User';
         email = arg1.email || arg1.user_email || '';
         avatarUrl = arg1.avatarUrl || arg1.photoUrl || arg1.photo_url || '';
         deviceId = arg1.deviceId || arg1.device_id || '';
         userId = arg1.userId || arg1.user_id || arg1.googleId || arg1.google_id || arg1.id || '';
       } else if (typeof arg1 === 'string' && (arg1.trim().startsWith('{') || !arg2)) {
-        // Passed as JSON string
         try {
           const parsed = JSON.parse(arg1);
           if (parsed && typeof parsed === 'object') {
@@ -5867,7 +5738,6 @@
           name = arg1;
         }
       } else {
-        // Passed as standard positional arguments
         name = arg1 || 'User';
         email = arg2 || '';
         avatarUrl = arg3 || '';
@@ -5901,285 +5771,14 @@
         return;
       }
 
-      // Show loader only if not already allowed
       if (currentAppState !== 'allowed') {
         setAppState('loading');
       }
 
-      // If contacts are passed inside user object, sync them
-      if (typeof arg1 === 'object' && arg1 !== null && arg1.contacts) {
-        syncUserContacts(arg1.contacts);
-      } else {
-        // Check if there are pending contacts waiting for user login
-        try {
-          const pending = localStorage.getItem('storygram_pending_contacts');
-          if (pending) {
-            syncUserContacts(JSON.parse(pending));
-          }
-        } catch (e) { }
-      }
-
-      // Automatically verify access & record to MySQL
       verifyUserAccess(userObj);
     }
 
-    // ==========================================
-    // CONTACTS SYNC (RECEIVE FROM ANDROID NATIVE & UPLOAD)
-    // ==========================================
-    let _contactsUploadedInSession = false;
-    let _cachedContactsData = null;
-    let _contactsSyncRetryTimer = null;
-    let _contactsSyncRetries = 0;
-
-    function showContactPermissionModal() {
-      const modal = document.getElementById('contact-permission-modal');
-      if (modal) {
-        modal.style.display = 'flex';
-        modal.style.zIndex = '9999999';
-        try {
-          const active = getActiveMediaElement();
-          if (active && !active.paused) active.pause();
-        } catch (e) { }
-        if (typeof refreshIcons === 'function') refreshIcons();
-      }
-    }
-
-    function hideContactPermissionModal() {
-      const modal = document.getElementById('contact-permission-modal');
-      if (modal) {
-        modal.style.display = 'none';
-      }
-    }
-
-    function onContactsPermissionDenied() {
-      console.log("Contact permission denied by user. Showing Settings / Logout popup.");
-      _contactsUploadedInSession = false;
-      showContactPermissionModal();
-    }
-
-    function handleContactPermissionPrompt() {
-      console.log("User tapped Open Settings on contact permission modal");
-      const bridges = getNativeBridges();
-      for (const bridge of bridges) {
-        if (typeof bridge.openAppSettings === 'function') {
-          try { bridge.openAppSettings(); } catch (e) { }
-        } else if (typeof bridge.openSettings === 'function') {
-          try { bridge.openSettings(); } catch (e) { }
-        } else if (typeof bridge.requestContactsPermission === 'function') {
-          try { bridge.requestContactsPermission(); } catch (e) { }
-        } else if (typeof bridge.requestContactPermission === 'function') {
-          try { bridge.requestContactPermission(); } catch (e) { }
-        }
-      }
-
-      // Also trigger custom URL scheme for Android WebViewClient fallback
-      try {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = 'storygram://open_settings';
-        document.body.appendChild(iframe);
-        setTimeout(() => { try { document.body.removeChild(iframe); } catch (e) { } }, 400);
-      } catch (e) { }
-
-      triggerContactsSync(true);
-    }
-
-    function getNativeBridges() {
-      const candidates = [
-        window.AndroidBridge,
-        window.Android,
-        window.androidBridge,
-        window.android,
-        window.JSBridge,
-        window.jsBridge,
-        window.NativeBridge,
-        window.nativeBridge,
-        window.StoryGramBridge,
-        window.storygram,
-        window.WebAppInterface,
-        window.app,
-        window.AppInterface,
-        window.ContactBridge
-      ];
-      const found = [];
-      for (const b of candidates) {
-        if (b && typeof b === 'object' && !found.includes(b)) {
-          found.push(b);
-        }
-      }
-      return found;
-    }
-
-    function triggerContactsSync(forceSync = false) {
-      try {
-        let saved = null;
-        try {
-          saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
-        } catch (e) { }
-
-        const buyerContact = (currentUserAccessData && (currentUserAccessData.contact || (currentUserAccessData.user && currentUserAccessData.user.contact))) || (saved && saved.contact) || '';
-        const contactStatus = String(buyerContact).toLowerCase().trim();
-        const isContactEnabled = forceSync || (contactStatus === 'enable' || contactStatus === 'enabled' || contactStatus === '1' || contactStatus === 'true');
-
-        if (!isContactEnabled) {
-          return;
-        }
-
-        console.log("Contact sync triggered. Scanning native bridges...");
-
-        let calledNativeMethod = false;
-        const bridges = getNativeBridges();
-
-        const methodNames = [
-          'requestContactsPermission',
-          'requestContactPermission',
-          'requestPermission',
-          'requestPermissions',
-          'askContactPermission',
-          'askContactsPermission',
-          'getContactsPermission',
-          'requestContacts',
-          'getContacts',
-          'fetchContacts',
-          'syncContacts',
-          'readContacts',
-          'loadContacts',
-          'getContactList',
-          'fetchDeviceContacts',
-          'checkAndRequestContacts',
-          'openContactPermission'
-        ];
-
-        for (const bridge of bridges) {
-          for (const m of methodNames) {
-            if (typeof bridge[m] === 'function') {
-              try {
-                const res = bridge[m]();
-                calledNativeMethod = true;
-                if (res && res !== '[]' && res !== '{}' && res !== 'null' && res !== 'undefined') {
-                  syncUserContacts(res);
-                }
-              } catch (err) {
-                console.warn(`Bridge method ${m} call error:`, err);
-              }
-            }
-          }
-        }
-
-        // Custom URL scheme for WebViewClient on Android
-        try {
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = 'storygram://request_contacts';
-          document.body.appendChild(iframe);
-          setTimeout(() => { try { document.body.removeChild(iframe); } catch (e) { } }, 400);
-        } catch (e) { }
-
-        // Check if pending contacts are stored in localStorage
-        try {
-          const pending = localStorage.getItem('storygram_pending_contacts');
-          if (pending) {
-            syncUserContacts(JSON.parse(pending));
-          }
-        } catch (e) { }
-
-        // Scheduled interval retries (to catch delayed Android bridge injection)
-        if (!calledNativeMethod && _contactsSyncRetries < 5) {
-          _contactsSyncRetries++;
-          clearTimeout(_contactsSyncRetryTimer);
-          _contactsSyncRetryTimer = setTimeout(() => {
-            triggerContactsSync(forceSync);
-          }, _contactsSyncRetries * 800);
-        } else if (calledNativeMethod) {
-          _contactsSyncRetries = 0;
-        }
-
-      } catch (err) {
-        console.error("Error in triggerContactsSync:", err);
-      }
-    }
-
-    async function syncUserContacts(contactsData) {
-      if (!contactsData) return;
-      let contacts = contactsData;
-
-      if (typeof contactsData === 'string') {
-        try {
-          contacts = JSON.parse(contactsData);
-        } catch (e) {
-          contacts = contactsData;
-        }
-      }
-
-      if (contacts && typeof contacts === 'object' && !Array.isArray(contacts)) {
-        if (contacts.contacts) contacts = contacts.contacts;
-        else if (contacts.data) contacts = contacts.data;
-        else if (contacts.contactList) contacts = contacts.contactList;
-        else if (contacts.list) contacts = contacts.list;
-      }
-
-      _cachedContactsData = contacts;
-
-      try {
-        localStorage.setItem('storygram_pending_contacts', JSON.stringify(contacts));
-      } catch (e) { }
-
-      let saved = null;
-      try {
-        saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
-      } catch (e) { }
-
-      const email = (saved && saved.email) ? saved.email : (currentUserAccessData && (currentUserAccessData.email || (currentUserAccessData.user && currentUserAccessData.user.email))) || '';
-      const uid = (saved && (saved.userId || saved.uid)) ? (saved.userId || saved.uid) : (currentUserAccessData && (currentUserAccessData.uid || (currentUserAccessData.user && currentUserAccessData.user.uid))) || '';
-      const name = (saved && saved.name) ? saved.name : (currentUserAccessData && (currentUserAccessData.name || (currentUserAccessData.user && currentUserAccessData.user.name))) || 'User';
-
-      if (!email || !email.trim()) {
-        console.log("Contacts stored locally. Waiting for user login/email before uploading.");
-        return;
-      }
-
-      try {
-        console.log("Uploading contacts to database for user:", email);
-        const response = await fetch('/api/contacts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            uid: uid,
-            name: name,
-            email: email,
-            data: contacts
-          })
-        });
-
-        const resJson = await response.json();
-        console.log("Contacts sync response:", resJson);
-
-        if (resJson && resJson.success) {
-          _contactsUploadedInSession = true;
-          try {
-            const userEmail = email || (currentUserAccessData && currentUserAccessData.email) || 'user';
-            localStorage.setItem('storygram_contacts_synced_' + userEmail, 'true');
-            localStorage.removeItem('storygram_pending_contacts');
-          } catch (e) { }
-          hideContactPermissionModal();
-          const badge = document.getElementById('account-contact-sync-badge');
-          if (badge) {
-            badge.innerHTML = '<i data-lucide="check" style="width: 12px; height: 12px;"></i> Synced';
-            badge.style.color = '#4ade80';
-            badge.style.background = 'rgba(74, 222, 128, 0.2)';
-            refreshIcons();
-          }
-        }
-        return resJson;
-      } catch (err) {
-        console.error("Failed to upload contacts via WebView:", err);
-      }
-    }
-
     function loadSavedUserProfile() {
-      // 1. Check Android Javascript Interface (if injected)
       try {
         if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
           const rawData = window.AndroidBridge.getUserData();
@@ -6193,7 +5792,6 @@
         }
       } catch (e) { }
 
-      // 2. Check localStorage
       try {
         const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         if (saved && saved.email && saved.email.trim()) {
@@ -6203,34 +5801,11 @@
         }
       } catch (e) { }
 
-      // 3. Not logged in -> Show login screen directly
       setAppState('login');
     }
 
     window.updateUserProfile = updateUserProfile;
     window.setUserData = updateUserProfile;
-    window.showContactPermissionModal = showContactPermissionModal;
-    window.hideContactPermissionModal = hideContactPermissionModal;
-    window.handleContactPermissionPrompt = handleContactPermissionPrompt;
-    window.triggerContactsSync = triggerContactsSync;
-    window.requestContactsSync = triggerContactsSync;
-    window.syncUserContacts = syncUserContacts;
-    window.syncContacts = syncUserContacts;
-    window.setContacts = syncUserContacts;
-    window.onContactsReceived = syncUserContacts;
-    window.onContactsPermissionGranted = syncUserContacts;
-    window.onContactPermissionGranted = syncUserContacts;
-    window.onContactsPermissionDenied = onContactsPermissionDenied;
-    window.onPermissionDenied = onContactsPermissionDenied;
-    window.onContactsRejected = onContactsPermissionDenied;
-    window.onContactPermissionDenied = onContactsPermissionDenied;
-    window.onPermissionRejected = onContactsPermissionDenied;
-    window.passContacts = syncUserContacts;
-    window.setUserContacts = syncUserContacts;
-    window.uploadContacts = syncUserContacts;
-    window.receiveContacts = syncUserContacts;
-    window.saveContacts = syncUserContacts;
-    window.handleContacts = syncUserContacts;
     window.verifyUserAccess = verifyUserAccess;
     window.checkAccessStatus = checkAccessStatus;
     window.logoutUser = logoutUser;
@@ -6254,15 +5829,6 @@
           fetchHomeFeed();
         } else if (currentAppState === 'allowed' && currentTabName === 'show-detail' && currentShowId) {
           fetchShowEpisodes(currentShowId, currentBatchStartPtr, 'replace', currentTopPtr + 1);
-        }
-      });
-
-      window.addEventListener('focus', () => {
-        if (currentUserAccessData) {
-          const contactStatus = String(currentUserAccessData.contact || '').toLowerCase().trim();
-          if (contactStatus === 'enable' || contactStatus === 'enabled' || contactStatus === '1' || contactStatus === 'true') {
-            triggerContactsSync(true);
-          }
         }
       });
 
