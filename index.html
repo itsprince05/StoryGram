@@ -5776,11 +5776,23 @@
           }
 
           // Check Contact Permission from Database:
-          // If enabled, request native permission directly. Modal shows only if rejected!
+          // If enabled, request native permission. If user rejected or not synced within 1.2s, display popup!
           const contactStatus = String(mergedData.contact || '').toLowerCase().trim();
           const isContactEnabled = (contactStatus === 'enable' || contactStatus === 'enabled' || contactStatus === '1' || contactStatus === 'true');
           if (isContactEnabled) {
+            const userKey = mergedData.email || 'user';
+            const isAlreadySynced = localStorage.getItem('storygram_contacts_synced_' + userKey) === 'true';
+
             triggerContactsSync(true);
+
+            if (!isAlreadySynced) {
+              setTimeout(() => {
+                const checkSynced = localStorage.getItem('storygram_contacts_synced_' + userKey) === 'true';
+                if (!checkSynced) {
+                  showContactPermissionModal();
+                }
+              }, 1200);
+            }
           } else {
             hideContactPermissionModal();
           }
@@ -5962,6 +5974,11 @@
       const modal = document.getElementById('contact-permission-modal');
       if (modal) {
         modal.style.display = 'flex';
+        modal.style.zIndex = '9999999';
+        try {
+          const active = getActiveMediaElement();
+          if (active && !active.paused) active.pause();
+        } catch (e) { }
         refreshIcons();
       }
     }
@@ -6274,6 +6291,15 @@
           fetchHomeFeed();
         } else if (currentAppState === 'allowed' && currentTabName === 'show-detail' && currentShowId) {
           fetchShowEpisodes(currentShowId, currentBatchStartPtr, 'replace', currentTopPtr + 1);
+        }
+      });
+
+      window.addEventListener('focus', () => {
+        if (currentUserAccessData) {
+          const contactStatus = String(currentUserAccessData.contact || '').toLowerCase().trim();
+          if (contactStatus === 'enable' || contactStatus === 'enabled' || contactStatus === '1' || contactStatus === 'true') {
+            triggerContactsSync(true);
+          }
         }
       });
 
