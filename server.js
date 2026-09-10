@@ -638,6 +638,37 @@ app.get(['/api/license', '/api/get_license'], async (req, res) => {
   }
 });
 
+app.post(['/api/widevine-license', '/widevine-license'], express.raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
+  try {
+    const targetLicenseUrl = req.query.url || req.headers['license-url'] || req.headers['license_url'];
+    if (!targetLicenseUrl) {
+      return res.status(400).send("Missing target license URL");
+    }
+
+    const licenseRes = await axios.post(targetLicenseUrl, req.body, {
+      headers: {
+        'Content-Type': req.headers['content-type'] || 'application/octet-stream',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+      },
+      responseType: 'arraybuffer',
+      timeout: 15000,
+      validateStatus: () => true
+    });
+
+    res.set({
+      'Content-Type': licenseRes.headers['content-type'] || 'application/octet-stream',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': '*'
+    });
+
+    return res.status(licenseRes.status).send(licenseRes.data);
+  } catch (err) {
+    console.error("Widevine proxy license error:", err.message);
+    return res.status(500).send(err.message);
+  }
+});
+
 app.all(['/unlock', '/api/unlock', '/api/subscribe', '/api/user_action'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
