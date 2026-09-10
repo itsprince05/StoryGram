@@ -3891,7 +3891,8 @@
         const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
         const audioUrl = story.audio_url || story.media_url_enc || story.media_url || "";
         const videoUrl = story.video_url || "";
-        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo);
+        const epShowId = story.show_id || currentShowId || (currentShowObj && currentShowObj.show_id) || "";
+        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo, epShowId);
 
         const iconHtml = (isCurrent && isAudioBuffering)
           ? '<span class="btn-spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></span>'
@@ -4192,9 +4193,10 @@
               const hasVid = Boolean(item.hasVideo && item.videoUrl);
               const audioUrl = item.audioUrl || item.mediaUrl || "";
               const videoUrl = item.videoUrl || "";
+              const epShowId = item.showId || "";
               return `
                 <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border); padding: 8px 12px;">
-                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(audioUrl)}', '${escapeAttr(videoUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid})">
+                  <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(audioUrl)}', '${escapeAttr(videoUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid}, '${escapeAttr(epShowId)}')">
                     <div class="ep-play-btn" data-has-video="${hasVid ? 'true' : 'false'}">
                       <i data-lucide="${isThisPlaying ? 'pause' : (hasVid ? 'video' : 'headphones')}"></i>
                     </div>
@@ -4655,13 +4657,13 @@
           if (isDrmEncrypted) {
             let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
             if (!targetShowId) {
-              const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9]+)\//) || streamUrl.match(/value=([a-zA-Z0-9]+)\//);
+              const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9_-]+)/) || streamUrl.match(/value=([a-zA-Z0-9_-]+)/) || streamUrl.match(/show[_-]?id=([a-zA-Z0-9_-]+)/i);
               if (match) targetShowId = match[1];
             }
 
             if (targetShowId) {
               try {
-                const licRes = await fetch('/api/license', {
+                const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}`, {
                   headers: {
                     'show_id': targetShowId
                   }
@@ -4669,18 +4671,15 @@
                 if (licRes.ok) {
                   const licData = await licRes.json();
                   if (licData.success && licData.license_url) {
-                    const proxiedLicenseUrl = `/api/widevine-license?url=${encodeURIComponent(licData.license_url)}`;
                     shakaPlayer.configure({
                       drm: {
                         servers: {
-                          'com.widevine.alpha': proxiedLicenseUrl
+                          'com.widevine.alpha': licData.license_url
                         },
                         advanced: {
                           'com.widevine.alpha': {
-                            audioRobustness: ['SW_SECURE_CRYPTO', 'SW_SECURE_DECODE', ''],
-                            videoRobustness: ['SW_SECURE_CRYPTO', 'SW_SECURE_DECODE', ''],
-                            distinctiveIdentifierRequired: false,
-                            persistentStateRequired: false
+                            videoRobustness: '',
+                            audioRobustness: ''
                           }
                         }
                       }
@@ -4943,7 +4942,8 @@
         const audioUrl = prevStory.audio_url || prevStory.media_url_enc || prevStory.media_url || "";
         const videoUrl = prevStory.video_url || "";
         const hasVid = Boolean(videoUrl);
-        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
+        const epShowId = prevStory.show_id || currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
+        playEpisode(prevStory.story_id, prevStory.story_title || `Episode ${currentIndex}`, audioUrl, videoUrl, showTitle, showImg, hasVid, epShowId);
       }
     }
 
@@ -4957,24 +4957,30 @@
         const audioUrl = nextStory.audio_url || nextStory.media_url_enc || nextStory.media_url || "";
         const videoUrl = nextStory.video_url || "";
         const hasVid = Boolean(videoUrl);
-        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid);
+        const epShowId = nextStory.show_id || currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
+        playEpisode(nextStory.story_id, nextStory.story_title || `Episode ${currentIndex + 2}`, audioUrl, videoUrl, showTitle, showImg, hasVid, epShowId);
       }
     }
 
-    function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
+    function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, showId) {
       if (currentPlayingStory && currentPlayingStory.storyId === storyId) {
         openFullscreenPlayer();
       } else {
-        playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo);
+        playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, showId);
       }
     }
 
-    async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo) {
+    async function playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, showId) {
       if (currentAppState !== 'allowed' && userAccessStatus !== 'allowed' && userAccessStatus !== 'active') {
         const lockModal = document.getElementById('access-lock-modal');
         if (lockModal) lockModal.classList.remove('hidden');
         verifyUserAccess();
         return;
+      }
+
+      const effectiveShowId = showId || currentShowId || (currentShowObj && currentShowObj.show_id) || "";
+      if (effectiveShowId) {
+        currentShowId = effectiveShowId;
       }
 
       const isVid = Boolean(hasVideo || videoUrl);
@@ -4986,7 +4992,8 @@
         mediaUrl: audioUrl || "",
         showTitle,
         thumbUrl,
-        hasVideo: isVid
+        hasVideo: isVid,
+        showId: effectiveShowId
       };
 
       if (preferredMediaMode === 'video' && isVid) {
@@ -5004,6 +5011,7 @@
         showTitle: showTitle || "Story Gram",
         thumbUrl: thumbUrl || "",
         hasVideo: isVid,
+        showId: effectiveShowId,
         playedAt: Date.now()
       };
       playHistory = [historyItem, ...playHistory.filter(h => h.storyId !== storyId)].slice(0, 50);
