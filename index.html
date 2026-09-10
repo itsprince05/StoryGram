@@ -1867,7 +1867,7 @@
     /* LIBRARY TAB */
     .library-header-pills {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       padding: 12px 10px;
       background: var(--bg-main);
       position: sticky;
@@ -1881,16 +1881,17 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 10px 16px;
+      gap: 6px;
+      padding: 9px 8px;
       border-radius: var(--radius-full);
       background: var(--bg-surface);
       border: 1px solid var(--border);
       color: var(--text-muted);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.2s;
+      white-space: nowrap;
     }
 
     .library-tab-pill.active {
@@ -1900,9 +1901,10 @@
       box-shadow: 0 4px 14px rgba(255, 51, 102, 0.4);
     }
 
-    .library-tab-pill svg {
-      width: 16px;
-      height: 16px;
+    .library-tab-pill svg,
+    .library-tab-pill [data-lucide] {
+      width: 14px;
+      height: 14px;
     }
 
     /* ACCOUNT TAB */
@@ -2693,7 +2695,10 @@
       <!-- TAB 4: LIBRARY -->
       <div id="tab-library" class="tab-content">
         <div class="library-header-pills">
-          <button class="library-tab-pill active" id="lib-pill-history" onclick="switchLibrarySection('history')">
+          <button class="library-tab-pill active" id="lib-pill-episodes" onclick="switchLibrarySection('episodes')">
+            <i data-lucide="headphones"></i> Episodes
+          </button>
+          <button class="library-tab-pill" id="lib-pill-history" onclick="switchLibrarySection('history')">
             <i data-lucide="history"></i> History
           </button>
           <button class="library-tab-pill" id="lib-pill-favorite" onclick="switchLibrarySection('favorite')">
@@ -3058,7 +3063,10 @@
     let previousTab = 'home';
     let currentTabName = 'home';
     let loadedEpisodesList = [];
-    let currentLibrarySection = 'history';
+    let currentLibrarySection = 'episodes';
+    let dbHistoryShows = [];
+    let dbFavoriteShows = [];
+    let isFetchingDbLibrary = false;
 
     let playHistory = [];
     try {
@@ -3337,6 +3345,11 @@
         }
       } else if (tabName === 'library') {
         renderLibraryTab();
+        fetchDatabaseLibrary().then(() => {
+          if (currentTabName === 'library') {
+            renderLibraryTab();
+          }
+        });
       } else if (tabName === 'account') {
         const langEl = document.getElementById('account-current-lang');
         if (langEl) langEl.innerText = currentLanguage;
@@ -3395,10 +3408,10 @@
     }
 
     function selectAppLanguage(langId) {
-      currentLanguage = langId;
-      try { localStorage.setItem('storygram_language', langId); } catch (e) { }
-      const langObj = AVAILABLE_LANGUAGES.find(l => l.id === langId);
-      const label = langObj ? langObj.name : langId;
+      currentLanguage = (langId || 'hindi').toLowerCase().trim();
+      try { localStorage.setItem('storygram_language', currentLanguage); } catch (e) { }
+      const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
+      const label = langObj ? langObj.name : currentLanguage;
       const btnLabel = document.getElementById('current-lang-label');
       if (btnLabel) btnLabel.innerText = label;
 
@@ -3419,7 +3432,12 @@
           fetch('/api/user/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...saved, deviceId: getDeviceId(), language: langId })
+            body: JSON.stringify({
+              action: 'update_language',
+              email: saved.email,
+              language: currentLanguage,
+              deviceId: getDeviceId()
+            })
           }).catch(() => {});
         }
       } catch (e) { }
@@ -4018,12 +4036,65 @@
       }
     }
 
+    async function fetchDatabaseLibrary() {
+      if (isFetchingDbLibrary) return;
+      let userObj = {};
+      try { userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+      const uid = userObj.uid || userObj.userId || userObj.email || '';
+      if (!uid) return;
+
+      isFetchingDbLibrary = true;
+      try {
+        const [resHist, resFav] = await Promise.allSettled([
+          fetch(`/api/library?uid=${encodeURIComponent(uid)}&action=history`),
+          fetch(`/api/library?uid=${encodeURIComponent(uid)}&action=saved`)
+        ]);
+
+        if (resHist.status === 'fulfilled' && resHist.value.ok) {
+          const dataHist = await resHist.value.json();
+          if (dataHist && dataHist.success && Array.isArray(dataHist.items)) {
+            dbHistoryShows = dataHist.items;
+          }
+        }
+
+        if (resFav.status === 'fulfilled' && resFav.value.ok) {
+          const dataFav = await resFav.value.json();
+          if (dataFav && dataFav.success && Array.isArray(dataFav.items)) {
+            dbFavoriteShows = dataFav.items;
+            dataFav.items.forEach(item => {
+              if (item.show_id) {
+                favoriteShowsMap[item.show_id] = {
+                  show_id: item.show_id,
+                  title: item.show_name || item.title || 'Show',
+                  image_url: item.show_url || item.image_url || ''
+                };
+              }
+            });
+            try { localStorage.setItem('storygram_favorites', JSON.stringify(favoriteShowsMap)); } catch (e) { }
+          }
+        }
+      } catch (err) {
+        console.warn("Library database sync error:", err);
+      } finally {
+        isFetchingDbLibrary = false;
+      }
+    }
+
     function switchLibrarySection(section) {
       currentLibrarySection = section;
+      document.getElementById('lib-pill-episodes')?.classList.toggle('active', section === 'episodes');
       document.getElementById('lib-pill-history')?.classList.toggle('active', section === 'history');
       document.getElementById('lib-pill-favorite')?.classList.toggle('active', section === 'favorite');
       renderLibraryTab();
       refreshIcons();
+
+      if (section === 'history' || section === 'favorite') {
+        fetchDatabaseLibrary().then(() => {
+          if (currentTabName === 'library' && currentLibrarySection === section) {
+            renderLibraryTab();
+          }
+        });
+      }
     }
 
     function clearPlayHistory() {
@@ -4034,9 +4105,52 @@
       renderLibraryTab();
     }
 
+    function clearShowHistory() {
+      dbHistoryShows = [];
+      try {
+        let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        let uid = userObj.uid || userObj.userId || userObj.email || '';
+        if (uid) {
+          fetch('/api/library', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              req_action: 'clear',
+              uid: uid,
+              action: 'history'
+            })
+          }).catch(() => {});
+        }
+      } catch (e) { }
+      renderLibraryTab();
+    }
+
+    function removeHistoryShow(e, showId) {
+      if (e) e.stopPropagation();
+      dbHistoryShows = dbHistoryShows.filter(s => s.show_id !== showId);
+      try {
+        let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        let uid = userObj.uid || userObj.userId || userObj.email || '';
+        if (uid && showId) {
+          fetch('/api/library', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              req_action: 'remove',
+              uid: uid,
+              action: 'history',
+              show_id: showId
+            })
+          }).catch(() => {});
+        }
+      } catch (e) { }
+      renderLibraryTab();
+    }
+
     function removeFavoriteShow(e, showId) {
       if (e) e.stopPropagation();
       delete favoriteShowsMap[showId];
+      dbFavoriteShows = dbFavoriteShows.filter(s => s.show_id !== showId);
       try {
         localStorage.setItem('storygram_favorites', JSON.stringify(favoriteShowsMap));
       } catch (e) { }
@@ -4066,12 +4180,12 @@
       const container = document.getElementById('library-content-container');
       if (!container) return;
 
-      if (currentLibrarySection === 'history') {
+      if (currentLibrarySection === 'episodes') {
         if (!playHistory || playHistory.length === 0) {
           container.innerHTML = `
             <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
-              <i data-lucide="history" style="width: 38px; height: 38px; margin-bottom: 12px; color: var(--primary); opacity: 0.85;"></i>
-              <p style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 4px;">No History Yet</p>
+              <i data-lucide="headphones" style="width: 38px; height: 38px; margin-bottom: 12px; color: var(--primary); opacity: 0.85;"></i>
+              <p style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 4px;">No Episodes Played Yet</p>
               <p style="font-size: 12px;">Episodes you listen to will appear here automatically.</p>
             </div>
           `;
@@ -4088,13 +4202,13 @@
           </div>
           <div class="episodes-list">
             ${playHistory.map(item => {
-          const isCurrent = currentPlayingStory && currentPlayingStory.storyId === item.storyId;
-          const isThisPlaying = isCurrent && isPlaying;
-          const hasVid = Boolean(item.hasVideo && item.videoUrl);
-          const audioUrl = item.audioUrl || item.mediaUrl || "";
-          const videoUrl = item.videoUrl || "";
-          return `
-                <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border);">
+              const isCurrent = currentPlayingStory && currentPlayingStory.storyId === item.storyId;
+              const isThisPlaying = isCurrent && isPlaying;
+              const hasVid = Boolean(item.hasVideo && item.videoUrl);
+              const audioUrl = item.audioUrl || item.mediaUrl || "";
+              const videoUrl = item.videoUrl || "";
+              return `
+                <div class="episode-item ${isCurrent ? 'playing' : ''}" id="ep-item-${escapeAttr(item.storyId)}" style="background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border); padding: 8px 12px;">
                   <div class="ep-left" onclick="handleEpisodeClick('${escapeAttr(item.storyId)}', '${escapeAttr(item.title)}', '${escapeAttr(audioUrl)}', '${escapeAttr(videoUrl)}', '${escapeAttr(item.showTitle)}', '${escapeAttr(item.thumbUrl)}', ${hasVid})">
                     <div class="ep-play-btn" data-has-video="${hasVid ? 'true' : 'false'}">
                       <i data-lucide="${isThisPlaying ? 'pause' : (hasVid ? 'video' : 'headphones')}"></i>
@@ -4106,12 +4220,66 @@
                   </div>
                 </div>
               `;
-        }).join('')}
+            }).join('')}
+          </div>
+        `;
+        refreshIcons();
+      } else if (currentLibrarySection === 'history') {
+        const historyList = (dbHistoryShows && dbHistoryShows.length > 0) ? dbHistoryShows : [];
+        if (historyList.length === 0) {
+          container.innerHTML = `
+            <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
+              <i data-lucide="history" style="width: 38px; height: 38px; margin-bottom: 12px; color: var(--primary); opacity: 0.85;"></i>
+              <p style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 4px;">No Show History Yet</p>
+              <p style="font-size: 12px;">Shows you explore will appear here from your account.</p>
+            </div>
+          `;
+          refreshIcons();
+          return;
+        }
+
+        container.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Show History (${historyList.length})</span>
+            <button onclick="clearShowHistory()" style="background: none; border: none; color: #f87171; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: var(--radius-sm);">
+              <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i> Clear
+            </button>
+          </div>
+          <div class="grid-container">
+            ${historyList.map(show => {
+              const showId = show.show_id || "";
+              const showTitle = show.show_name || show.title || "Show";
+              const showImg = show.show_url || show.image_url || "";
+              return `
+                <div class="grid-card" onclick="openShowPage('${escapeAttr(showId)}', '${escapeAttr(showTitle)}', '${escapeAttr(showImg)}')">
+                  <div class="grid-poster-wrap">
+                    <img class="grid-poster" src="${escapeAttr(showImg || 'https://via.placeholder.com/130')}" alt="${escapeAttr(showTitle)}" loading="lazy">
+                    <div onclick="removeHistoryShow(event, '${escapeAttr(showId)}')" title="Remove" style="position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(15, 23, 42, 0.85); display: flex; align-items: center; justify-content: center; color: var(--text-muted); border: 1px solid rgba(255,255,255,0.15); z-index: 5;">
+                      <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    </div>
+                  </div>
+                  <div class="grid-title">${escapeHtml(showTitle)}</div>
+                </div>
+              `;
+            }).join('')}
           </div>
         `;
         refreshIcons();
       } else {
-        const favKeys = Object.keys(favoriteShowsMap);
+        // Favorite section
+        const favMap = { ...favoriteShowsMap };
+        if (dbFavoriteShows && dbFavoriteShows.length > 0) {
+          dbFavoriteShows.forEach(show => {
+            if (show.show_id && !favMap[show.show_id]) {
+              favMap[show.show_id] = {
+                show_id: show.show_id,
+                title: show.show_name || show.title || "Show",
+                image_url: show.show_url || show.image_url || ""
+              };
+            }
+          });
+        }
+        const favKeys = Object.keys(favMap);
         if (favKeys.length === 0) {
           container.innerHTML = `
             <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
@@ -4130,11 +4298,11 @@
           </div>
           <div class="grid-container">
             ${favKeys.map(key => {
-          const show = favoriteShowsMap[key];
-          const showTitle = show.title || "Show";
-          const showImg = show.image_url || "";
-          const rating = show.rating || null;
-          return `
+              const show = favMap[key];
+              const showTitle = show.title || show.show_name || "Show";
+              const showImg = show.image_url || show.show_url || "";
+              const rating = show.rating || null;
+              return `
                 <div class="grid-card" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(showTitle)}', '${escapeAttr(showImg)}')">
                   <div class="grid-poster-wrap">
                     <img class="grid-poster" src="${escapeAttr(showImg || 'https://via.placeholder.com/130')}" alt="${escapeAttr(showTitle)}" loading="lazy">
@@ -4146,7 +4314,7 @@
                   <div class="grid-title">${escapeHtml(showTitle)}</div>
                 </div>
               `;
-        }).join('')}
+            }).join('')}
           </div>
         `;
         refreshIcons();
@@ -5516,16 +5684,24 @@
 
           if (isAllowed) {
             const buyerLang = data.language || (data.user && data.user.language) || '';
+            const localLang = (localStorage.getItem('storygram_language') || '').trim();
+
             if (buyerLang && buyerLang.trim()) {
               currentLanguage = buyerLang.toLowerCase().trim();
               try { localStorage.setItem('storygram_language', currentLanguage); } catch (e) { }
-              const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
-              const label = langObj ? langObj.name : currentLanguage;
-              const btnLabel = document.getElementById('current-lang-label');
-              if (btnLabel) btnLabel.innerText = label;
-              const accountLang = document.getElementById('account-current-lang');
-              if (accountLang) accountLang.innerText = label;
+            } else if (localLang) {
+              currentLanguage = localLang.toLowerCase().trim();
             }
+
+            const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
+            const label = langObj ? langObj.name : currentLanguage;
+            const btnLabel = document.getElementById('current-lang-label');
+            if (btnLabel) btnLabel.innerText = label;
+            const accountLang = document.getElementById('account-current-lang');
+            if (accountLang) accountLang.innerText = label;
+            const settingsLang = document.getElementById('settings-current-lang');
+            if (settingsLang) settingsLang.innerText = label;
+
             setAppState('allowed', mergedData);
           } else {
             setAppState('restricted', mergedData);
@@ -5673,8 +5849,10 @@
         return;
       }
 
-      // Show loader while verifying with database
-      setAppState('loading');
+      // Show loader only if not already allowed
+      if (currentAppState !== 'allowed') {
+        setAppState('loading');
+      }
 
       // If contacts are passed inside user object, sync them
       if (typeof arg1 === 'object' && arg1 !== null && arg1.contacts) {
