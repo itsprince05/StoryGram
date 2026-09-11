@@ -180,13 +180,27 @@ function verifyDynamicSignature(req) {
     }
   }
 
-  if (sig.length !== 64 || !/^[0-9a-f]{64}$/i.test(sig)) {
-    console.log(`[AUTH-REJECT] Invalid signature format: ${sig}`);
-    return false;
+  const cleanPath = req.path || '/';
+  const candidatePayloads = [
+    `${ts}:${nonce}:${cleanPath}:${deviceId}`,
+    `${ts}:${nonce}:${cleanPath}`,
+    `${ts}:${nonce}:/:${deviceId}`,
+    `${ts}:${nonce}:/`,
+    `${ts}:${nonce}::${deviceId}`,
+    `${ts}:${nonce}`
+  ];
+
+  for (const payload of candidatePayloads) {
+    const expectedSig = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payload).digest('hex').toLowerCase();
+    if (sig === expectedSig) {
+      console.log(`[AUTH-SUCCESS] Strict HMAC Signature MATCHED for path=${cleanPath}, deviceId=${deviceId}`);
+      return true;
+    }
   }
 
-  console.log(`[AUTH-SUCCESS] Android App Security Verified for path=${req.path || '/'}, deviceId=${deviceId}`);
-  return true;
+  const primaryExpected = crypto.createHmac('sha256', APP_HMAC_SECRET).update(`${ts}:${nonce}:${cleanPath}:${deviceId}`).digest('hex');
+  console.log(`[AUTH-REJECT] Signature mismatch!\n  Expected: ${primaryExpected}\n  Received: ${sig}\n  Payload:   "${ts}:${nonce}:${cleanPath}:${deviceId}"`);
+  return false;
 }
 
 function rateLimiterMiddleware(req, res, next) {
