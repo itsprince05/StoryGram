@@ -48,9 +48,23 @@
         let ts = Date.now().toString();
         let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
         let deviceId = '';
+        let userEmail = '';
+        let userId = '';
+        let userName = '';
+        let userLang = '';
         try {
           deviceId = localStorage.getItem('storygram_device_id') || '';
-        } catch (e) {}
+          const userStr = localStorage.getItem('storygram_user');
+          if (userStr) {
+            const u = JSON.parse(userStr);
+            if (u) {
+              userEmail = u.email || '';
+              userId = u.userId || u.user_id || u.uid || '';
+              userName = u.name || '';
+            }
+          }
+          userLang = localStorage.getItem('storygram_language') || '';
+        } catch (e) { }
 
         let sig = '';
         if (window.AndroidBridge) {
@@ -63,11 +77,11 @@
                 if (res.nonce) nonce = res.nonce;
                 if (res.deviceId) deviceId = res.deviceId;
               }
-            } catch (e) {}
+            } catch (e) { }
           } else if (typeof window.AndroidBridge.getHmacSignature === 'function') {
             try {
               sig = window.AndroidBridge.getHmacSignature(ts, nonce, pathname, deviceId);
-            } catch (e) {}
+            } catch (e) { }
           }
         }
 
@@ -86,6 +100,10 @@
         setHeader('X-App-Nonce', nonce);
         if (deviceId) setHeader('X-App-Device-ID', deviceId);
         if (sig) setHeader('X-App-Signature', sig);
+        if (userEmail) setHeader('X-App-User-Email', userEmail);
+        if (userId) setHeader('X-App-User-ID', userId);
+        if (userName) setHeader('X-App-User-Name', encodeURIComponent(userName));
+        if (userLang) setHeader('X-App-Language', userLang);
 
         return originalFetch.call(this, input, init);
       };
@@ -229,7 +247,7 @@
       padding-bottom: calc(var(--player-height) + var(--nav-height) + 10px);
     }
 
-    
+
     .action-bar {
       width: 100%;
       max-width: 480px;
@@ -351,7 +369,7 @@
       border-radius: var(--radius-full);
     }
 
-    
+
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -514,7 +532,7 @@
       opacity: 1;
     }
 
-    
+
     .tab-content {
       display: none;
       flex-direction: column;
@@ -537,7 +555,7 @@
       }
     }
 
-    
+
     .hero-slider-wrapper {
       margin: 10px;
       position: relative;
@@ -697,7 +715,7 @@
       box-shadow: 0 0 8px var(--primary);
     }
 
-    
+
     .section {
       margin-top: 10px;
       padding: 0 10px;
@@ -838,7 +856,7 @@
       gap: 4px;
     }
 
-    
+
     .search-box {
       margin: 10px;
       position: relative;
@@ -974,7 +992,7 @@
       line-height: 1.3;
     }
 
-    
+
     .show-page-header {
       width: 100%;
       max-width: 480px;
@@ -1246,7 +1264,7 @@
       background: var(--bg-surface-hover);
     }
 
-    
+
     .player-bar {
       position: fixed;
       bottom: var(--nav-height);
@@ -1447,7 +1465,7 @@
       background: rgba(239, 68, 68, 0.2);
     }
 
-    
+
     .fs-player-backdrop {
       position: fixed;
       inset: 0;
@@ -1848,7 +1866,7 @@
       fill: #fff;
     }
 
-    
+
     .fs-bottom-actions-row {
       width: 100%;
       display: flex;
@@ -1903,7 +1921,7 @@
       gap: 8px;
     }
 
-    
+
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -1948,7 +1966,7 @@
       transform: translateY(-2px);
     }
 
-    
+
     .library-header-pills {
       display: flex;
       gap: 10px;
@@ -1991,7 +2009,7 @@
       height: 14px;
     }
 
-    
+
     .account-page-wrap {
       padding: 12px 10px 24px;
       display: flex;
@@ -2137,7 +2155,7 @@
       background: rgba(239, 68, 68, 0.2);
     }
 
-    
+
     .loader {
       display: flex;
       align-items: center;
@@ -2212,7 +2230,7 @@
       display: none !important;
     }
 
-    
+
     .lucide,
     svg.lucide,
     [data-lucide] {
@@ -2532,7 +2550,7 @@
       box-shadow: 0 4px 14px rgba(255, 51, 102, 0.4);
     }
 
-    
+
     .app-fullscreen-screen {
       position: fixed;
       top: 0;
@@ -2604,7 +2622,7 @@
 
 <body>
 
-  
+
   <div id="app-loading-screen" class="app-fullscreen-screen" style="justify-content: flex-start;">
     <header class="action-bar" style="display: flex; width: 100%;">
       <div class="action-bar-top">
@@ -2635,9 +2653,9 @@
     </div>
   </div>
 
-  
+
   <div id="app-restricted-screen" class="app-fullscreen-screen" style="display: none; justify-content: flex-start;">
-    
+
     <header class="action-bar" style="display: flex; width: 100%;">
       <div class="action-bar-top">
         <div class="brand">
@@ -2655,7 +2673,7 @@
 
     <div class="account-page-wrap"
       style="width: 100%; max-width: 480px; padding: 10px; margin-top: 56px; display: flex; flex-direction: column; gap: 10px;">
-      
+
       <div class="account-profile-card" style="padding: 10px; gap: 10px;">
         <div class="account-avatar" id="restricted-avatar-container">
           <svg id="restricted-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -2671,16 +2689,16 @@
         </div>
       </div>
 
-      
+
       <div class="restricted-status-card" id="restricted-status-card" style="padding: 10px;">
         <div class="restricted-status-badge" id="restricted-status-badge">No Access</div>
       </div>
     </div>
   </div>
 
-  
+
   <div class="app-frame" id="app-frame" style="display: none;">
-    
+
     <header class="action-bar">
       <div class="action-bar-top">
         <a href="#" class="brand" id="action-bar-brand" onclick="switchTab('home')">
@@ -2708,9 +2726,9 @@
     </header>
 
     <main>
-      
+
       <div id="tab-home" class="tab-content active">
-        
+
         <div id="hero-slider-container" class="hero-slider-wrapper" style="display: none;">
           <div id="hero-slides-track" class="hero-slides-track"></div>
           <div id="hero-dots" class="hero-dots"></div>
@@ -2733,7 +2751,7 @@
         </div>
       </div>
 
-      
+
       <div id="tab-show-detail" class="tab-content">
         <div class="show-page-header">
           <div class="icon-btn" onclick="goBack()" title="Back">
@@ -2786,7 +2804,7 @@
         </div>
       </div>
 
-      
+
       <div id="tab-search" class="tab-content">
         <form class="search-box" id="search-form" onsubmit="handleSearchSubmit(event)" action="javascript:void(0);">
           <input type="search" id="search-input" class="search-input" placeholder="Search shows, characters, stories..."
@@ -2806,7 +2824,7 @@
         </div>
       </div>
 
-      
+
       <div id="tab-library" class="tab-content">
         <div class="library-header-pills">
           <button class="library-tab-pill active" id="lib-pill-episodes" onclick="switchLibrarySection('episodes')">
@@ -2822,9 +2840,9 @@
         <div id="library-content-container" style="padding: 10px;"></div>
       </div>
 
-      
+
       <div id="tab-account" class="tab-content">
-        <div class="account-page-wrap" style="padding: 16px 12px;">
+        <div class="account-page-wrap" style="padding: 10px;">
           <div class="account-profile-card">
             <div class="account-avatar" id="account-avatar-container">
               <svg id="account-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -2841,7 +2859,7 @@
             </div>
           </div>
 
-          <div class="account-card" style="margin-top: 16px;">
+          <div class="account-card">
             <div class="account-row" onclick="openLanguageModal()" style="cursor: pointer;">
               <div class="account-row-left">
                 <i data-lucide="globe" style="color: var(--primary);"></i>
@@ -2866,7 +2884,7 @@
       </div>
     </main>
 
-    
+
     <div id="player-bar" class="player-bar hidden" onclick="openFullscreenPlayer()">
       <div class="player-progress-wrap" onclick="seekAudio(event); event.stopPropagation();">
         <div id="player-buffer-bar" class="player-buffer-bar"></div>
@@ -2892,7 +2910,7 @@
       </div>
     </div>
 
-    
+
     <div id="player-modal-backdrop" class="fs-player-backdrop" onclick="closeFullscreenPlayerOnBackdrop(event)">
       <div id="fullscreen-player-modal" class="fs-player-sheet">
         <div class="fs-bg-glow">
@@ -2990,7 +3008,7 @@
       </div>
     </div>
 
-    
+
     <nav class="bottom-nav">
       <div class="nav-item active" onclick="switchTab('home')">
         <i data-lucide="home"></i>
@@ -3016,7 +3034,7 @@
     </nav>
   </div>
 
-  
+
   <div id="language-modal" class="modal-backdrop" onclick="closeLanguageModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -3028,7 +3046,7 @@
     </div>
   </div>
 
-  
+
   <div id="episodes-range-modal" class="modal-backdrop" onclick="closeEpisodeRangeModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -3040,7 +3058,7 @@
     </div>
   </div>
 
-  
+
   <div id="speed-modal" class="modal-backdrop" onclick="closeSpeedModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -3051,7 +3069,7 @@
     </div>
   </div>
 
-  
+
   <div id="sleep-timer-modal" class="modal-backdrop" onclick="closeSleepTimerModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -3062,17 +3080,53 @@
     </div>
   </div>
 
-  
+
   <div id="toast" class="toast">
     <i data-lucide="check-circle-2" style="color: #4ade80;"></i>
     <span id="toast-message">Notification</span>
   </div>
 
-  
+
   <audio id="audio-element" preload="auto"></audio>
 
   <script>
+    const AVAILABLE_LANGUAGES = [
+      { id: 'hindi', name: 'Hindi' },
+      { id: 'english', name: 'English' },
+      { id: 'tamil', name: 'Tamil' },
+      { id: 'bengali', name: 'Bengali' },
+      { id: 'marathi', name: 'Marathi' },
+      { id: 'telugu', name: 'Telugu' },
+      { id: 'malayalam', name: 'Malayalam' },
+      { id: 'kannada', name: 'Kannada' },
+      { id: 'spanish', name: 'Spanish' },
+      { id: 'german', name: 'German' },
+      { id: 'portuguese', name: 'Portuguese' },
+      { id: 'french', name: 'French' }
+    ];
+
+    function getLanguageDisplayName(langId) {
+      const clean = (langId || 'hindi').toLowerCase().trim();
+      const found = AVAILABLE_LANGUAGES.find(l => l.id === clean);
+      return found ? found.name : (clean.charAt(0).toUpperCase() + clean.slice(1));
+    }
+
     let currentLanguage = (localStorage.getItem('storygram_language') || 'hindi').toLowerCase().trim();
+
+    function updateLanguageLabels() {
+      const saved = (localStorage.getItem('storygram_language') || currentLanguage || 'hindi').toLowerCase().trim();
+      currentLanguage = saved;
+      const displayName = getLanguageDisplayName(saved);
+      const btn = document.getElementById('current-lang-label');
+      if (btn) btn.innerText = displayName;
+      const acc = document.getElementById('account-current-lang');
+      if (acc) acc.innerText = displayName;
+      const set = document.getElementById('settings-current-lang');
+      if (set) set.innerText = displayName;
+    }
+
+    updateLanguageLabels();
+
     let currentShowId = null;
     let currentShowObj = null;
     let currentNextPtr = 0;
@@ -3407,21 +3461,6 @@
       }
     }
 
-    const AVAILABLE_LANGUAGES = [
-      { id: 'hindi', name: 'Hindi' },
-      { id: 'english', name: 'English' },
-      { id: 'tamil', name: 'Tamil' },
-      { id: 'bengali', name: 'Bengali' },
-      { id: 'marathi', name: 'Marathi' },
-      { id: 'telugu', name: 'Telugu' },
-      { id: 'malayalam', name: 'Malayalam' },
-      { id: 'kannada', name: 'Kannada' },
-      { id: 'spanish', name: 'Spanish' },
-      { id: 'german', name: 'German' },
-      { id: 'portuguese', name: 'Portuguese' },
-      { id: 'french', name: 'French' }
-    ];
-
     function openLanguageModal(pushHistory = true) {
       renderLanguageGrid();
       const modal = document.getElementById('language-modal');
@@ -3461,39 +3500,10 @@
     function selectAppLanguage(langId) {
       currentLanguage = (langId || 'hindi').toLowerCase().trim();
       try { localStorage.setItem('storygram_language', currentLanguage); } catch (e) { }
-      const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
-      const label = langObj ? langObj.name : currentLanguage;
-      const btnLabel = document.getElementById('current-lang-label');
-      if (btnLabel) btnLabel.innerText = label;
-
-      const settingsLang = document.getElementById('settings-current-lang');
-      if (settingsLang) settingsLang.innerText = label;
-
-      const accountLang = document.getElementById('account-current-lang');
-      if (accountLang) accountLang.innerText = label;
-
+      updateLanguageLabels();
       renderLanguageGrid();
       closeLanguageModal();
       fetchHomeFeed();
-
-      try {
-        let saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
-        if (saved && saved.email) {
-          fetch('/api/user/verify?format=json', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Response-Format': 'json'
-            },
-            body: JSON.stringify({
-              action: 'update_language',
-              email: saved.email,
-              language: currentLanguage,
-              deviceId: getDeviceId()
-            })
-          }).catch(() => { });
-        }
-      } catch (e) { }
     }
 
     function openEpisodeRangeModal(pushHistory = true) {
@@ -5058,7 +5068,6 @@
       if (currentAppState !== 'allowed' && userAccessStatus !== 'allowed' && userAccessStatus !== 'active') {
         const lockModal = document.getElementById('access-lock-modal');
         if (lockModal) lockModal.classList.remove('hidden');
-        verifyUserAccess();
         return;
       }
 
@@ -5860,16 +5869,13 @@
       } catch (e) { }
 
       if (!email || !email.trim()) {
-        console.warn("updateUserProfile called without email. Setting login state.");
         setAppState('login');
         return;
       }
 
-      if (currentAppState !== 'allowed') {
-        setAppState('loading');
-      }
-
-      verifyUserAccess(userObj);
+      userAccessStatus = 'allowed';
+      setAppState('allowed', userObj);
+      updateLanguageLabels();
     }
 
     function loadSavedUserProfile() {
@@ -5889,8 +5895,9 @@
       try {
         const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         if (saved && saved.email && saved.email.trim()) {
-          setAppState('loading');
-          verifyUserAccess(saved);
+          userAccessStatus = 'allowed';
+          setAppState('allowed', saved);
+          updateLanguageLabels();
           return;
         }
       } catch (e) { }
@@ -5906,15 +5913,14 @@
     window.getDeviceId = getDeviceId;
     window.triggerAppLogin = triggerAppLogin;
     window.setAppState = setAppState;
+    window.updateLanguageLabels = updateLanguageLabels;
+
+    loadSavedUserProfile();
+    updateLanguageLabels();
 
     window.addEventListener('DOMContentLoaded', () => {
       initShakaPlayer();
-      const initialLangObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
-      const initialLabel = initialLangObj ? initialLangObj.name : currentLanguage;
-      const initialBtn = document.getElementById('current-lang-label');
-      if (initialBtn) initialBtn.innerText = initialLabel;
-      const initialAcc = document.getElementById('account-current-lang');
-      if (initialAcc) initialAcc.innerText = initialLabel;
+      updateLanguageLabels();
       refreshIcons();
       loadSavedUserProfile();
 
