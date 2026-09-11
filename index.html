@@ -32,9 +32,18 @@
         init.headers = init.headers || {};
         const urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
         let pathname = '/';
+        let isInternalApi = false;
         try {
-          pathname = new URL(urlStr, window.location.href).pathname;
-        } catch (e) {}
+          const parsed = new URL(urlStr, window.location.href);
+          isInternalApi = (parsed.origin === window.location.origin) || (urlStr.startsWith('/') && !urlStr.startsWith('//'));
+          pathname = parsed.pathname;
+        } catch (e) {
+          isInternalApi = urlStr.startsWith('/') || urlStr.startsWith('./');
+        }
+
+        if (!isInternalApi) {
+          return originalFetch.call(this, input, init);
+        }
 
         let ts = Date.now().toString();
         let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
