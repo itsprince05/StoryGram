@@ -86,8 +86,7 @@
         window.AndroidBridge ||
         ua.includes('StoryGramApp') ||
         ua.includes('wv') ||
-        window.location.search.includes('mode=app') ||
-        sessionStorage.getItem('storygram_app_verified') === 'true'
+        window.location.search.includes('mode=app')
       );
 
       if (!isApp) {
@@ -104,15 +103,9 @@
   <style>
     :root {
       --bg-main: #070a12;
-      --bg-card: #0f172a;
-      --bg-surface: #182238;
       --bg-glass: rgba(15, 23, 42, 0.92);
       --primary: #ff3366;
-      --primary-gradient: linear-gradient(135deg, #ff3366 0%, #ff6b3d 100%);
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
       --border: rgba(255, 255, 255, 0.08);
-      --radius-md: 14px;
       --header-height: 56px;
     }
 
@@ -129,26 +122,19 @@
       width: 100%;
       min-height: 100vh;
       background-color: #020617;
-      color: var(--text-main);
+      color: #f8fafc;
       overflow-x: hidden;
       margin: 0;
       padding: 0;
     }
 
-    .app-fullscreen-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: var(--bg-main);
-      z-index: 99999;
+    .main-container {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      box-sizing: border-box;
-      overflow-y: auto;
     }
 
     .action-bar {
@@ -211,14 +197,19 @@
       color: #ffffff;
     }
 
+    .spinner-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 56px;
+    }
+
     .spinner {
       animation: rotate 1.5s linear infinite;
       color: var(--primary);
       width: 36px;
       height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
 
     .spinner svg {
@@ -231,97 +222,11 @@
         transform: rotate(360deg);
       }
     }
-
-    .account-page-wrap {
-      width: 100%;
-      max-width: 480px;
-      padding: 10px;
-      margin-top: 56px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      box-sizing: border-box;
-    }
-
-    .account-profile-card {
-      width: 100%;
-      background: linear-gradient(135deg, rgba(255, 51, 102, 0.12) 0%, rgba(15, 23, 42, 0.8) 100%);
-      border: 1px solid rgba(255, 51, 102, 0.25);
-      border-radius: 20px;
-      padding: 10px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      box-sizing: border-box;
-    }
-
-    .account-avatar {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background: var(--bg-surface);
-      border: 2px solid rgba(255, 255, 255, 0.1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-muted);
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-
-    .account-avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      border-radius: 50%;
-    }
-
-    .account-user-info {
-      min-width: 0;
-      flex: 1;
-    }
-
-    .account-user-name {
-      font-size: 15px;
-      font-weight: 700;
-      color: #ffffff;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .account-user-email {
-      font-size: 12px;
-      color: var(--text-muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-top: 2px;
-    }
-
-    .restricted-status-card {
-      width: 100%;
-      background: rgba(239, 68, 68, 0.12);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      border-radius: var(--radius-md);
-      padding: 10px;
-      text-align: center;
-      box-sizing: border-box;
-    }
-
-    .restricted-status-badge {
-      font-size: 16px;
-      font-weight: 800;
-      color: #f87171;
-      margin-bottom: 0;
-    }
   </style>
 </head>
 
 <body>
-
-  <div id="app-loading-screen" class="app-fullscreen-screen">
+  <div class="main-container">
     <header class="action-bar">
       <div class="action-bar-top">
         <div class="brand">
@@ -336,179 +241,75 @@
         </div>
       </div>
     </header>
-    <div style="flex: 1; display: flex; align-items: center; justify-content: center; margin-top: 56px;">
+
+    <div class="spinner-wrap" id="app-spinner">
       <div class="spinner">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2v4" /><path d="m16.2 7.8 2.9-2.9" /><path d="M18 12h4" /><path d="m16.2 16.2 2.9 2.9" /><path d="M12 18v4" /><path d="m4.9 19.1 2.9-2.9" /><path d="M2 12h4" /><path d="m4.9 4.9 2.9 2.9" />
         </svg>
       </div>
     </div>
-  </div>
 
-  <div id="app-restricted-screen" class="app-fullscreen-screen" style="display: none;">
-    <header class="action-bar">
-      <div class="action-bar-top">
-        <div class="brand">
-          <div class="brand-logo">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path fill="#e11d48"
-                d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0">
-              </path>
-            </svg>
-          </div>
-          <span class="brand-name">Story Gram</span>
-        </div>
-      </div>
-    </header>
-
-    <div class="account-page-wrap">
-      <div class="account-profile-card">
-        <div class="account-avatar" id="restricted-avatar-container">
-          <svg id="restricted-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" />
-          </svg>
-          <img id="restricted-avatar-img" src="" alt="Avatar" style="display: none;">
-        </div>
-        <div class="account-user-info">
-          <div class="account-user-name" id="restricted-user-name">User Name</div>
-          <div class="account-user-email" id="restricted-user-email">useremail@mail.com</div>
-        </div>
-      </div>
-
-      <div class="restricted-status-card" id="restricted-status-card">
-        <div class="restricted-status-badge" id="restricted-status-badge">No Access</div>
-      </div>
-    </div>
+    <div id="content-mount"></div>
   </div>
 
   <script>
-    function getDeviceId() {
-      try {
-        if (window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
-          const dev = window.AndroidBridge.getDeviceId();
-          if (dev && dev.trim()) return dev.trim();
-        }
-      } catch (e) {}
-      let dev = localStorage.getItem('storygram_device_id');
-      if (!dev) {
-        dev = 'dev_' + Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
-        try { localStorage.setItem('storygram_device_id', dev); } catch (e) {}
-      }
-      return dev;
-    }
-
-    function renderRestrictedScreen(user) {
-      const loading = document.getElementById('app-loading-screen');
-      const restricted = document.getElementById('app-restricted-screen');
-      const nameElem = document.getElementById('restricted-user-name');
-      const emailElem = document.getElementById('restricted-user-email');
-      const imgElem = document.getElementById('restricted-avatar-img');
-      const svgElem = document.getElementById('restricted-avatar-svg');
-
-      if (nameElem) nameElem.innerText = user.name || 'User';
-      if (emailElem) emailElem.innerText = user.email || '';
-      const photo = user.photoUrl || user.photo || user.avatarUrl || '';
-      if (photo && imgElem && svgElem) {
-        imgElem.src = photo;
-        imgElem.style.display = 'block';
-        svgElem.style.display = 'none';
-      }
-
-      if (loading) loading.style.display = 'none';
-      if (restricted) restricted.style.display = 'flex';
-    }
-
-    async function loadFullAppBundle(userObj) {
-      try {
-        const res = await fetch('/api/app/bundle', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(userObj)
-        });
-
-        if (!res.ok) {
-          throw new Error('Failed to load bundle: ' + res.status);
-        }
-
-        const fullHtml = await res.text();
-        document.open();
-        document.write(fullHtml);
-        document.close();
-      } catch (err) {
-        console.error('Bundle load error:', err);
-        renderRestrictedScreen(userObj);
-      }
-    }
-
-    async function verifyAndGatekeep() {
-      let userObj = null;
+    async function verifyUserAndRender() {
+      let u = null;
       try {
         if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
           const raw = window.AndroidBridge.getUserData();
-          if (raw) {
-            userObj = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          }
+          if (raw) u = typeof raw === 'string' ? JSON.parse(raw) : raw;
         }
       } catch (e) {}
 
-      if (!userObj || !userObj.email) {
+      if (!u || !u.email) {
         try {
-          userObj = JSON.parse(localStorage.getItem('storygram_user') || 'null');
+          u = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         } catch (e) {}
       }
 
-      if (!userObj || !userObj.email) {
-        renderRestrictedScreen({ name: 'User', email: 'No account detected' });
-        return;
+      let dev = (u && (u.deviceId || u.device_id)) || localStorage.getItem('storygram_device_id') || '';
+      if (!dev && window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
+        try { dev = window.AndroidBridge.getDeviceId() || ''; } catch (e) {}
+      }
+      if (dev) {
+        try { localStorage.setItem('storygram_device_id', dev); } catch (e) {}
       }
 
-      const deviceId = userObj.deviceId || userObj.device_id || getDeviceId();
-      userObj.deviceId = deviceId;
-      try { localStorage.setItem('storygram_device_id', deviceId); } catch (e) {}
+      const email = (u && u.email) || '';
+      const name = (u && (u.name || u.displayName)) || 'User';
+      const photo = (u && (u.photoUrl || u.photo || u.avatarUrl)) || '';
+      const userId = (u && (u.userId || u.uid)) || '';
 
       try {
         const res = await fetch('/api/user/verify', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            email: userObj.email,
-            name: userObj.name || userObj.displayName || 'User',
-            photoUrl: userObj.photoUrl || userObj.avatarUrl || userObj.photo || '',
-            deviceId: deviceId,
-            userId: userObj.userId || userObj.uid || ''
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name, photoUrl: photo, deviceId: dev, userId })
         });
 
-        const data = await res.json();
-        if (data && (data.status === 'active' || data.status === 'allowed' || data.success === true)) {
-          sessionStorage.setItem('storygram_app_verified', 'true');
-          await loadFullAppBundle(userObj);
+        const html = await res.text();
+        if (html && (html.trim().startsWith('<!DOCTYPE') || html.includes('<html'))) {
+          document.open();
+          document.write(html);
+          document.close();
         } else {
-          renderRestrictedScreen({
-            name: (data.user && data.user.name) || userObj.name || 'User',
-            email: (data.user && data.user.email) || userObj.email,
-            photoUrl: (data.user && data.user.photo) || userObj.photoUrl || '',
-            status: data.status || 'pending'
-          });
+          const spinner = document.getElementById('app-spinner');
+          if (spinner) spinner.style.display = 'none';
+          const mount = document.getElementById('content-mount');
+          if (mount) mount.innerHTML = html;
         }
-      } catch (err) {
-        console.error('Verify error:', err);
-        renderRestrictedScreen(userObj);
+      } catch (e) {
+        const spinner = document.getElementById('app-spinner');
+        if (spinner) spinner.style.display = 'none';
       }
     }
 
-    window.updateUserProfile = function (arg1, arg2, arg3, arg4, arg5) {
-      verifyAndGatekeep();
-    };
-    window.setUserData = window.updateUserProfile;
+    window.updateUserProfile = verifyUserAndRender;
+    window.setUserData = verifyUserAndRender;
 
-    window.addEventListener('DOMContentLoaded', () => {
-      verifyAndGatekeep();
-    });
+    window.addEventListener('DOMContentLoaded', verifyUserAndRender);
   </script>
 </body>
 
