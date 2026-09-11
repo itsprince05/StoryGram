@@ -278,7 +278,7 @@ function buildPocketHeaders(req) {
     token = `Bearer ${token.trim()}`;
   }
 
-  const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+  const language = req.headers['x-app-language'] || req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
 
   const headers = {
     'Host': 'api.pocketfm.com',
