@@ -54,8 +54,8 @@ function verifyDynamicSignature(req) {
   const ts = req.headers['x-app-timestamp'];
   const nonce = req.headers['x-app-nonce'];
   const sig = req.headers['x-app-signature'];
-  const deviceId = req.headers['x-app-device-id'] || '';
-  if (!ts || !nonce || !sig) return false;
+  const deviceId = req.headers['x-app-device-id'];
+  if (!ts || !nonce || !sig || !deviceId) return false;
 
   const now = Date.now();
   const reqTime = parseInt(ts, 10);
@@ -74,19 +74,12 @@ function verifyDynamicSignature(req) {
   }
 
   const payloadWithDevice = `${ts}:${nonce}:${req.path}:${deviceId}`;
-  const payloadPlain = `${ts}:${nonce}:${req.path}`;
-
-  const expectedSig1 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadWithDevice).digest('hex');
-  const expectedSig2 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadPlain).digest('hex');
+  const expectedSig = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadWithDevice).digest('hex');
 
   const sigBuf = Buffer.from(sig);
-  const buf1 = Buffer.from(expectedSig1);
-  const buf2 = Buffer.from(expectedSig2);
+  const buf = Buffer.from(expectedSig);
 
-  if (sigBuf.length === buf1.length && crypto.timingSafeEqual(sigBuf, buf1)) {
-    return true;
-  }
-  if (sigBuf.length === buf2.length && crypto.timingSafeEqual(sigBuf, buf2)) {
+  if (sigBuf.length === buf.length && crypto.timingSafeEqual(sigBuf, buf)) {
     return true;
   }
   return false;
@@ -1023,15 +1016,9 @@ app.all('/api/proxy/*', (req, res) => {
 const NGINX_404_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>404 Not Found</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#fff;color:#222;padding:40px 20px;max-width:600px;margin:0 auto;line-height:1.6;}h1{font-size:24px;font-weight:600;color:#111;margin-bottom:8px;border-bottom:1px solid #eaeaea;padding-bottom:12px;}p{font-size:14px;color:#555;margin-bottom:20px;}hr{border:none;border-top:1px solid #eaeaea;margin:20px 0;}address{font-size:12px;color:#888;font-style:normal;}</style></head><body><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p><hr><address>nginx / 1.24.0</address></body></html>`;
 
 app.get(['/', '/index.html'], (req, res) => {
-  const ua = req.headers['user-agent'] || '';
-  const isApp = Boolean(
-    ua.includes('StoryGramApp') ||
-    ua.includes('wv') ||
-    req.query.mode === 'app' ||
-    req.headers['x-requested-with']
-  );
+  const isSigned = verifyDynamicSignature(req);
 
-  if (!isApp) {
+  if (!isSigned) {
     return res.status(404).send(NGINX_404_HTML);
   }
 
