@@ -27,7 +27,7 @@
       });
 
       const originalFetch = window.fetch;
-      window.fetch = function (input, init) {
+      window.fetch = async function (input, init) {
         init = init || {};
         init.headers = init.headers || {};
         const urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
@@ -48,9 +48,23 @@
         let ts = Date.now().toString();
         let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
         let deviceId = '';
+        let userId = '';
+        let email = '';
         try {
           deviceId = localStorage.getItem('storygram_device_id') || '';
+          const userObj = JSON.parse(localStorage.getItem('storygram_user') || 'null');
+          if (userObj) {
+            userId = userObj.userId || userObj.uid || userObj.user_id || '';
+            email = userObj.email || '';
+            if (!deviceId && (userObj.deviceId || userObj.device_id)) {
+              deviceId = userObj.deviceId || userObj.device_id;
+            }
+          }
         } catch (e) {}
+
+        if (!deviceId && window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
+          try { deviceId = window.AndroidBridge.getDeviceId() || ''; } catch (e) {}
+        }
 
         let sig = '';
         if (window.AndroidBridge) {
@@ -85,9 +99,37 @@
         setHeader('X-App-Timestamp', ts);
         setHeader('X-App-Nonce', nonce);
         if (deviceId) setHeader('X-App-Device-ID', deviceId);
+        if (userId) setHeader('X-App-User-ID', userId);
+        if (email) setHeader('X-App-User-Email', email);
         if (sig) setHeader('X-App-Signature', sig);
 
-        return originalFetch.call(this, input, init);
+        if (init.method && ['POST', 'PUT', 'PATCH'].includes(init.method.toUpperCase()) && init.body && typeof init.body === 'string') {
+          try {
+            const bodyObj = JSON.parse(init.body);
+            if (typeof bodyObj === 'object' && bodyObj !== null) {
+              if (userId && !bodyObj.userId && !bodyObj.user_id) bodyObj.userId = userId;
+              if (deviceId && !bodyObj.deviceId && !bodyObj.device_id) bodyObj.deviceId = deviceId;
+              if (email && !bodyObj.email) bodyObj.email = email;
+              init.body = JSON.stringify(bodyObj);
+            }
+          } catch(e) {}
+        }
+
+        const response = await originalFetch.call(this, input, init);
+
+        if (response.status === 403 || response.status === 401) {
+          try {
+            const clone = response.clone();
+            const data = await clone.json();
+            if (data && (data.status === 'restricted' || data.status === 'blocked' || data.status === 'expired' || data.status === 'multiple' || data.status === 'device_mismatch' || data.status === 'pending' || data.access_status)) {
+              if (typeof window.handleAccessRevoked === 'function') {
+                window.handleAccessRevoked(data);
+              }
+            }
+          } catch(e) {}
+        }
+
+        return response;
       };
 
       const ua = navigator.userAgent || '';
@@ -3097,6 +3139,14 @@
     let isFetchingDbLibrary = false;
     let isLoadingMoreLibrary = false;
 
+    function formatPlaysLabel(val, suffix = 'Plays') {
+      if (!val && val !== 0) return '1M+ ' + suffix;
+      let str = String(val).trim();
+      str = str.replace(/\s*plays?$/i, '').trim();
+      if (!str) return '1M+ ' + suffix;
+      return str + ' ' + suffix;
+    }
+
     function formatValidUntilDate(val) {
       if (!val || val === 0 || val === '0' || val === 'lifetime' || val === 'Lifetime') {
         return 'Lifetime';
@@ -3462,7 +3512,7 @@
       currentLanguage = (langId || 'hindi').toLowerCase().trim();
       try { localStorage.setItem('storygram_language', currentLanguage); } catch (e) { }
       const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
-      const label = langObj ? langObj.name : currentLanguage;
+      const label = langObj ? langObj.name : (currentLanguage.charAt(0).toUpperCase() + currentLanguage.slice(1));
       const btnLabel = document.getElementById('current-lang-label');
       if (btnLabel) btnLabel.innerText = label;
 
@@ -3478,18 +3528,20 @@
 
       try {
         let saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
-        if (saved && saved.email) {
-          fetch('/api/user/verify?format=json', {
+        const email = saved.email || '';
+        const userId = saved.userId || saved.uid || saved.user_id || '';
+        const devId = getDeviceId();
+        if (email || userId) {
+          fetch('/api/user/update-language', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'X-Response-Format': 'json'
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              action: 'update_language',
-              email: saved.email,
+              userId: userId,
+              email: email,
               language: currentLanguage,
-              deviceId: getDeviceId()
+              deviceId: devId
             })
           }).catch(() => { });
         }
@@ -3578,7 +3630,7 @@
         const hasRank = show.category_rank != null && show.category_rank !== '';
         const hasRating = show.rating != null && show.rating !== '';
         const hasPlays = show.plays != null && show.plays !== '';
-        const playsText = hasPlays ? (show.plays.toString().toLowerCase().includes('play') ? show.plays : `${show.plays} Plays`) : '';
+        const playsText = hasPlays ? formatPlaysLabel(show.plays) : '';
 
         return `
         <div class="hero-slide" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
@@ -3758,7 +3810,7 @@
                   </div>
                 </div>
                 <div class="card-title">${escapeHtml(show.title || 'Untitled')}</div>
-                <div class="card-meta"><i data-lucide="headphones"></i> ${show.plays || '1M+'} plays</div>
+                <div class="card-meta"><i data-lucide="headphones"></i> ${formatPlaysLabel(show.plays)}</div>
               </div>
             `).join('')}
           </div>
@@ -4024,7 +4076,7 @@
             }
 
             if (showData.stats && showData.stats.total_plays_display) {
-              document.getElementById('show-badge-plays-text').innerText = `${showData.stats.total_plays_display} Plays`;
+              document.getElementById('show-badge-plays-text').innerText = formatPlaysLabel(showData.stats.total_plays_display);
               document.getElementById('show-badge-plays').style.display = 'inline-flex';
             } else {
               document.getElementById('show-badge-plays').style.display = 'none';
@@ -5058,7 +5110,6 @@
       if (currentAppState !== 'allowed' && userAccessStatus !== 'allowed' && userAccessStatus !== 'active') {
         const lockModal = document.getElementById('access-lock-modal');
         if (lockModal) lockModal.classList.remove('hidden');
-        verifyUserAccess();
         return;
       }
 
@@ -5803,6 +5854,54 @@
       }, 700);
     }
 
+    function handleAccessRevoked(data = {}) {
+      try {
+        const audio = document.getElementById('audio-element');
+        if (audio) {
+          audio.pause();
+          audio.src = '';
+        }
+        const video = document.getElementById('fs-video-element');
+        if (video) {
+          video.pause();
+          video.src = '';
+        }
+        if (window.shakaPlayer) {
+          try { window.shakaPlayer.unload(); } catch(e){}
+        }
+        isPlaying = false;
+        isAudioBuffering = false;
+        updatePlayPauseButtons();
+        closePlayerBar();
+        closeFullscreenPlayer();
+      } catch (e) { }
+
+      const accessStatus = data.access_status || data.status || 'restricted';
+      const statusReason = (data.reason || data.message || accessStatus).toLowerCase();
+
+      let finalStatus = 'pending';
+      if (statusReason.includes('block') || accessStatus === 'blocked') {
+        finalStatus = 'blocked';
+      } else if (statusReason.includes('expir') || accessStatus === 'expired') {
+        finalStatus = 'expired';
+      } else if (statusReason.includes('device') || statusReason.includes('match') || accessStatus === 'multiple' || accessStatus === 'device_mismatch') {
+        finalStatus = 'multiple';
+      }
+
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+
+      const payload = {
+        name: (data.user && data.user.name) || saved.name || 'User',
+        email: (data.user && data.user.email) || saved.email || '',
+        photoUrl: (data.user && (data.user.photo || data.user.photo_url)) || saved.avatarUrl || saved.photoUrl || '',
+        deviceId: (data.user && (data.user.device || data.user.device_id)) || saved.deviceId || getDeviceId(),
+        status: finalStatus
+      };
+
+      setAppState('restricted', payload);
+    }
+
     function updateUserProfile(arg1, arg2, arg3, arg4, arg5) {
       let name = 'User';
       let email = '';
@@ -5865,39 +5964,47 @@
         return;
       }
 
-      if (currentAppState !== 'allowed') {
+      if (currentAppState === 'allowed') {
+        setAppState('allowed', userObj);
+      } else {
         setAppState('loading');
+        verifyUserAccess(userObj);
       }
-
-      verifyUserAccess(userObj);
     }
 
     function loadSavedUserProfile() {
+      let u = null;
       try {
         if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
           const rawData = window.AndroidBridge.getUserData();
           if (rawData) {
-            const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-            if (data && (data.email || data.user_email)) {
-              updateUserProfile(data);
-              return;
-            }
+            u = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
           }
         }
       } catch (e) { }
 
-      try {
-        const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
-        if (saved && saved.email && saved.email.trim()) {
-          setAppState('loading');
-          verifyUserAccess(saved);
-          return;
-        }
-      } catch (e) { }
+      if (!u || !u.email) {
+        try {
+          u = JSON.parse(localStorage.getItem('storygram_user') || 'null');
+        } catch (e) { }
+      }
+
+      if (u && (u.email || u.userId || u.uid)) {
+        const devId = (u && (u.deviceId || u.device_id)) || localStorage.getItem('storygram_device_id') || getDeviceId();
+        const fullUser = {
+          ...u,
+          deviceId: devId,
+          status: 'active'
+        };
+        try { localStorage.setItem('storygram_user', JSON.stringify(fullUser)); } catch (e) { }
+        setAppState('allowed', fullUser);
+        return;
+      }
 
       setAppState('login');
     }
 
+    window.handleAccessRevoked = handleAccessRevoked;
     window.updateUserProfile = updateUserProfile;
     window.setUserData = updateUserProfile;
     window.verifyUserAccess = verifyUserAccess;
@@ -5910,7 +6017,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       initShakaPlayer();
       const initialLangObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
-      const initialLabel = initialLangObj ? initialLangObj.name : currentLanguage;
+      const initialLabel = initialLangObj ? initialLangObj.name : (currentLanguage.charAt(0).toUpperCase() + currentLanguage.slice(1));
       const initialBtn = document.getElementById('current-lang-label');
       if (initialBtn) initialBtn.innerText = initialLabel;
       const initialAcc = document.getElementById('account-current-lang');
