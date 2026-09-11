@@ -100,16 +100,43 @@
         setHeader('X-App-Nonce', nonce);
         if (sig) setHeader('X-App-Signature', sig);
 
-        if (init.method && ['POST', 'PUT', 'PATCH'].includes(init.method.toUpperCase()) && init.body && typeof init.body === 'string') {
+        const reqMethod = (init.method || 'GET').toUpperCase();
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(reqMethod)) {
+          if (init.body && typeof init.body === 'string') {
+            try {
+              const bodyObj = JSON.parse(init.body);
+              if (typeof bodyObj === 'object' && bodyObj !== null) {
+                if (userId && !bodyObj.userId && !bodyObj.user_id) {
+                  bodyObj.userId = userId;
+                  bodyObj.user_id = userId;
+                }
+                if (deviceId && !bodyObj.deviceId && !bodyObj.device_id) {
+                  bodyObj.deviceId = deviceId;
+                  bodyObj.device_id = deviceId;
+                }
+                if (email && !bodyObj.email) {
+                  bodyObj.email = email;
+                }
+                init.body = JSON.stringify(bodyObj);
+              }
+            } catch(e) {}
+          } else if (!init.body) {
+            init.body = JSON.stringify({ userId, user_id: userId, deviceId, device_id: deviceId, email: email || '' });
+            setHeader('Content-Type', 'application/json');
+          }
+        } else if (reqMethod === 'GET') {
           try {
-            const bodyObj = JSON.parse(init.body);
-            if (typeof bodyObj === 'object' && bodyObj !== null) {
-              if (userId && !bodyObj.userId && !bodyObj.user_id) bodyObj.userId = userId;
-              if (deviceId && !bodyObj.deviceId && !bodyObj.device_id) bodyObj.deviceId = deviceId;
-              if (email && !bodyObj.email) bodyObj.email = email;
-              init.body = JSON.stringify(bodyObj);
+            const parsed = new URL(urlStr, window.location.href);
+            if (userId && !parsed.searchParams.has('user_id') && !parsed.searchParams.has('userId')) {
+              parsed.searchParams.set('user_id', userId);
             }
-          } catch(e) {}
+            if (deviceId && !parsed.searchParams.has('device_id') && !parsed.searchParams.has('deviceId')) {
+              parsed.searchParams.set('device_id', deviceId);
+            }
+            if (typeof input === 'string') {
+              input = parsed.toString();
+            }
+          } catch (e) {}
         }
 
         const response = await originalFetch.call(this, input, init);
