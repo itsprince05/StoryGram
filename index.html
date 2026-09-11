@@ -48,8 +48,22 @@
         let ts = Date.now().toString();
         let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
         let deviceId = '';
+        let userEmail = '';
+        let userId = '';
+        let userName = '';
+        let userLang = '';
         try {
           deviceId = localStorage.getItem('storygram_device_id') || '';
+          const userStr = localStorage.getItem('storygram_user');
+          if (userStr) {
+            const u = JSON.parse(userStr);
+            if (u) {
+              userEmail = u.email || '';
+              userId = u.userId || u.user_id || u.uid || '';
+              userName = u.name || '';
+            }
+          }
+          userLang = localStorage.getItem('storygram_language') || '';
         } catch (e) {}
 
         let sig = '';
@@ -86,6 +100,10 @@
         setHeader('X-App-Nonce', nonce);
         if (deviceId) setHeader('X-App-Device-ID', deviceId);
         if (sig) setHeader('X-App-Signature', sig);
+        if (userEmail) setHeader('X-App-User-Email', userEmail);
+        if (userId) setHeader('X-App-User-ID', userId);
+        if (userName) setHeader('X-App-User-Name', encodeURIComponent(userName));
+        if (userLang) setHeader('X-App-Language', userLang);
 
         return originalFetch.call(this, input, init);
       };
@@ -289,12 +307,13 @@
       const name = (u && (u.name || u.displayName)) || 'User';
       const photo = (u && (u.photoUrl || u.photo || u.avatarUrl)) || '';
       const userId = (u && (u.userId || u.uid)) || '';
+      const language = (localStorage.getItem('storygram_language') || 'hindi').toLowerCase().trim();
 
       try {
         const res = await fetch('/api/user/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name, photoUrl: photo, deviceId: dev, userId })
+          body: JSON.stringify({ email, name, photoUrl: photo, deviceId: dev, userId, language })
         });
 
         const html = await res.text();
