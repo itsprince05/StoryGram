@@ -85,8 +85,7 @@
       const isApp = Boolean(
         window.AndroidBridge ||
         ua.includes('StoryGramApp') ||
-        ua.includes('wv') ||
-        window.location.search.includes('mode=app')
+        ua.includes('wv')
       );
 
       if (!isApp) {
