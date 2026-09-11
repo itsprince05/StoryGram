@@ -147,7 +147,10 @@ async function checkUserVerification(userId, deviceId, email) {
 const NGINX_404_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>404 Not Found</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#fff;color:#222;padding:40px 20px;max-width:600px;margin:0 auto;line-height:1.6;}h1{font-size:24px;font-weight:600;color:#111;margin-bottom:8px;border-bottom:1px solid #eaeaea;padding-bottom:12px;}p{font-size:14px;color:#555;margin-bottom:20px;}hr{border:none;border-top:1px solid #eaeaea;margin:20px 0;}address{font-size:12px;color:#888;font-style:normal;}</style></head><body><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p><hr><address>nginx / 1.24.0</address></body></html>`;
 
 const APP_CLIENT_SECRET = 'StoryGramSecClient_98741488';
-const APP_HMAC_SECRET = 'StoryGram_Sec_Hmac_98741488_Key_v1';
+const APP_HMAC_SECRETS = [
+  'StoryGram_Sec_Hmac_98741488_Key_v1',
+  'SporyGram_Sec_Hmac_98741488_Key_v1'
+];
 const rateLimitMap = new Map();
 const usedNonces = new Map();
 
@@ -187,17 +190,25 @@ function verifyDynamicSignature(req) {
     `${ts}:${nonce}:/:${deviceId}`,
     `${ts}:${nonce}:/`,
     `${ts}:${nonce}::${deviceId}`,
-    `${ts}:${nonce}`
+    `${ts}:${nonce}`,
+    `${deviceId}:${ts}:${nonce}:${cleanPath}`,
+    `${ts}_${nonce}_${cleanPath}_${deviceId}`
   ];
 
-  for (const payload of candidatePayloads) {
-    const expectedSig = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payload).digest('hex');
-    if (sig.toLowerCase() === expectedSig.toLowerCase()) {
-      return true;
+  console.log(`[AUTH-DEBUG] Incoming: path="${cleanPath}", deviceId="${deviceId}", ts="${ts}", nonce="${nonce}", sig="${sig}"`);
+
+  for (const secret of APP_HMAC_SECRETS) {
+    for (const payload of candidatePayloads) {
+      const expectedSig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+      if (sig.toLowerCase() === expectedSig.toLowerCase()) {
+        console.log(`[AUTH-SUCCESS] Signature MATCHED with secret="${secret.substring(0, 10)}..." and payload="${payload}"`);
+        return true;
+      }
     }
   }
 
-  console.log(`[AUTH-REJECT] Signature mismatch for path=${req.path}, deviceId=${deviceId}, receivedSig=${sig.substring(0, 10)}...`);
+  const primaryExpected = crypto.createHmac('sha256', APP_HMAC_SECRETS[0]).update(`${ts}:${nonce}:${cleanPath}:${deviceId}`).digest('hex');
+  console.log(`[AUTH-REJECT] Signature mismatch!\n  Expected: ${primaryExpected}\n  Received: ${sig}\n  Payload:   "${ts}:${nonce}:${cleanPath}:${deviceId}"`);
   return false;
 }
 
@@ -243,7 +254,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(rateLimiterMiddleware);
 
 app.use((req, res, next) => {
-  if (req.path === '/' || req.path === '/index.html') {
+  if (req.path === '/' || req.path === '/index.html' || req.path === '/health' || req.path === '/ping' || req.path === '/favicon.ico') {
     return next();
   }
 
