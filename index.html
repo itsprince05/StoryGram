@@ -48,40 +48,23 @@
         let ts = Date.now().toString();
         let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
         let deviceId = '';
-        let userEmail = '';
-        let userId = '';
-        let userName = '';
-        let userLang = '';
         try {
           deviceId = localStorage.getItem('storygram_device_id') || '';
-          const userStr = localStorage.getItem('storygram_user');
-          if (userStr) {
-            const u = JSON.parse(userStr);
-            if (u) {
-              userEmail = u.email || '';
-              userId = u.userId || u.user_id || u.uid || '';
-              userName = u.name || '';
-            }
-          }
-          userLang = localStorage.getItem('storygram_language') || '';
         } catch (e) {}
 
         let sig = '';
-        let token = 'StoryGramSecClient_98741488';
         if (window.AndroidBridge) {
           if (typeof window.AndroidBridge.getSignedHeaders === 'function') {
             try {
               const res = JSON.parse(window.AndroidBridge.getSignedHeaders(pathname));
-              if (res) {
-                if (res.signature) sig = res.signature;
+              if (res && res.signature) {
+                sig = res.signature;
                 if (res.timestamp) ts = res.timestamp;
                 if (res.nonce) nonce = res.nonce;
                 if (res.deviceId) deviceId = res.deviceId;
-                if (res.token) token = res.token;
               }
             } catch (e) {}
-          }
-          if (!sig && typeof window.AndroidBridge.getHmacSignature === 'function') {
+          } else if (typeof window.AndroidBridge.getHmacSignature === 'function') {
             try {
               sig = window.AndroidBridge.getHmacSignature(ts, nonce, pathname, deviceId);
             } catch (e) {}
@@ -103,32 +86,6 @@
         setHeader('X-App-Nonce', nonce);
         if (deviceId) setHeader('X-App-Device-ID', deviceId);
         if (sig) setHeader('X-App-Signature', sig);
-        setHeader('X-App-Token', 'StoryGramSecClient_98741488');
-
-        if (!init.method || init.method.toUpperCase() === 'GET') {
-          init.method = 'POST';
-          setHeader('Content-Type', 'application/json');
-          init.body = JSON.stringify({
-            email: userEmail,
-            userId: userId,
-            name: userName,
-            deviceId: deviceId,
-            language: userLang || 'hindi'
-          });
-        } else if (init.body) {
-          try {
-            let parsed = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
-            if (typeof parsed === 'object' && parsed !== null) {
-              if (!parsed.email && userEmail) parsed.email = userEmail;
-              if (!parsed.userId && !parsed.user_id && userId) parsed.userId = userId;
-              if (!parsed.deviceId && !parsed.device_id && deviceId) parsed.deviceId = deviceId;
-              if (!parsed.name && userName) parsed.name = userName;
-              if (!parsed.language && !parsed.lang && userLang) parsed.language = userLang;
-              init.body = JSON.stringify(parsed);
-              setHeader('Content-Type', 'application/json');
-            }
-          } catch (e) { }
-        }
 
         return originalFetch.call(this, input, init);
       };
@@ -324,39 +281,20 @@
       if (!dev && window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
         try { dev = window.AndroidBridge.getDeviceId() || ''; } catch (e) {}
       }
-      if (!dev) {
-        dev = 'DEV-' + Array.from(crypto.getRandomValues(new Uint8Array(8))).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+      if (dev) {
+        try { localStorage.setItem('storygram_device_id', dev); } catch (e) {}
       }
-      try { localStorage.setItem('storygram_device_id', dev); } catch (e) {}
 
       const email = (u && u.email) || '';
       const name = (u && (u.name || u.displayName)) || 'User';
       const photo = (u && (u.photoUrl || u.photo || u.avatarUrl)) || '';
       const userId = (u && (u.userId || u.uid)) || '';
-      const language = (localStorage.getItem('storygram_language') || 'hindi').toLowerCase().trim();
-
-      if (!email) {
-        try {
-          const res = await fetch('/api/app/bundle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: 'user@storygram.com', name, deviceId: dev })
-          });
-          const html = await res.text();
-          if (html && (html.trim().startsWith('<!DOCTYPE') || html.includes('<html'))) {
-            document.open();
-            document.write(html);
-            document.close();
-            return;
-          }
-        } catch (e) {}
-      }
 
       try {
         const res = await fetch('/api/user/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name, photoUrl: photo, deviceId: dev, userId, language })
+          body: JSON.stringify({ email, name, photoUrl: photo, deviceId: dev, userId })
         });
 
         const html = await res.text();
@@ -364,31 +302,12 @@
           document.open();
           document.write(html);
           document.close();
-          return;
+        } else {
+          const spinner = document.getElementById('app-spinner');
+          if (spinner) spinner.style.display = 'none';
+          const mount = document.getElementById('content-mount');
+          if (mount) mount.innerHTML = html;
         }
-
-        try {
-          const parsed = JSON.parse(html);
-          if (parsed && (parsed.status === 'active' || parsed.success === true)) {
-            const bundleRes = await fetch('/api/app/bundle', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email, deviceId: dev })
-            });
-            const bundleHtml = await bundleRes.text();
-            if (bundleHtml && (bundleHtml.trim().startsWith('<!DOCTYPE') || bundleHtml.includes('<html'))) {
-              document.open();
-              document.write(bundleHtml);
-              document.close();
-              return;
-            }
-          }
-        } catch (e) {}
-
-        const spinner = document.getElementById('app-spinner');
-        if (spinner) spinner.style.display = 'none';
-        const mount = document.getElementById('content-mount');
-        if (mount && !html.trim().startsWith('{')) mount.innerHTML = html;
       } catch (e) {
         const spinner = document.getElementById('app-spinner');
         if (spinner) spinner.style.display = 'none';
