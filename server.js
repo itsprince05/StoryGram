@@ -54,8 +54,8 @@ function verifyDynamicSignature(req) {
   const ts = req.headers['x-app-timestamp'];
   const nonce = req.headers['x-app-nonce'];
   const sig = req.headers['x-app-signature'];
-  const deviceId = req.headers['x-app-device-id'];
-  if (!ts || !nonce || !sig || !deviceId) return false;
+  const deviceId = req.headers['x-app-device-id'] || '';
+  if (!ts || !nonce || !sig) return false;
 
   const now = Date.now();
   const reqTime = parseInt(ts, 10);
@@ -74,12 +74,18 @@ function verifyDynamicSignature(req) {
   }
 
   const payloadWithDevice = `${ts}:${nonce}:${req.path}:${deviceId}`;
-  const expectedSig = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadWithDevice).digest('hex');
+  const payloadPlain = `${ts}:${nonce}:${req.path}`;
+  const expectedSig1 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadWithDevice).digest('hex');
+  const expectedSig2 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadPlain).digest('hex');
 
   const sigBuf = Buffer.from(sig);
-  const buf = Buffer.from(expectedSig);
+  const buf1 = Buffer.from(expectedSig1);
+  const buf2 = Buffer.from(expectedSig2);
 
-  if (sigBuf.length === buf.length && crypto.timingSafeEqual(sigBuf, buf)) {
+  if (sigBuf.length === buf1.length && crypto.timingSafeEqual(sigBuf, buf1)) {
+    return true;
+  }
+  if (sigBuf.length === buf2.length && crypto.timingSafeEqual(sigBuf, buf2)) {
     return true;
   }
   return false;
@@ -105,8 +111,8 @@ function rateLimiterMiddleware(req, res, next) {
   }
 
   if (rateLimitMap.size > 5000) {
-    for (const [k, v] of rateLimitMap.entries()) {
-      if (now > v.resetTime) rateLimitMap.delete(k);
+    for (const [k, exp] of rateLimitMap.entries()) {
+      if (now > exp.resetTime) rateLimitMap.delete(k);
     }
   }
   next();
