@@ -82,9 +82,10 @@
           }
         };
 
-        setHeader('x-app-timestamp', ts);
-        setHeader('x-app-nonce', nonce);
-        if (sig) setHeader('x-app-signature', sig);
+        setHeader('X-App-Timestamp', ts);
+        setHeader('X-App-Nonce', nonce);
+        if (deviceId) setHeader('X-App-Device-ID', deviceId);
+        if (sig) setHeader('X-App-Signature', sig);
 
         return originalFetch.call(this, input, init);
       };
