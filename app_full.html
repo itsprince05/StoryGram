@@ -27,7 +27,7 @@
       });
 
       const originalFetch = window.fetch;
-      window.fetch = async function (input, init) {
+      window.fetch = function (input, init) {
         init = init || {};
         init.headers = init.headers || {};
         const urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
@@ -48,16 +48,8 @@
         let ts = Date.now().toString();
         let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
         let deviceId = '';
-        let userId = '';
-        let email = '';
         try {
           deviceId = localStorage.getItem('storygram_device_id') || '';
-          const savedU = JSON.parse(localStorage.getItem('storygram_user') || '{}');
-          if (savedU) {
-            userId = savedU.userId || savedU.user_id || savedU.uid || '';
-            email = savedU.email || '';
-            if (!deviceId) deviceId = savedU.deviceId || savedU.device_id || '';
-          }
         } catch (e) {}
 
         let sig = '';
@@ -93,37 +85,9 @@
         setHeader('X-App-Timestamp', ts);
         setHeader('X-App-Nonce', nonce);
         if (deviceId) setHeader('X-App-Device-ID', deviceId);
-        if (userId) setHeader('X-App-User-ID', userId);
-        if (email) setHeader('X-App-User-Email', email);
         if (sig) setHeader('X-App-Signature', sig);
 
-        if (init.body && typeof init.body === 'string' && (init.method || 'GET').toUpperCase() !== 'GET') {
-          try {
-            const parsedBody = JSON.parse(init.body);
-            if (parsedBody && typeof parsedBody === 'object') {
-              if (userId && !parsedBody.userId && !parsedBody.user_id) parsedBody.userId = userId;
-              if (deviceId && !parsedBody.deviceId && !parsedBody.device_id) parsedBody.deviceId = deviceId;
-              if (email && !parsedBody.email) parsedBody.email = email;
-              init.body = JSON.stringify(parsedBody);
-            }
-          } catch (e) {}
-        }
-
-        const response = await originalFetch.call(this, input, init);
-
-        if (response.status === 403) {
-          try {
-            const cloned = response.clone();
-            const data = await cloned.json();
-            if (data && (data.status === 'expired' || data.status === 'blocked' || data.status === 'device_mismatch' || data.status === 'multiple' || data.status === 'restricted' || data.status === 'pending' || data.success === false)) {
-              if (typeof window.handleUserRestricted === 'function') {
-                window.handleUserRestricted(data);
-              }
-            }
-          } catch (e) {}
-        }
-
-        return response;
+        return originalFetch.call(this, input, init);
       };
 
       const ua = navigator.userAgent || '';
@@ -3132,6 +3096,45 @@
     let favoriteDisplayLimit = 30;
     let isFetchingDbLibrary = false;
     let isLoadingMoreLibrary = false;
+    let lastVerifyTime = 0;
+    let lastVerifyResult = null;
+    const VERIFY_COOLDOWN_MS = 30000;
+
+    function formatPlays(val) {
+      if (!val) return '';
+      let s = String(val).trim();
+      s = s.replace(/\s*(plays|play)\s*$/i, '').trim();
+      return s ? s + ' plays' : '';
+    }
+
+    function getUserId() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        return saved.uid || saved.userId || saved.user_id || saved.email || '';
+      } catch (e) { return ''; }
+    }
+
+    function handleApiAccessError(data) {
+      if (!data) return false;
+      const st = (data.status || '').toLowerCase();
+      if (st === 'blocked' || st === 'expired' || st === 'device_mismatch' || st === 'restricted') {
+        try {
+          const active = document.querySelector('audio, video');
+          if (active && !active.paused) active.pause();
+        } catch (e) { }
+        try { closePlayerBar(); } catch (e) { }
+        userAccessStatus = st;
+        let msg = 'No Access';
+        if (st === 'blocked') msg = 'Account Blocked';
+        else if (st === 'expired') msg = 'Access Expired';
+        else if (st === 'device_mismatch') msg = 'Device Not Matched';
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+        setAppState('restricted', { ...saved, status: st, _msg: msg });
+        return true;
+      }
+      return false;
+    }
 
     function formatValidUntilDate(val) {
       if (!val || val === 0 || val === '0' || val === 'lifetime' || val === 'Lifetime') {
@@ -3514,18 +3517,21 @@
 
       try {
         let saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
-        fetch('/api/user/update_language', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: saved.userId || saved.user_id || '',
-            deviceId: getDeviceId(),
-            email: saved.email || '',
-            language: currentLanguage
-          })
-        }).catch(() => { });
+        if (saved && saved.email) {
+          fetch('/api/user/verify?format=json', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Response-Format': 'json'
+            },
+            body: JSON.stringify({
+              action: 'update_language',
+              email: saved.email,
+              language: currentLanguage,
+              deviceId: getDeviceId()
+            })
+          }).catch(() => { });
+        }
       } catch (e) { }
     }
 
@@ -3593,13 +3599,6 @@
       fetchShowEpisodes(currentShowId, startPtr, 'replace', startNum);
     }
 
-    function formatPlays(val) {
-      if (val == null || val === '') return '';
-      let s = String(val).trim();
-      s = s.replace(/\s*plays$/i, '').trim();
-      return s ? `${s} Plays` : '';
-    }
-
     function renderBannerSlider(shows) {
       const sliderContainer = document.getElementById('hero-slider-container');
       const track = document.getElementById('hero-slides-track');
@@ -3618,7 +3617,6 @@
         const hasRank = show.category_rank != null && show.category_rank !== '';
         const hasRating = show.rating != null && show.rating !== '';
         const playsText = formatPlays(show.plays);
-        const hasPlays = Boolean(playsText);
 
         return `
         <div class="hero-slide" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
@@ -3627,7 +3625,7 @@
             <div class="hero-badges-row">
               ${hasRank ? `<div class="hero-badge hero-badge-rank">#${show.category_rank}</div>` : ''}
               ${hasRating ? `<div class="hero-badge hero-badge-rating"><i data-lucide="star"></i> ${show.rating}</div>` : ''}
-              ${hasPlays ? `<div class="hero-badge hero-badge-plays"><i data-lucide="headphones"></i> ${playsText}</div>` : ''}
+              ${playsText ? `<div class="hero-badge hero-badge-plays"><i data-lucide="headphones"></i> ${playsText}</div>` : ''}
             </div>
             <div class="hero-title">${escapeHtml(show.title)}</div>
             <div class="hero-btn"><i data-lucide="play"></i> Play Series</div>
@@ -3698,9 +3696,17 @@
       try {
         const response = await fetch('/home', {
           headers: {
-            'language': currentLanguage
+            'language': currentLanguage,
+            'X-User-Id': getUserId(),
+            'X-Device-Id': getDeviceId()
           }
         });
+        if (response.status === 403) {
+          try {
+            const errData = await response.json();
+            if (handleApiAccessError(errData)) return;
+          } catch (e) { }
+        }
         if (response.ok) {
           const data = await response.json();
           if (data && data.result && data.result.length > 0) {
@@ -3728,7 +3734,7 @@
           image_url: s.image_url || '',
           category_rank: s.show_category_rank !== undefined ? s.show_category_rank : (s.category_rank !== undefined ? s.category_rank : null),
           rating: s.stats?.avg_rating || s.rating || null,
-          plays: formatPlays(s.stats?.total_plays_display || s.plays || '1M+')
+          plays: s.stats?.total_plays_display || s.plays || '1M+'
         }));
       }
       if (mod.entities && Array.isArray(mod.entities)) {
@@ -3740,7 +3746,7 @@
             image_url: val.image_url || '',
             category_rank: val.show_category_rank !== undefined ? val.show_category_rank : (val.category_rank !== undefined ? val.category_rank : null),
             rating: val.stats?.avg_rating || val.rating || null,
-            plays: formatPlays(val.stats?.total_plays_display || val.plays || '1M+')
+            plays: val.stats?.total_plays_display || val.plays || '1M+'
           };
         }).filter(s => s.show_id || s.title);
       }
@@ -3798,7 +3804,7 @@
                   </div>
                 </div>
                 <div class="card-title">${escapeHtml(show.title || 'Untitled')}</div>
-                <div class="card-meta"><i data-lucide="headphones"></i> ${formatPlays(show.plays) || '1M+ Plays'}</div>
+                <div class="card-meta"><i data-lucide="headphones"></i> ${formatPlays(show.plays) || '1M+ plays'}</div>
               </div>
             `).join('')}
           </div>
@@ -4033,7 +4039,9 @@
           headers: {
             'show_id': showId,
             'curr_ptr': String(currPtr),
-            'language': currentLanguage
+            'language': currentLanguage,
+            'X-User-Id': getUserId(),
+            'X-Device-Id': getDeviceId()
           }
         });
         if (response.ok) {
@@ -4063,9 +4071,8 @@
               document.getElementById('show-badge-rating').style.display = 'none';
             }
 
-            const playsFormatted = formatPlays(showData.stats?.total_plays_display || showData.plays);
-            if (playsFormatted) {
-              document.getElementById('show-badge-plays-text').innerText = playsFormatted;
+            if (showData.stats && showData.stats.total_plays_display) {
+              document.getElementById('show-badge-plays-text').innerText = formatPlays(showData.stats.total_plays_display);
               document.getElementById('show-badge-plays').style.display = 'inline-flex';
             } else {
               document.getElementById('show-badge-plays').style.display = 'none';
@@ -5099,6 +5106,7 @@
       if (currentAppState !== 'allowed' && userAccessStatus !== 'allowed' && userAccessStatus !== 'active') {
         const lockModal = document.getElementById('access-lock-modal');
         if (lockModal) lockModal.classList.remove('hidden');
+        verifyUserAccess();
         return;
       }
 
@@ -5427,7 +5435,9 @@
         const res = await fetch('/search', {
           headers: {
             'query': query,
-            'language': currentLanguage
+            'language': currentLanguage,
+            'X-User-Id': getUserId(),
+            'X-Device-Id': getDeviceId()
           }
         });
         if (res.ok) {
@@ -5532,19 +5542,6 @@
     let currentUserAccessData = null;
     let homeFeedLoaded = false;
 
-    function handleUserRestricted(data = {}) {
-      console.warn("User access restricted:", data);
-      userAccessStatus = data.status || 'restricted';
-      try {
-        stopAndUnloadVideo();
-        stopAndUnloadAudio();
-        closePlayerBar();
-        closeFullscreenPlayer();
-      } catch (e) { }
-      setAppState('restricted', data);
-    }
-    window.handleUserRestricted = handleUserRestricted;
-
     function setAppState(state, data = {}) {
       currentAppState = state;
       const loadingScreen = document.getElementById('app-loading-screen');
@@ -5569,18 +5566,17 @@
         if (appFrame) appFrame.style.display = 'none';
 
         try {
-          stopAndUnloadVideo();
-          stopAndUnloadAudio();
+          const active = getActiveMediaElement();
+          if (active && !active.paused) active.pause();
           closePlayerBar();
-          closeFullscreenPlayer();
         } catch (e) { }
 
         let saved = {};
         try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
-        const name = data.name || (data.user && data.user.name) || saved.name || 'User';
-        const email = data.email || (data.user && data.user.email) || saved.email || 'user@mail.com';
-        const photoUrl = data.photoUrl || data.photo_url || (data.user && (data.user.photo || data.user.photo_url)) || saved.avatarUrl || saved.photoUrl || '';
-        const status = data.status || (data.user && data.user.status) || saved.status || 'pending';
+        const name = data.name || saved.name || 'User';
+        const email = data.email || saved.email || 'user@mail.com';
+        const photoUrl = data.photoUrl || data.photo_url || saved.avatarUrl || saved.photoUrl || '';
+        const status = data.status || saved.status || 'pending';
 
         const rName = document.getElementById('restricted-user-name');
         const rEmail = document.getElementById('restricted-user-email');
@@ -5638,7 +5634,7 @@
           }
         } else {
           if (rBadge) {
-            rBadge.innerText = data.message || 'No Access';
+            rBadge.innerText = 'No Access';
             rBadge.style.color = '#f87171';
           }
           if (rCard) {
@@ -5653,10 +5649,10 @@
 
         let saved = {};
         try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
-        const name = data.name || (data.user && data.user.name) || saved.name || 'User';
-        const email = data.email || (data.user && data.user.email) || saved.email || 'user@mail.com';
-        const photoUrl = data.photoUrl || data.photo_url || (data.user && (data.user.photo || data.user.photo_url)) || saved.avatarUrl || saved.photoUrl || '';
-        const deviceId = data.deviceId || data.device_id || (data.user && (data.user.device || data.user.device_id)) || saved.deviceId || getDeviceId();
+        const name = data.name || saved.name || 'User';
+        const email = data.email || saved.email || 'user@mail.com';
+        const photoUrl = data.photoUrl || data.photo_url || saved.avatarUrl || saved.photoUrl || '';
+        const deviceId = data.deviceId || data.device_id || saved.deviceId || getDeviceId();
 
         const accName = document.getElementById('account-user-name');
         const accEmail = document.getElementById('account-user-email');
@@ -5706,8 +5702,13 @@
     }
 
     async function verifyUserAccess(userInfo = null) {
+      const now = Date.now();
+      if (lastVerifyResult && (now - lastVerifyTime) < VERIFY_COOLDOWN_MS && !userInfo) {
+        return lastVerifyResult;
+      }
       try {
         const deviceId = getDeviceId();
+
         let user = userInfo;
         if (!user) {
           try {
@@ -5734,6 +5735,7 @@
         };
 
         let data = null;
+
         try {
           const res = await fetch('/api/user/verify?format=json', {
             method: 'POST',
@@ -5751,6 +5753,8 @@
         }
 
         if (data) {
+          lastVerifyTime = Date.now();
+          lastVerifyResult = data;
           currentUserAccessData = data;
           const isAllowed = (data.status === 'active' || data.status === 'allowed' || data.success === true);
           userAccessStatus = isAllowed ? 'allowed' : (data.status || 'restricted');
@@ -5767,14 +5771,44 @@
           };
 
           if (isAllowed) {
+            const buyerLang = data.language || (data.user && data.user.language) || '';
+            const localLang = (localStorage.getItem('storygram_language') || '').trim();
+
+            if (buyerLang && buyerLang.trim()) {
+              currentLanguage = buyerLang.toLowerCase().trim();
+              try { localStorage.setItem('storygram_language', currentLanguage); } catch (e) { }
+            } else if (localLang) {
+              currentLanguage = localLang.toLowerCase().trim();
+            }
+
+            const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
+            const label = langObj ? langObj.name : currentLanguage;
+            const btnLabel = document.getElementById('current-lang-label');
+            if (btnLabel) btnLabel.innerText = label;
+            const accountLang = document.getElementById('account-current-lang');
+            if (accountLang) accountLang.innerText = label;
+            const settingsLang = document.getElementById('settings-current-lang');
+            if (settingsLang) settingsLang.innerText = label;
+
             setAppState('allowed', mergedData);
           } else {
             setAppState('restricted', mergedData);
           }
+
           return data;
+        } else {
+          if (userAccessStatus === 'allowed') {
+            return;
+          }
+          setAppState('restricted', { name, email, photoUrl, deviceId, status: 'pending' });
         }
       } catch (err) {
-        console.error("verifyUserAccess err:", err);
+        if (userAccessStatus === 'allowed') {
+          return;
+        }
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+        setAppState('restricted', { ...saved, status: 'pending' });
       }
     }
 
@@ -5795,10 +5829,9 @@
       } catch (e) { }
 
       try {
-        stopAndUnloadVideo();
-        stopAndUnloadAudio();
+        const active = getActiveMediaElement();
+        if (active && !active.paused) active.pause();
         closePlayerBar();
-        closeFullscreenPlayer();
       } catch (e) { }
 
       userAccessStatus = 'logged_out';
@@ -5875,83 +5908,50 @@
         name: name || 'User',
         email: email || '',
         avatarUrl: avatarUrl || '',
-        deviceId: deviceId,
-        status: 'active'
+        deviceId: deviceId
       };
 
       try {
         localStorage.setItem('storygram_user', JSON.stringify(userObj));
       } catch (e) { }
 
-      const accName = document.getElementById('account-user-name');
-      const accEmail = document.getElementById('account-user-email');
-      const accAvatarImg = document.getElementById('account-avatar-img');
-      const accAvatarSvg = document.getElementById('account-avatar-svg');
-      if (accName) accName.innerText = name;
-      if (accEmail) accEmail.innerText = email;
-      if (avatarUrl && avatarUrl.trim()) {
-        if (accAvatarImg) { accAvatarImg.src = avatarUrl; accAvatarImg.style.display = 'block'; }
-        if (accAvatarSvg) accAvatarSvg.style.display = 'none';
+      if (!email || !email.trim()) {
+        console.warn("updateUserProfile called without email. Setting login state.");
+        setAppState('login');
+        return;
       }
+
+      if (currentAppState !== 'allowed') {
+        setAppState('loading');
+      }
+
+      verifyUserAccess(userObj);
     }
 
     function loadSavedUserProfile() {
-      let saved = null;
       try {
         if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
           const rawData = window.AndroidBridge.getUserData();
           if (rawData) {
             const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
             if (data && (data.email || data.user_email)) {
-              saved = data;
+              updateUserProfile(data);
+              return;
             }
           }
         }
       } catch (e) { }
 
-      if (!saved) {
-        try {
-          saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
-        } catch (e) { }
-      }
-
-      if (saved && (saved.email || saved.user_email)) {
-        const name = saved.name || saved.displayName || 'User';
-        const email = saved.email || saved.user_email || '';
-        const avatarUrl = saved.avatarUrl || saved.photoUrl || saved.photo_url || '';
-        const userId = saved.userId || saved.user_id || saved.googleId || saved.google_id || saved.id || '';
-        const deviceId = saved.deviceId || saved.device_id || getDeviceId();
-
-        const userObj = { userId, name, email, avatarUrl, deviceId, status: 'active' };
-        try { localStorage.setItem('storygram_user', JSON.stringify(userObj)); } catch (e) {}
-
-        const accName = document.getElementById('account-user-name');
-        const accEmail = document.getElementById('account-user-email');
-        const accAvatarImg = document.getElementById('account-avatar-img');
-        const accAvatarSvg = document.getElementById('account-avatar-svg');
-        if (accName) accName.innerText = name;
-        if (accEmail) accEmail.innerText = email;
-        if (avatarUrl && avatarUrl.trim()) {
-          if (accAvatarImg) { accAvatarImg.src = avatarUrl; accAvatarImg.style.display = 'block'; }
-          if (accAvatarSvg) accAvatarSvg.style.display = 'none';
+      try {
+        const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
+        if (saved && saved.email && saved.email.trim()) {
+          setAppState('loading');
+          verifyUserAccess(saved);
+          return;
         }
+      } catch (e) { }
 
-        const localLang = (localStorage.getItem('storygram_language') || 'hindi').toLowerCase().trim();
-        currentLanguage = localLang;
-        const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
-        const label = langObj ? langObj.name : currentLanguage;
-        const btnLabel = document.getElementById('current-lang-label');
-        if (btnLabel) btnLabel.innerText = label;
-        const accountLang = document.getElementById('account-current-lang');
-        if (accountLang) accountLang.innerText = label;
-        const settingsLang = document.getElementById('settings-current-lang');
-        if (settingsLang) settingsLang.innerText = label;
-
-        setAppState('allowed', userObj);
-        return;
-      }
-
-      setAppState('allowed', { name: 'User' });
+      setAppState('login');
     }
 
     window.updateUserProfile = updateUserProfile;
@@ -5965,8 +5965,6 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       initShakaPlayer();
-      const initialLang = (localStorage.getItem('storygram_language') || 'hindi').toLowerCase().trim();
-      currentLanguage = initialLang;
       const initialLangObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
       const initialLabel = initialLangObj ? initialLangObj.name : currentLanguage;
       const initialBtn = document.getElementById('current-lang-label');
