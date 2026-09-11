@@ -872,15 +872,14 @@ const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/S
 const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
 
 app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
-  const isFormatJson = req.query.format === 'json' ||
-    req.headers['x-response-format'] === 'json' ||
+  const isExplicitJson = req.query.format === 'json' ||
     (req.body && (req.body.action === 'update_language' || req.body.format === 'json'));
 
   try {
     const { email, name, photoUrl, photo_url, deviceId, device_id, userId, user_id, google_id, language, lang, action, req_action } = req.body;
     
     if (!email) {
-      if (isFormatJson) {
+      if (isExplicitJson) {
         return res.status(400).json({ success: false, error: 'Email is required' });
       }
       return res.status(400).send('<div style="color:#f87171;padding:20px;text-align:center;">Email is required</div>');
@@ -924,7 +923,7 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
       throw (lastError || new Error('Verification backend unreachable'));
     }
 
-    if (isFormatJson) {
+    if (isExplicitJson) {
       return res.status(phpResponse.status).json(phpResponse.data);
     }
 
@@ -969,7 +968,7 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
 
     return res.status(200).send(noAccessHtml);
   } catch (error) {
-    if (isFormatJson) {
+    if (isExplicitJson) {
       return res.status(500).json({
         success: false,
         status: 'server_error',
