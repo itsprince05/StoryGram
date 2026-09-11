@@ -6,6 +6,81 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <script>
     (function () {
+      if (window.top !== window.self) {
+        window.top.location = window.self.location;
+      }
+
+      document.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+        return false;
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83 || e.keyCode === 65))) {
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      document.addEventListener('dragstart', function (e) {
+        e.preventDefault();
+      });
+
+      const originalFetch = window.fetch;
+      window.fetch = function (input, init) {
+        init = init || {};
+        init.headers = init.headers || {};
+        const urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+        let pathname = '/';
+        try {
+          pathname = new URL(urlStr, window.location.href).pathname;
+        } catch (e) {}
+
+        let ts = Date.now().toString();
+        let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
+        let deviceId = '';
+        try {
+          deviceId = localStorage.getItem('storygram_device_id') || '';
+        } catch (e) {}
+
+        let sig = '';
+        if (window.AndroidBridge) {
+          if (typeof window.AndroidBridge.getSignedHeaders === 'function') {
+            try {
+              const res = JSON.parse(window.AndroidBridge.getSignedHeaders(pathname));
+              if (res && res.signature) {
+                sig = res.signature;
+                if (res.timestamp) ts = res.timestamp;
+                if (res.nonce) nonce = res.nonce;
+                if (res.deviceId) deviceId = res.deviceId;
+              }
+            } catch (e) {}
+          } else if (typeof window.AndroidBridge.getHmacSignature === 'function') {
+            try {
+              sig = window.AndroidBridge.getHmacSignature(ts, nonce, pathname, deviceId);
+            } catch (e) {}
+          }
+        }
+
+        const setHeader = (k, v) => {
+          if (!v) return;
+          if (init.headers instanceof Headers) {
+            init.headers.set(k, v);
+          } else if (Array.isArray(init.headers)) {
+            init.headers.push([k, v]);
+          } else {
+            init.headers[k] = v;
+          }
+        };
+
+        setHeader('X-App-Timestamp', ts);
+        setHeader('X-App-Nonce', nonce);
+        if (deviceId) setHeader('X-App-Device-ID', deviceId);
+        if (sig) setHeader('X-App-Signature', sig);
+
+        return originalFetch.call(this, input, init);
+      };
+
       const ua = navigator.userAgent || '';
       const isApp = Boolean(
         window.AndroidBridge ||
@@ -2988,6 +3063,20 @@
   <audio id="audio-element" preload="auto"></audio>
 
   <script>
+    const _origFetch = window.fetch;
+    window.fetch = function (url, options) {
+      options = options || {};
+      options.headers = options.headers || {};
+      if (typeof options.headers.set === 'function') {
+        options.headers.set('X-App-Token', 'StoryGramSecClient_98741488');
+      } else if (Array.isArray(options.headers)) {
+        options.headers.push(['X-App-Token', 'StoryGramSecClient_98741488']);
+      } else {
+        options.headers['X-App-Token'] = 'StoryGramSecClient_98741488';
+      }
+      return _origFetch.call(this, url, options);
+    };
+
     let currentLanguage = (localStorage.getItem('storygram_language') || 'hindi').toLowerCase().trim();
     let currentShowId = null;
     let currentShowObj = null;
