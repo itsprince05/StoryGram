@@ -155,16 +155,22 @@ function verifyDynamicSignature(req) {
   const ts = req.headers['timestamp'] || req.headers['x-app-timestamp'];
   const nonce = req.headers['nonce'] || req.headers['x-app-nonce'];
   const sig = req.headers['signature'] || req.headers['x-app-signature'];
-  const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || '';
-  if (!ts || !nonce || !sig) return false;
+  const deviceId = (req.headers['deviceid'] || req.headers['x-app-device-id'] || '').trim();
+  if (!ts || !nonce || !sig) {
+    console.log(`[AUTH-REJECT] Missing headers: path=${req.path}, hasTs=${Boolean(ts)}, hasNonce=${Boolean(nonce)}, hasSig=${Boolean(sig)}`);
+    return false;
+  }
 
   const now = Date.now();
   const reqTime = parseInt(ts, 10);
-  if (isNaN(reqTime) || Math.abs(now - reqTime) > 15000) {
+  const timeDiff = Math.abs(now - reqTime);
+  if (isNaN(reqTime) || timeDiff > 30000) {
+    console.log(`[AUTH-REJECT] Time drift too large (${timeDiff}ms): reqTime=${reqTime}, serverNow=${now}`);
     return false;
   }
 
   if (usedNonces.has(nonce)) {
+    console.log(`[AUTH-REJECT] Replayed nonce: ${nonce}`);
     return false;
   }
   usedNonces.set(nonce, now + 30000);
@@ -174,21 +180,24 @@ function verifyDynamicSignature(req) {
     }
   }
 
-  const payloadWithDevice = `${ts}:${nonce}:${req.path}:${deviceId}`;
-  const payloadPlain = `${ts}:${nonce}:${req.path}`;
-  const expectedSig1 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadWithDevice).digest('hex');
-  const expectedSig2 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadPlain).digest('hex');
+  const cleanPath = req.path || '/';
+  const candidatePayloads = [
+    `${ts}:${nonce}:${cleanPath}:${deviceId}`,
+    `${ts}:${nonce}:${cleanPath}`,
+    `${ts}:${nonce}:/:${deviceId}`,
+    `${ts}:${nonce}:/`,
+    `${ts}:${nonce}::${deviceId}`,
+    `${ts}:${nonce}`
+  ];
 
-  const sigBuf = Buffer.from(sig);
-  const buf1 = Buffer.from(expectedSig1);
-  const buf2 = Buffer.from(expectedSig2);
+  for (const payload of candidatePayloads) {
+    const expectedSig = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payload).digest('hex');
+    if (sig.toLowerCase() === expectedSig.toLowerCase()) {
+      return true;
+    }
+  }
 
-  if (sigBuf.length === buf1.length && crypto.timingSafeEqual(sigBuf, buf1)) {
-    return true;
-  }
-  if (sigBuf.length === buf2.length && crypto.timingSafeEqual(sigBuf, buf2)) {
-    return true;
-  }
+  console.log(`[AUTH-REJECT] Signature mismatch for path=${req.path}, deviceId=${deviceId}, receivedSig=${sig.substring(0, 10)}...`);
   return false;
 }
 
@@ -240,9 +249,9 @@ app.use((req, res, next) => {
 
   const ua = (req.headers['user-agent'] || '').toLowerCase();
   const isScraper = ua.includes('curl') || ua.includes('python') || ua.includes('postman') ||
-                    ua.includes('insomnia') || ua.includes('scrapy') || ua.includes('aiohttp') ||
-                    ua.includes('go-http-client') || ua.includes('httpie') || ua.includes('wget') ||
-                    ua.includes('requests') || ua.includes('urllib');
+    ua.includes('insomnia') || ua.includes('scrapy') || ua.includes('aiohttp') ||
+    ua.includes('go-http-client') || ua.includes('httpie') || ua.includes('wget') ||
+    ua.includes('requests') || ua.includes('urllib');
 
   if (isScraper) {
     return res.status(404).send(NGINX_404_HTML);
@@ -1022,7 +1031,7 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
     const photoUrl = req.body?.photoUrl || req.body?.photo_url || '';
     const language = req.body?.language || req.body?.lang || '';
     const action = req.body?.action || req.body?.req_action || '';
-    
+
     if (!userId && !email) {
       if (isFormatJson) {
         return res.status(400).json({ success: false, error: 'User ID or Email is required' });
