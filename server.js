@@ -141,6 +141,8 @@ async function checkUserVerification(email, deviceId, userId) {
   };
 }
 
+const NGINX_404_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>404 Not Found</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#fff;color:#222;padding:40px 20px;max-width:600px;margin:0 auto;line-height:1.6;}h1{font-size:24px;font-weight:600;color:#111;margin-bottom:8px;border-bottom:1px solid #eaeaea;padding-bottom:12px;}p{font-size:14px;color:#555;margin-bottom:20px;}hr{border:none;border-top:1px solid #eaeaea;margin:20px 0;}address{font-size:12px;color:#888;font-style:normal;}</style></head><body><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p><hr><address>nginx / 1.24.0</address></body></html>`;
+
 const APP_CLIENT_SECRET = 'StoryGramSecClient_98741488';
 const APP_HMAC_SECRET = 'StoryGram_Sec_Hmac_98741488_Key_v1';
 const rateLimitMap = new Map();
@@ -162,8 +164,8 @@ function verifyDynamicSignature(req) {
   if (usedNonces.has(nonce)) {
     return false;
   }
-  usedNonces.set(nonce, reqTime + 15000);
-  if (usedNonces.size > 10000) {
+  usedNonces.set(nonce, now + 30000);
+  if (usedNonces.size > 20000) {
     for (const [k, exp] of usedNonces.entries()) {
       if (now > exp) usedNonces.delete(k);
     }
@@ -233,19 +235,19 @@ app.use((req, res, next) => {
     return next();
   }
 
-  const token = req.headers['x-app-token'] || req.headers['x_app_token'] || req.query.app_token;
   const ua = (req.headers['user-agent'] || '').toLowerCase();
+  const isScraper = ua.includes('curl') || ua.includes('python') || ua.includes('postman') ||
+                    ua.includes('insomnia') || ua.includes('scrapy') || ua.includes('aiohttp') ||
+                    ua.includes('go-http-client') || ua.includes('httpie') || ua.includes('wget') ||
+                    ua.includes('requests') || ua.includes('urllib');
 
-  const isScraper = ua.includes('curl') || ua.includes('python') || ua.includes('postman') || ua.includes('insomnia') || ua.includes('scrapy') || ua.includes('aiohttp') || ua.includes('go-http-client');
-  if (isScraper && !token && !req.headers['x-app-signature']) {
-    return res.status(403).json({ success: false, error: 'Forbidden' });
+  if (isScraper) {
+    return res.status(404).send(NGINX_404_HTML);
   }
 
-  if (req.path.startsWith('/api/') || req.path.startsWith('/user/') || req.path.startsWith('/library')) {
-    const isSignedApp = verifyDynamicSignature(req);
-    if (!isSignedApp) {
-      return res.status(403).json({ success: false, error: 'Unauthorized: Invalid or expired dynamic signature' });
-    }
+  const isSignedApp = verifyDynamicSignature(req);
+  if (!isSignedApp) {
+    return res.status(404).send(NGINX_404_HTML);
   }
 
   next();
@@ -505,9 +507,9 @@ app.get(['/refresh-cookies', '/api/refresh-cookies'], async (req, res) => {
 
 app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
-    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
-    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
+    const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
+    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || '';
 
     const verifyRes = await checkUserVerification(email, deviceId, userId);
     if (!verifyRes.success) {
@@ -607,9 +609,9 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
 
 app.all(['/search', '/api/search'], async (req, res) => {
   try {
-    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
-    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
+    const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
+    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || '';
 
     const verifyRes = await checkUserVerification(email, deviceId, userId);
     if (!verifyRes.success) {
@@ -676,9 +678,9 @@ app.all(['/search', '/api/search'], async (req, res) => {
 
 app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
   try {
-    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
-    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
+    const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
+    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || '';
 
     const verifyRes = await checkUserVerification(email, deviceId, userId);
     if (!verifyRes.success) {
@@ -825,9 +827,9 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
 
 app.all(['/api/license', '/api/get_license'], async (req, res) => {
   try {
-    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
-    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
+    const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
+    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
 
     const verifyRes = await checkUserVerification(email, deviceId, userId);
     if (!verifyRes.success) {
@@ -959,9 +961,9 @@ app.all(['/unlock', '/api/unlock', '/api/subscribe', '/api/user_action'], async 
 
 app.all(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_stories'], async (req, res) => {
   try {
-    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
-    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
+    const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
+    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || '';
 
     const verifyRes = await checkUserVerification(email, deviceId, userId);
     if (!verifyRes.success) {
@@ -1009,7 +1011,13 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
     (req.body && (req.body.action === 'update_language' || req.body.format === 'json'));
 
   try {
-    const { email, name, photoUrl, photo_url, deviceId, device_id, userId, user_id, google_id, language, lang, action, req_action } = req.body;
+    const email = req.headers['x-app-user-email'] || req.body?.email || '';
+    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || '';
+    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.google_id || '';
+    const name = req.body?.name || 'User';
+    const photoUrl = req.body?.photoUrl || req.body?.photo_url || '';
+    const language = req.body?.language || req.body?.lang || '';
+    const action = req.body?.action || req.body?.req_action || '';
     
     if (!email) {
       if (isFormatJson) {
@@ -1019,13 +1027,13 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
     }
 
     const payload = {
-      user_id: user_id || userId || google_id || '',
-      email,
-      name: name || 'User',
-      photo_url: photoUrl || photo_url || '',
-      device_id: deviceId || device_id || '',
-      language: language || lang || '',
-      action: action || req_action || '',
+      user_id: userId,
+      email: email,
+      name: name,
+      photo_url: photoUrl,
+      device_id: deviceId,
+      language: language,
+      action: action,
       api_key: PHP_API_KEY,
       ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
     };
@@ -1111,14 +1119,15 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
 
 app.post(['/api/app/bundle', '/app/bundle'], async (req, res) => {
   try {
-    const { email, deviceId, device_id } = req.body;
+    const email = req.headers['x-app-user-email'] || req.body?.email || '';
+    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || '';
     if (!email) {
       return res.status(400).json({ success: false, error: 'Email required' });
     }
 
     const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, {
       email,
-      device_id: deviceId || device_id || '',
+      device_id: deviceId,
       api_key: PHP_API_KEY
     }, {
       headers: {
@@ -1157,9 +1166,9 @@ app.post(['/api/admin/users', '/admin/users'], async (req, res) => {
 
 app.all(['/api/library', '/library'], async (req, res) => {
   try {
-    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
-    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.uid || req.query.userId || '';
+    const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
+    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.uid || req.query.userId || '';
 
     const verifyRes = await checkUserVerification(email, deviceId, userId);
     if (!verifyRes.success) {
@@ -1167,6 +1176,19 @@ app.all(['/api/library', '/library'], async (req, res) => {
     }
 
     const method = req.method.toLowerCase();
+    let postData = req.body || {};
+    if (typeof postData === 'object' && postData !== null) {
+      if (!postData.req_action && !postData.type && !postData.show_id && postData.action) {
+        postData = { ...postData, req_action: 'list' };
+      }
+      if (!postData.uid) {
+        postData = { ...postData, uid: userId || email };
+      }
+      if (!postData.deviceId && !postData.device_id && deviceId) {
+        postData = { ...postData, deviceId: deviceId, device_id: deviceId };
+      }
+    }
+
     const config = {
       method: method,
       url: `${PHP_BACKEND_URL}/library.php`,
@@ -1178,7 +1200,7 @@ app.all(['/api/library', '/library'], async (req, res) => {
       validateStatus: () => true
     };
     if (method === 'post' || method === 'put') {
-      config.data = req.body;
+      config.data = postData;
     } else {
       config.params = req.query;
     }
@@ -1195,8 +1217,6 @@ app.all('/api/proxy/*', (req, res) => {
   const url = `${BASE_URL}/${endpointPath}${queryParams ? `?${queryParams}` : ''}`;
   return forwardToPocketFM(url, req, res);
 });
-
-const NGINX_404_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>404 Not Found</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#fff;color:#222;padding:40px 20px;max-width:600px;margin:0 auto;line-height:1.6;}h1{font-size:24px;font-weight:600;color:#111;margin-bottom:8px;border-bottom:1px solid #eaeaea;padding-bottom:12px;}p{font-size:14px;color:#555;margin-bottom:20px;}hr{border:none;border-top:1px solid #eaeaea;margin:20px 0;}address{font-size:12px;color:#888;font-style:normal;}</style></head><body><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p><hr><address>nginx / 1.24.0</address></body></html>`;
 
 app.get(['/', '/index.html'], (req, res) => {
   const isSigned = verifyDynamicSignature(req);
