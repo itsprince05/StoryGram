@@ -98,9 +98,6 @@
 
         setHeader('X-App-Timestamp', ts);
         setHeader('X-App-Nonce', nonce);
-        if (deviceId) setHeader('X-App-Device-ID', deviceId);
-        if (userId) setHeader('X-App-User-ID', userId);
-        if (email) setHeader('X-App-User-Email', email);
         if (sig) setHeader('X-App-Signature', sig);
 
         if (init.method && ['POST', 'PUT', 'PATCH'].includes(init.method.toUpperCase()) && init.body && typeof init.body === 'string') {
