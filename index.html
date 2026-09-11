@@ -48,23 +48,9 @@
         let ts = Date.now().toString();
         let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
         let deviceId = '';
-        let userId = '';
-        let email = '';
         try {
           deviceId = localStorage.getItem('storygram_device_id') || '';
-          const userObj = JSON.parse(localStorage.getItem('storygram_user') || 'null');
-          if (userObj) {
-            userId = userObj.userId || userObj.uid || userObj.user_id || '';
-            email = userObj.email || '';
-            if (!deviceId && (userObj.deviceId || userObj.device_id)) {
-              deviceId = userObj.deviceId || userObj.device_id;
-            }
-          }
         } catch (e) {}
-
-        if (!deviceId && window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
-          try { deviceId = window.AndroidBridge.getDeviceId() || ''; } catch (e) {}
-        }
 
         let sig = '';
         if (window.AndroidBridge) {
@@ -98,46 +84,8 @@
 
         setHeader('X-App-Timestamp', ts);
         setHeader('X-App-Nonce', nonce);
+        if (deviceId) setHeader('X-App-Device-ID', deviceId);
         if (sig) setHeader('X-App-Signature', sig);
-
-        const reqMethod = (init.method || 'GET').toUpperCase();
-        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(reqMethod)) {
-          if (init.body && typeof init.body === 'string') {
-            try {
-              const bodyObj = JSON.parse(init.body);
-              if (typeof bodyObj === 'object' && bodyObj !== null) {
-                if (userId && !bodyObj.userId && !bodyObj.user_id) {
-                  bodyObj.userId = userId;
-                  bodyObj.user_id = userId;
-                }
-                if (deviceId && !bodyObj.deviceId && !bodyObj.device_id) {
-                  bodyObj.deviceId = deviceId;
-                  bodyObj.device_id = deviceId;
-                }
-                if (email && !bodyObj.email) {
-                  bodyObj.email = email;
-                }
-                init.body = JSON.stringify(bodyObj);
-              }
-            } catch(e) {}
-          } else if (!init.body) {
-            init.body = JSON.stringify({ userId, user_id: userId, deviceId, device_id: deviceId, email: email || '' });
-            setHeader('Content-Type', 'application/json');
-          }
-        } else if (reqMethod === 'GET') {
-          try {
-            const parsed = new URL(urlStr, window.location.href);
-            if (userId && !parsed.searchParams.has('user_id') && !parsed.searchParams.has('userId')) {
-              parsed.searchParams.set('user_id', userId);
-            }
-            if (deviceId && !parsed.searchParams.has('device_id') && !parsed.searchParams.has('deviceId')) {
-              parsed.searchParams.set('device_id', deviceId);
-            }
-            if (typeof input === 'string') {
-              input = parsed.toString();
-            }
-          } catch (e) {}
-        }
 
         return originalFetch.call(this, input, init);
       };
@@ -314,26 +262,16 @@
   </div>
 
   <script>
-    async function verifyUserAndRender(arg1, arg2, arg3, arg4, arg5) {
+    async function verifyUserAndRender() {
       let u = null;
-      if (typeof arg1 === 'object' && arg1 !== null) {
-        u = arg1;
-      } else if (typeof arg1 === 'string' && arg1.trim().startsWith('{')) {
-        try { u = JSON.parse(arg1); } catch (e) {}
-      } else if (arg1 || arg2 || arg3 || arg4 || arg5) {
-        u = { name: arg1, email: arg2, photoUrl: arg3, deviceId: arg4, userId: arg5 };
-      }
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
+          const raw = window.AndroidBridge.getUserData();
+          if (raw) u = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        }
+      } catch (e) {}
 
-      if (!u) {
-        try {
-          if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
-            const raw = window.AndroidBridge.getUserData();
-            if (raw) u = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          }
-        } catch (e) {}
-      }
-
-      if (!u || (!u.email && !u.userId && !u.uid && !u.deviceId && !u.device_id)) {
+      if (!u || !u.email) {
         try {
           u = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         } catch (e) {}
@@ -352,8 +290,10 @@
       const photo = (u && (u.photoUrl || u.photo || u.avatarUrl)) || '';
       const userId = (u && (u.userId || u.uid || u.user_id)) || '';
 
-      if (u) {
-        try { localStorage.setItem('storygram_user', JSON.stringify({ ...u, deviceId: dev, userId, email, name, photoUrl: photo })); } catch (e) {}
+      if (email || userId || dev) {
+        try {
+          localStorage.setItem('storygram_user', JSON.stringify({ userId, name, email, photoUrl: photo, avatarUrl: photo, deviceId: dev }));
+        } catch (e) {}
       }
 
       try {
