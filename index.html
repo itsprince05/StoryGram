@@ -288,13 +288,7 @@
       const email = (u && u.email) || '';
       const name = (u && (u.name || u.displayName)) || 'User';
       const photo = (u && (u.photoUrl || u.photo || u.avatarUrl)) || '';
-      const userId = (u && (u.userId || u.uid || u.user_id)) || '';
-
-      if (email || userId || dev) {
-        try {
-          localStorage.setItem('storygram_user', JSON.stringify({ userId, name, email, photoUrl: photo, avatarUrl: photo, deviceId: dev }));
-        } catch (e) {}
-      }
+      const userId = (u && (u.userId || u.uid)) || '';
 
       try {
         const res = await fetch('/api/user/verify', {
