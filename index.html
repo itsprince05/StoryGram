@@ -91,12 +91,11 @@
           }
         };
 
-        setHeader('X-App-Timestamp', ts);
-        setHeader('X-App-Nonce', nonce);
-        if (deviceId) setHeader('X-App-Device-ID', deviceId);
-        if (sig) setHeader('X-App-Signature', sig);
-        if (userObj.email) setHeader('X-App-User-Email', userObj.email);
-        if (userObj.userId || userObj.uid) setHeader('X-App-User-ID', userObj.userId || userObj.uid);
+        if (deviceId) setHeader('deviceid', deviceId);
+        if (userObj.userId || userObj.uid) setHeader('userid', userObj.userId || userObj.uid);
+        setHeader('nonce', nonce);
+        if (sig) setHeader('signature', sig);
+        setHeader('timestamp', ts);
 
         return originalFetch.call(this, input, init);
       };
@@ -115,7 +114,6 @@
       }
     })();
   </script>
-  <title>Story Gram - Audio Series & Shows</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
