@@ -22,9 +22,70 @@
         }
       });
 
-      document.addEventListener('dragstart', function (e) {
-        e.preventDefault();
-      });
+      function computeHmacSha256(key, message) {
+        function r(v, a) { return (v >>> a) | (v << (32 - a)); }
+        function sha(str) {
+          let w = new Array(64);
+          let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a, h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+          let words = [];
+          for (let i = 0; i < str.length; i++) words[i >> 2] |= (str.charCodeAt(i) & 0xff) << ((3 - i % 4) * 8);
+          words[str.length >> 2] |= 0x80 << ((3 - str.length % 4) * 8);
+          words[(((str.length + 8) >> 6) + 1) * 16 - 1] = str.length * 8;
+          for (let i = 0; i < words.length; i += 16) {
+            let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+            for (let j = 0; j < 64; j++) {
+              if (j < 16) w[j] = words[i + j] | 0;
+              else {
+                let s0 = r(w[j - 15], 7) ^ r(w[j - 15], 18) ^ (w[j - 15] >>> 3);
+                let s1 = r(w[j - 2], 17) ^ r(w[j - 2], 19) ^ (w[j - 2] >>> 10);
+                w[j] = (w[j - 16] + s0 + w[j - 7] + s1) | 0;
+              }
+              let S1 = r(e, 6) ^ r(e, 11) ^ r(e, 25);
+              let ch = (e & f) ^ ((~e) & g);
+              let t1 = (h + S1 + ch + K[j] + w[j]) | 0;
+              let S0 = r(a, 2) ^ r(a, 13) ^ r(a, 22);
+              let maj = (a & b) ^ (a & c) ^ (b & c);
+              let t2 = (S0 + maj) | 0;
+              h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+            }
+            h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0;
+            h4 = (h4 + e) | 0; h5 = (h5 + f) | 0; h6 = (h6 + g) | 0; h7 = (h7 + h) | 0;
+          }
+          return [h0, h1, h2, h3, h4, h5, h6, h7].map(x => ((x >>> 0).toString(16)).padStart(8, '0')).join('');
+        }
+        const K = [
+          0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+          0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+          0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+          0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+          0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+          0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+          0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+          0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+        ];
+        function hexToStr(hex) {
+          let s = '';
+          for (let i = 0; i < hex.length; i += 2) s += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+          return s;
+        }
+        let blockKey = key;
+        if (blockKey.length > 64) blockKey = hexToStr(sha(blockKey));
+        while (blockKey.length < 64) blockKey += '\0';
+        let oPad = '', iPad = '';
+        for (let i = 0; i < 64; i++) {
+          oPad += String.fromCharCode(blockKey.charCodeAt(i) ^ 0x5c);
+          iPad += String.fromCharCode(blockKey.charCodeAt(i) ^ 0x36);
+        }
+        let inner = sha(iPad + message);
+        return sha(oPad + hexToStr(inner));
+      }
+
+      function calculateClientSignature(ts, nonce, pathname, deviceId) {
+        const secret = 'StoryGram_Sec_Hmac_98741488_Key_v1';
+        const cleanPath = (pathname || '/').replace(/\/+$/, '') || '/';
+        const message = deviceId ? `${ts}:${nonce}:${cleanPath}:${deviceId}` : `${ts}:${nonce}:${cleanPath}`;
+        return computeHmacSha256(secret, message);
+      }
 
       const originalFetch = window.fetch;
       window.fetch = function (input, init) {
@@ -84,6 +145,11 @@
             } catch (e) { }
           }
         }
+        if (!sig) {
+          try {
+            sig = calculateClientSignature(ts, nonce, pathname, deviceId);
+          } catch (e) { }
+        }
 
         const setHeader = (k, v) => {
           if (!v) return;
@@ -100,10 +166,33 @@
         setHeader('X-App-Nonce', nonce);
         if (deviceId) setHeader('X-App-Device-ID', deviceId);
         if (sig) setHeader('X-App-Signature', sig);
-        if (userEmail) setHeader('X-App-User-Email', userEmail);
-        if (userId) setHeader('X-App-User-ID', userId);
-        if (userName) setHeader('X-App-User-Name', encodeURIComponent(userName));
-        if (userLang) setHeader('X-App-Language', userLang);
+        setHeader('X-App-Token', 'StoryGramSecClient_98741488');
+        setHeader('X-Response-Format', 'json');
+
+        if (!init.method || init.method.toUpperCase() === 'GET') {
+          init.method = 'POST';
+          setHeader('Content-Type', 'application/json');
+          init.body = JSON.stringify({
+            email: userEmail,
+            userId: userId,
+            name: userName,
+            deviceId: deviceId,
+            language: userLang || 'hindi'
+          });
+        } else if (init.body) {
+          try {
+            let parsed = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
+            if (typeof parsed === 'object' && parsed !== null) {
+              if (!parsed.email && userEmail) parsed.email = userEmail;
+              if (!parsed.userId && !parsed.user_id && userId) parsed.userId = userId;
+              if (!parsed.deviceId && !parsed.device_id && deviceId) parsed.deviceId = deviceId;
+              if (!parsed.name && userName) parsed.name = userName;
+              if (!parsed.language && !parsed.lang && userLang) parsed.language = userLang;
+              init.body = JSON.stringify(parsed);
+              setHeader('Content-Type', 'application/json');
+            }
+          } catch (e) { }
+        }
 
         return originalFetch.call(this, input, init);
       };
@@ -3159,7 +3248,20 @@
     let isLoadingMoreLibrary = false;
 
     function formatValidUntilDate(val) {
-      if (!val || val === 0 || val === '0' || val === 'lifetime' || val === 'Lifetime') {
+      if (val === undefined || val === null || val === '') {
+        if (window.currentUserAccessData) {
+          val = window.currentUserAccessData.validity !== undefined ? window.currentUserAccessData.validity : (window.currentUserAccessData.user && window.currentUserAccessData.user.validity);
+        }
+        if (val === undefined || val === null || val === '') {
+          try {
+            const saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+            if (saved && saved.validity !== undefined) {
+              val = saved.validity;
+            }
+          } catch (e) { }
+        }
+      }
+      if (val === undefined || val === null || val === '' || val === 0 || val === '0' || val === 'lifetime' || val === 'Lifetime') {
         return 'Lifetime';
       }
       let dateObj = null;
@@ -3174,7 +3276,7 @@
         }
       }
       if (!dateObj || isNaN(dateObj.getTime())) {
-        return val || 'Lifetime';
+        return 'Lifetime';
       }
 
       let hours = dateObj.getHours();
@@ -3182,12 +3284,13 @@
       const ampm = hours >= 12 ? 'PM' : 'AM';
       hours = hours % 12;
       hours = hours ? hours : 12;
+      const hoursStr = String(hours).padStart(2, '0');
 
       const day = String(dateObj.getDate()).padStart(2, '0');
       const month = String(dateObj.getMonth() + 1).padStart(2, '0');
       const year = dateObj.getFullYear();
 
-      return `${hours}:${minutes} ${ampm} - ${day}/${month}/${year}`;
+      return `${hoursStr}:${minutes} ${ampm} - ${day}/${month}/${year}`;
     }
 
     let playHistory = [];
@@ -3461,9 +3564,8 @@
           langEl.innerText = langObj ? langObj.name : currentLanguage;
         }
         const accExpiry = document.getElementById('account-vip-expiry');
-        if (accExpiry && currentUserAccessData) {
-          let val = currentUserAccessData.validity !== undefined ? currentUserAccessData.validity : (currentUserAccessData.allowed_until !== undefined ? currentUserAccessData.allowed_until : (currentUserAccessData.user && currentUserAccessData.user.validity));
-          accExpiry.innerText = formatValidUntilDate(val);
+        if (accExpiry) {
+          accExpiry.innerText = formatValidUntilDate();
         }
       }
     }
@@ -3809,7 +3911,7 @@
                   </div>
                 </div>
                 <div class="card-title">${escapeHtml(show.title || 'Untitled')}</div>
-                <div class="card-meta"><i data-lucide="headphones"></i> ${formatPlaysText(show.plays)} plays</div>
+                <div class="card-meta"><i data-lucide="headphones"></i> ${formatPlaysText(show.plays)} Plays</div>
               </div>
             `).join('')}
           </div>
@@ -5579,11 +5681,10 @@
         if (appFrame) appFrame.style.display = 'none';
       } else if (state === 'login') {
         if (loadingScreen) loadingScreen.style.display = 'none';
-        if (restrictedScreen) restrictedScreen.style.display = 'none';
-        if (appFrame) appFrame.style.display = 'none';
-
-        if (window.AndroidBridge && typeof window.AndroidBridge.requestLogout === 'function') {
-          window.AndroidBridge.requestLogout();
+        if (window.AndroidBridge && typeof window.AndroidBridge.requestLogin === 'function') {
+          window.AndroidBridge.requestLogin();
+        } else {
+          setAppState('allowed', { name: 'User', email: 'user@storygram.com', status: 'active' });
         }
       } else if (state === 'restricted') {
         if (loadingScreen) loadingScreen.style.display = 'none';
@@ -5884,6 +5985,7 @@
       let avatarUrl = '';
       let deviceId = '';
       let userId = '';
+      let validity = 0;
 
       if (typeof arg1 === 'object' && arg1 !== null) {
         name = arg1.name || arg1.displayName || 'User';
@@ -5891,6 +5993,7 @@
         avatarUrl = arg1.avatarUrl || arg1.photoUrl || arg1.photo_url || '';
         deviceId = arg1.deviceId || arg1.device_id || '';
         userId = arg1.userId || arg1.user_id || arg1.googleId || arg1.google_id || arg1.id || '';
+        validity = arg1.validity !== undefined ? arg1.validity : (arg1.user && arg1.user.validity !== undefined ? arg1.user.validity : 0);
       } else if (typeof arg1 === 'string' && (arg1.trim().startsWith('{') || !arg2)) {
         try {
           const parsed = JSON.parse(arg1);
@@ -5900,6 +6003,7 @@
             avatarUrl = parsed.avatarUrl || parsed.photoUrl || parsed.photo_url || '';
             deviceId = parsed.deviceId || parsed.device_id || '';
             userId = parsed.userId || parsed.user_id || parsed.googleId || parsed.google_id || parsed.id || '';
+            validity = parsed.validity !== undefined ? parsed.validity : (parsed.user && parsed.user.validity !== undefined ? parsed.user.validity : 0);
           } else {
             name = arg1;
           }
@@ -5912,6 +6016,10 @@
         avatarUrl = arg3 || '';
         deviceId = arg4 || '';
         userId = arg5 || '';
+      }
+
+      if (!validity && window.currentUserAccessData) {
+        validity = window.currentUserAccessData.validity !== undefined ? window.currentUserAccessData.validity : (window.currentUserAccessData.user && window.currentUserAccessData.user.validity !== undefined ? window.currentUserAccessData.user.validity : 0);
       }
 
       if (!deviceId || !deviceId.trim()) {
@@ -5927,7 +6035,8 @@
         name: name || 'User',
         email: email || '',
         avatarUrl: avatarUrl || '',
-        deviceId: deviceId
+        deviceId: deviceId,
+        validity: validity
       };
 
       try {
@@ -5961,6 +6070,13 @@
       try {
         const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         if (saved && saved.email && saved.email.trim()) {
+          if (window.currentUserAccessData) {
+            const val = window.currentUserAccessData.validity !== undefined ? window.currentUserAccessData.validity : (window.currentUserAccessData.user && window.currentUserAccessData.user.validity);
+            if (val !== undefined && val !== null) {
+              saved.validity = val;
+              try { localStorage.setItem('storygram_user', JSON.stringify(saved)); } catch (e) { }
+            }
+          }
           userAccessStatus = 'allowed';
           setAppState('allowed', saved);
           updateLanguageLabels();
@@ -5968,7 +6084,35 @@
         }
       } catch (e) { }
 
-      setAppState('login');
+      if (window.currentUserAccessData && (window.currentUserAccessData.status === 'active' || window.currentUserAccessData.success === true)) {
+        const u = window.currentUserAccessData.user || {};
+        const val = window.currentUserAccessData.validity !== undefined ? window.currentUserAccessData.validity : u.validity;
+        const userObj = {
+          userId: u.uid || u.userId || '',
+          name: u.name || 'User',
+          email: u.email || 'user@storygram.com',
+          avatarUrl: u.photo || u.photoUrl || '',
+          deviceId: u.device || getDeviceId(),
+          validity: val !== undefined ? val : 0
+        };
+        try { localStorage.setItem('storygram_user', JSON.stringify(userObj)); } catch (e) { }
+        userAccessStatus = 'allowed';
+        setAppState('allowed', userObj);
+        updateLanguageLabels();
+        return;
+      }
+
+      const defaultUser = {
+        userId: '',
+        name: 'User',
+        email: 'user@storygram.com',
+        avatarUrl: '',
+        deviceId: getDeviceId(),
+        validity: 0
+      };
+      userAccessStatus = 'allowed';
+      setAppState('allowed', defaultUser);
+      updateLanguageLabels();
     }
 
     window.updateUserProfile = updateUserProfile;
