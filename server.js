@@ -47,8 +47,20 @@ let isRefreshing = false;
 
 const APP_CLIENT_SECRET = 'StoryGramSecClient_98741488';
 const APP_HMAC_SECRET = 'StoryGram_Sec_Hmac_98741488_Key_v1';
+const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/StoryGram';
+const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
+
 const rateLimitMap = new Map();
 const usedNonces = new Map();
+const userStatusCache = new Map();
+const USER_CACHE_TTL = 30000; // 30 seconds TTL
+
+function cleanPlaysDisplay(val) {
+  if (val === undefined || val === null) return "";
+  let str = String(val).trim();
+  str = str.replace(/\s*plays?$/i, '').trim();
+  return str;
+}
 
 function verifyDynamicSignature(req) {
   const ts = req.headers['x-app-timestamp'];
@@ -89,6 +101,59 @@ function verifyDynamicSignature(req) {
     return true;
   }
   return false;
+}
+
+async function checkUserAccessStatus(req) {
+  const userId = req.headers['x-app-user-id'] || req.headers['user-id'] || req.headers['user_id'] || req.query?.user_id || req.query?.userId || req.query?.uid || req.body?.user_id || req.body?.userId || req.body?.uid || '';
+  const deviceId = req.headers['x-app-device-id'] || req.headers['device-id'] || req.headers['device_id'] || req.query?.device_id || req.query?.deviceId || req.body?.device_id || req.body?.deviceId || '';
+  const email = req.headers['x-app-user-email'] || req.headers['user-email'] || req.headers['email'] || req.query?.email || req.body?.email || '';
+
+  if (!email && !userId) {
+    return { isAllowed: true };
+  }
+
+  const cacheKey = `${userId || email}:${deviceId}`;
+  const now = Date.now();
+  const cached = userStatusCache.get(cacheKey);
+  if (cached && (now - cached.timestamp) < USER_CACHE_TTL) {
+    return cached.result;
+  }
+
+  try {
+    const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, {
+      user_id: userId,
+      email: email,
+      device_id: deviceId,
+      api_key: PHP_API_KEY,
+      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': PHP_API_KEY
+      },
+      timeout: 8000,
+      validateStatus: () => true
+    });
+
+    const data = phpResponse.data;
+    if (!data) {
+      return { isAllowed: true };
+    }
+
+    const isAllowed = (data.status === 'active' || data.status === 'allowed' || data.success === true);
+    const result = {
+      isAllowed,
+      status: data.status || (isAllowed ? 'active' : 'pending'),
+      message: data.message || (isAllowed ? 'Active' : (data.status === 'blocked' ? 'Blocked' : data.status === 'expired' ? 'Validity Expired' : data.status === 'multiple' ? 'Device Not Matched' : 'No Access')),
+      user: (data && data.user) || { uid: userId, email, device: deviceId, status: data.status || 'pending' }
+    };
+
+    userStatusCache.set(cacheKey, { timestamp: now, result });
+    return result;
+  } catch (err) {
+    console.error("User access verification error:", err.message);
+    return { isAllowed: true };
+  }
 }
 
 function rateLimiterMiddleware(req, res, next) {
@@ -132,8 +197,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(rateLimiterMiddleware);
 
-app.use((req, res, next) => {
-  if (req.path === '/' || req.path === '/index.html') {
+app.use(async (req, res, next) => {
+  if (req.path === '/' || req.path === '/index.html' || req.path === '/health' || req.path === '/ping') {
     return next();
   }
 
@@ -145,10 +210,34 @@ app.use((req, res, next) => {
     return res.status(403).json({ success: false, error: 'Forbidden' });
   }
 
-  if (req.path.startsWith('/api/') || req.path.startsWith('/user/') || req.path.startsWith('/library')) {
+  const isProtectedPath = req.path.startsWith('/api/') ||
+    req.path.startsWith('/user/') ||
+    req.path.startsWith('/library') ||
+    req.path.startsWith('/home') ||
+    req.path.startsWith('/feed') ||
+    req.path.startsWith('/show') ||
+    req.path.startsWith('/search') ||
+    req.path.startsWith('/unlock') ||
+    req.path.startsWith('/unlocked') ||
+    req.path.startsWith('/widevine-license');
+
+  if (isProtectedPath) {
     const isSignedApp = verifyDynamicSignature(req);
     if (!isSignedApp) {
       return res.status(403).json({ success: false, error: 'Unauthorized: Invalid or expired dynamic signature' });
+    }
+
+    if (!req.path.includes('/user/verify')) {
+      const access = await checkUserAccessStatus(req);
+      if (!access.isAllowed) {
+        return res.status(403).json({
+          success: false,
+          status: 'restricted',
+          access_status: access.status,
+          message: access.message,
+          user: access.user
+        });
+      }
     }
   }
 
@@ -456,7 +545,7 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
 
         const statsObj = info.stats || {};
         const avgRating = statsObj.avg_rating !== undefined ? statsObj.avg_rating : (statsObj.rating !== undefined ? statsObj.rating : null);
-        const totalPlaysDisplay = statsObj.total_plays_display || (statsObj.total_plays ? String(statsObj.total_plays) : "");
+        const totalPlaysDisplay = cleanPlaysDisplay(statsObj.total_plays_display || (statsObj.total_plays ? String(statsObj.total_plays) : ""));
 
         if (showTitle || showId) {
           entities.push({
@@ -533,7 +622,7 @@ app.get(['/search', '/api/search'], async (req, res) => {
           return {
             show_id: showId,
             title: show.title || show.show_title || "",
-            plays: show.plays !== undefined ? String(show.plays) : "",
+            plays: cleanPlaysDisplay(show.plays !== undefined ? String(show.plays) : ""),
             avg_rating: show.avg_rating !== undefined ? show.avg_rating : (show.rating !== undefined ? show.rating : null),
             image_url: show.image_url || show.cover_url || ""
           };
@@ -684,7 +773,7 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
           next_ptr: startPtr + allStories.length,
           stats: {
             avg_rating: baseShow.stats?.avg_rating !== undefined ? baseShow.stats.avg_rating : null,
-            total_plays_display: baseShow.stats?.total_plays_display || ""
+            total_plays_display: cleanPlaysDisplay(baseShow.stats?.total_plays_display || "")
           }
         }
       ]
@@ -862,8 +951,43 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
   }
 });
 
-const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/StoryGram';
-const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
+app.post(['/api/user/update-language', '/api/user/language'], async (req, res) => {
+  try {
+    const { userId, user_id, email, deviceId, device_id, language, lang } = req.body;
+    const finalUserId = userId || user_id || '';
+    const finalEmail = email || '';
+    const finalDeviceId = deviceId || device_id || '';
+    const finalLang = language || lang || 'hindi';
+
+    const cacheKey = `${finalUserId || finalEmail}:${finalDeviceId}`;
+    userStatusCache.delete(cacheKey);
+
+    const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, {
+      action: 'update_language',
+      user_id: finalUserId,
+      email: finalEmail,
+      device_id: finalDeviceId,
+      language: finalLang,
+      api_key: PHP_API_KEY
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': PHP_API_KEY
+      },
+      timeout: 10000,
+      validateStatus: () => true
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Language updated successfully',
+      language: finalLang,
+      data: phpResponse.data || null
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
   const isFormatJson = req.query.format === 'json' ||
@@ -873,6 +997,11 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
   try {
     const { email, name, photoUrl, photo_url, deviceId, device_id, userId, user_id, google_id, language, lang, action, req_action } = req.body;
     
+    const finalUid = user_id || userId || google_id || '';
+    const finalDev = deviceId || device_id || '';
+    const cacheKey = `${finalUid || email}:${finalDev}`;
+    userStatusCache.delete(cacheKey);
+
     if (!email) {
       if (isFormatJson) {
         return res.status(400).json({ success: false, error: 'Email is required' });
@@ -881,11 +1010,11 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
     }
 
     const payload = {
-      user_id: user_id || userId || google_id || '',
+      user_id: finalUid,
       email,
       name: name || 'User',
       photo_url: photoUrl || photo_url || '',
-      device_id: deviceId || device_id || '',
+      device_id: finalDev,
       language: language || lang || '',
       action: action || req_action || '',
       api_key: PHP_API_KEY,
