@@ -1002,19 +1002,19 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
     const cacheKey = `${finalUid || email}:${finalDev}`;
     userStatusCache.delete(cacheKey);
 
-    if (!email) {
+    if (!email && !finalUid && !finalDev) {
       if (isFormatJson) {
-        return res.status(400).json({ success: false, error: 'Email is required' });
+        return res.status(400).json({ success: false, error: 'User ID or Device ID is required' });
       }
-      return res.status(400).send('<div style="color:#f87171;padding:20px;text-align:center;">Email is required</div>');
+      return res.status(400).send('<div style="color:#f87171;padding:20px;text-align:center;">User ID or Device ID is required</div>');
     }
 
     const payload = {
-      user_id: finalUid,
-      email,
+      user_id: finalUid || '',
+      email: email || '',
       name: name || 'User',
       photo_url: photoUrl || photo_url || '',
-      device_id: finalDev,
+      device_id: finalDev || '',
       language: language || lang || '',
       action: action || req_action || '',
       api_key: PHP_API_KEY,
@@ -1102,14 +1102,17 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
 
 app.post(['/api/app/bundle', '/app/bundle'], async (req, res) => {
   try {
-    const { email, deviceId, device_id } = req.body;
-    if (!email) {
-      return res.status(400).json({ success: false, error: 'Email required' });
+    const { email, deviceId, device_id, userId, user_id } = req.body;
+    const finalDev = deviceId || device_id || '';
+    const finalUid = userId || user_id || '';
+    if (!email && !finalUid && !finalDev) {
+      return res.status(400).json({ success: false, error: 'User ID or Device ID required' });
     }
 
     const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, {
-      email,
-      device_id: deviceId || device_id || '',
+      user_id: finalUid || '',
+      email: email || '',
+      device_id: finalDev,
       api_key: PHP_API_KEY
     }, {
       headers: {
