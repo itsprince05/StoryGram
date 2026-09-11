@@ -104,15 +104,15 @@ function verifyDynamicSignature(req) {
 }
 
 async function checkUserAccessStatus(req) {
-  const userId = req.headers['x-app-user-id'] || req.headers['user-id'] || req.headers['user_id'] || req.query?.user_id || req.query?.userId || req.query?.uid || req.body?.user_id || req.body?.userId || req.body?.uid || '';
-  const deviceId = req.headers['x-app-device-id'] || req.headers['device-id'] || req.headers['device_id'] || req.query?.device_id || req.query?.deviceId || req.body?.device_id || req.body?.deviceId || '';
-  const email = req.headers['x-app-user-email'] || req.headers['user-email'] || req.headers['email'] || req.query?.email || req.body?.email || '';
+  const userId = req.body?.user_id || req.body?.userId || req.body?.uid || req.query?.user_id || req.query?.userId || req.query?.uid || req.headers['x-app-user-id'] || req.headers['user-id'] || req.headers['user_id'] || '';
+  const deviceId = req.body?.device_id || req.body?.deviceId || req.query?.device_id || req.query?.deviceId || req.headers['x-app-device-id'] || req.headers['device-id'] || req.headers['device_id'] || '';
+  const email = req.body?.email || req.query?.email || req.headers['x-app-user-email'] || req.headers['user-email'] || req.headers['email'] || '';
 
-  if (!email && !userId) {
+  if (!userId && !deviceId) {
     return { isAllowed: true };
   }
 
-  const cacheKey = `${userId || email}:${deviceId}`;
+  const cacheKey = `${userId || 'guest'}:${deviceId}`;
   const now = Date.now();
   const cached = userStatusCache.get(cacheKey);
   if (cached && (now - cached.timestamp) < USER_CACHE_TTL) {
@@ -122,8 +122,8 @@ async function checkUserAccessStatus(req) {
   try {
     const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, {
       user_id: userId,
-      email: email,
       device_id: deviceId,
+      email: email || '',
       api_key: PHP_API_KEY,
       ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
     }, {
