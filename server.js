@@ -910,6 +910,36 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
   }
 });
 
+app.post(['/api/app/bundle', '/app/bundle'], async (req, res) => {
+  try {
+    const { email, deviceId, device_id } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email required' });
+    }
+
+    const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, {
+      email,
+      device_id: deviceId || device_id || '',
+      api_key: PHP_API_KEY
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': PHP_API_KEY
+      },
+      timeout: 15000,
+      validateStatus: () => true
+    });
+
+    if (phpResponse.data && (phpResponse.data.status === 'active' || phpResponse.data.success === true)) {
+      return res.sendFile(path.join(__dirname, 'app_full.html'));
+    } else {
+      return res.status(403).json({ success: false, status: 'restricted', message: 'User is not active' });
+    }
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post(['/api/admin/users', '/admin/users'], async (req, res) => {
   try {
     const phpResponse = await axios.post(`${PHP_BACKEND_URL}/admin.php`, { action: 'list_users' }, {
