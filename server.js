@@ -40,89 +40,41 @@ function decryptPocketFmBlob(clientTs, deviceId, cipherBase64) {
   return decrypted;
 }
 
+function formatPlaysDisplay(val) {
+  if (val === undefined || val === null || val === '') return '';
+  if (typeof val === 'number') {
+    if (isNaN(val) || val <= 0) return '';
+    if (val >= 1e9) return (val / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
+    if (val >= 1e6) return (val / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (val >= 1e3) return (val / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+    return String(val);
+  }
+  let str = String(val).trim();
+  if (!str) return '';
+  if (/^\d+(\.\d+)?$/.test(str)) {
+    const num = parseFloat(str);
+    return formatPlaysDisplay(num);
+  }
+  str = str.replace(/plays?/gi, '').trim();
+  str = str.replace(/\s+/g, '');
+  return str;
+}
+
 let cachedCookies = '';
 let cachedToken = '';
 let lastFetchDate = '';
 let isRefreshing = false;
 
-const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/StoryGram';
-const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
-
 const APP_CLIENT_SECRET = 'StoryGramSecClient_98741488';
 const APP_HMAC_SECRET = 'StoryGram_Sec_Hmac_98741488_Key_v1';
 const rateLimitMap = new Map();
 const usedNonces = new Map();
-const userAuthCache = new Map();
-
-async function checkUserAccessStatus(userId, deviceId, email = '') {
-  const uid = (userId || email || '').toString().trim();
-  const dev = (deviceId || '').toString().trim();
-
-  if (!uid && !dev) {
-    return { success: true, status: 'active', message: 'OK', user: null };
-  }
-
-  const cacheKey = `${uid}:${dev}`;
-  const now = Date.now();
-  const cached = userAuthCache.get(cacheKey);
-
-  if (cached && (now - cached.timestamp < 30000)) {
-    return cached;
-  }
-
-  try {
-    const payload = {
-      user_id: uid,
-      device_id: dev,
-      email: email || '',
-      api_key: PHP_API_KEY
-    };
-
-    const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-KEY': PHP_API_KEY
-      },
-      timeout: 8000,
-      validateStatus: () => true
-    });
-
-    if (phpResponse && phpResponse.data) {
-      const data = phpResponse.data;
-      const isAllowed = (data.status === 'active' || data.status === 'allowed' || data.success === true);
-      let msg = 'Active';
-      if (!isAllowed) {
-        if (data.status === 'blocked') msg = 'Blocked';
-        else if (data.status === 'expired') msg = 'Validity Expired';
-        else if (data.status === 'device_mismatch' || data.status === 'multiple') msg = 'Device Not Matched';
-        else msg = data.message || 'No Access';
-      }
-
-      const result = {
-        success: isAllowed,
-        status: isAllowed ? 'active' : (data.status || 'restricted'),
-        message: msg,
-        user: data.user || { uid: uid, device: dev, status: data.status },
-        timestamp: now
-      };
-      userAuthCache.set(cacheKey, result);
-      return result;
-    }
-  } catch (err) {
-    console.error('Error verifying user session:', err.message);
-    if (cached && cached.success && (now - cached.timestamp < 300000)) {
-      return cached;
-    }
-  }
-
-  return { success: false, status: 'no_access', message: 'No Access', user: { uid: uid, device: dev, status: 'pending' }, timestamp: now };
-}
 
 function verifyDynamicSignature(req) {
   const ts = req.headers['x-app-timestamp'];
   const nonce = req.headers['x-app-nonce'];
   const sig = req.headers['x-app-signature'];
-  const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || req.query.device_id || '';
+  const deviceId = req.headers['x-app-device-id'] || '';
   if (!ts || !nonce || !sig) return false;
 
   const now = Date.now();
@@ -201,17 +153,19 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(rateLimiterMiddleware);
 
 app.use((req, res, next) => {
-  if (req.path === '/' || req.path === '/index.html' || req.path === '/health' || req.path === '/ping') {
+  if (req.path === '/' || req.path === '/index.html') {
     return next();
   }
 
+  const token = req.headers['x-app-token'] || req.headers['x_app_token'] || req.query.app_token;
   const ua = (req.headers['user-agent'] || '').toLowerCase();
+
   const isScraper = ua.includes('curl') || ua.includes('python') || ua.includes('postman') || ua.includes('insomnia') || ua.includes('scrapy') || ua.includes('aiohttp') || ua.includes('go-http-client');
-  if (isScraper && !req.headers['x-app-signature']) {
+  if (isScraper && !token && !req.headers['x-app-signature']) {
     return res.status(403).json({ success: false, error: 'Forbidden' });
   }
 
-  if (req.path.startsWith('/api/') || req.path.startsWith('/user/') || req.path.startsWith('/library') || req.path === '/home' || req.path === '/show' || req.path === '/search' || req.path === '/feed') {
+  if (req.path.startsWith('/api/') || req.path.startsWith('/user/') || req.path.startsWith('/library')) {
     const isSignedApp = verifyDynamicSignature(req);
     if (!isSignedApp) {
       return res.status(403).json({ success: false, error: 'Unauthorized: Invalid or expired dynamic signature' });
@@ -473,23 +427,8 @@ app.get(['/refresh-cookies', '/api/refresh-cookies'], async (req, res) => {
   });
 });
 
-app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
+app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
-    const userId = req.body?.userId || req.body?.user_id || req.query.userId || req.query.user_id || req.headers['x-user-id'] || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.query.deviceId || req.query.device_id || req.headers['x-app-device-id'] || '';
-
-    if (userId || deviceId) {
-      const userCheck = await checkUserAccessStatus(userId, deviceId);
-      if (!userCheck.success) {
-        return res.status(403).json({
-          success: false,
-          status: userCheck.status,
-          message: userCheck.message,
-          user: userCheck.user
-        });
-      }
-    }
-
     const headers = buildPocketHeaders(req);
 
     if (!headers.authorization || headers.authorization === 'Bearer ') {
@@ -501,8 +440,8 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
       });
     }
 
-    const language = req.body?.language || req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
-    const apiType = req.body?.api_type || req.headers['api_type'] || req.headers['api-type'] || req.query.api_type || 'explore_v2';
+    const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+    const apiType = req.headers['api_type'] || req.headers['api-type'] || req.query.api_type || 'explore_v2';
 
     const queryParams = new URLSearchParams({
       api_type: apiType,
@@ -537,10 +476,7 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
 
         const statsObj = info.stats || {};
         const avgRating = statsObj.avg_rating !== undefined ? statsObj.avg_rating : (statsObj.rating !== undefined ? statsObj.rating : null);
-        let totalPlaysDisplay = statsObj.total_plays_display || (statsObj.total_plays ? String(statsObj.total_plays) : "");
-        if (typeof totalPlaysDisplay === 'string') {
-          totalPlaysDisplay = totalPlaysDisplay.replace(/\s*plays\b/gi, '').trim();
-        }
+        const totalPlaysDisplay = formatPlaysDisplay(statsObj.total_plays_display || statsObj.total_plays || "");
 
         if (showTitle || showId) {
           entities.push({
@@ -584,23 +520,8 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
   }
 });
 
-app.all(['/search', '/api/search'], async (req, res) => {
+app.get(['/search', '/api/search'], async (req, res) => {
   try {
-    const userId = req.body?.userId || req.body?.user_id || req.query.userId || req.query.user_id || req.headers['x-user-id'] || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.query.deviceId || req.query.device_id || req.headers['x-app-device-id'] || '';
-
-    if (userId || deviceId) {
-      const userCheck = await checkUserAccessStatus(userId, deviceId);
-      if (!userCheck.success) {
-        return res.status(403).json({
-          success: false,
-          status: userCheck.status,
-          message: userCheck.message,
-          user: userCheck.user
-        });
-      }
-    }
-
     const headers = buildPocketHeaders(req);
 
     if (!headers.authorization || headers.authorization === 'Bearer ') {
@@ -610,9 +531,9 @@ app.all(['/search', '/api/search'], async (req, res) => {
       });
     }
 
-    const query = req.body?.query || req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
-    const genre = req.body?.genre || req.headers['genre'] || req.query.genre || '';
-    const language = req.body?.language || req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+    const query = req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
+    const genre = req.headers['genre'] || req.query.genre || '';
+    const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
 
     const queryParams = new URLSearchParams({
       query: query,
@@ -629,14 +550,10 @@ app.all(['/search', '/api/search'], async (req, res) => {
       if (data.result && data.result.shows && Array.isArray(data.result.shows)) {
         const formattedShows = data.result.shows.map(show => {
           const showId = show.show_id || show.entity_id || "";
-          let plays = show.plays !== undefined ? String(show.plays) : "";
-          if (typeof plays === 'string') {
-            plays = plays.replace(/\s*plays\b/gi, '').trim();
-          }
           return {
             show_id: showId,
             title: show.title || show.show_title || "",
-            plays: plays,
+            plays: formatPlaysDisplay(show.plays !== undefined ? show.plays : (show.stats?.total_plays_display || show.stats?.total_plays || "")),
             avg_rating: show.avg_rating !== undefined ? show.avg_rating : (show.rating !== undefined ? show.rating : null),
             image_url: show.image_url || show.cover_url || ""
           };
@@ -663,29 +580,14 @@ app.all(['/search', '/api/search'], async (req, res) => {
   }
 });
 
-app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
+app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
   try {
-    const userId = req.body?.userId || req.body?.user_id || req.query.userId || req.query.user_id || req.headers['x-user-id'] || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.query.deviceId || req.query.device_id || req.headers['x-app-device-id'] || '';
-
-    if (userId || deviceId) {
-      const userCheck = await checkUserAccessStatus(userId, deviceId);
-      if (!userCheck.success) {
-        return res.status(403).json({
-          success: false,
-          status: userCheck.status,
-          message: userCheck.message,
-          user: userCheck.user
-        });
-      }
-    }
-
-    const showId = req.body?.showId || req.body?.show_id || req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.params.show_id || req.query.show_id;
+    const showId = req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.params.show_id || req.query.show_id;
 
     if (!showId) {
       return res.status(400).json({
         success: false,
-        error: "Missing 'show_id'. Pass it in body, headers or query params"
+        error: "Missing 'show_id'. Pass it in headers (show_id: ...) or query params (?show_id=...)"
       });
     }
 
@@ -698,9 +600,9 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       });
     }
 
-    const startPtr = parseInt(req.body?.currPtr || req.body?.curr_ptr || req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
-    const pageSource = req.body?.pageSource || req.body?.page_source || req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
-    const batchSize = Math.min(Math.max(parseInt(req.body?.limit || req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
+    const startPtr = parseInt(req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
+    const pageSource = req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
+    const batchSize = Math.min(Math.max(parseInt(req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
 
     const ptrList = [];
     for (let i = 0; i < batchSize; i++) {
@@ -788,11 +690,6 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       });
     }
 
-    let showTotalPlaysDisplay = baseShow.stats?.total_plays_display || (baseShow.plays !== undefined ? String(baseShow.plays) : "");
-    if (typeof showTotalPlaysDisplay === 'string') {
-      showTotalPlaysDisplay = showTotalPlaysDisplay.replace(/\s*plays\b/gi, '').trim();
-    }
-
     const filteredResponse = {
       status: 1,
       message: "Result for show details page",
@@ -807,7 +704,7 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
           next_ptr: startPtr + allStories.length,
           stats: {
             avg_rating: baseShow.stats?.avg_rating !== undefined ? baseShow.stats.avg_rating : null,
-            total_plays_display: showTotalPlaysDisplay
+            total_plays_display: formatPlaysDisplay(baseShow.stats?.total_plays_display || baseShow.stats?.total_plays || baseShow.plays || "")
           }
         }
       ]
@@ -823,26 +720,11 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
   }
 });
 
-app.all(['/api/license', '/api/get_license'], async (req, res) => {
+app.get(['/api/license', '/api/get_license'], async (req, res) => {
   try {
-    const userId = req.body?.userId || req.body?.user_id || req.query.userId || req.query.user_id || req.headers['x-user-id'] || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.query.deviceId || req.query.device_id || req.headers['x-app-device-id'] || '';
-
-    if (userId || deviceId) {
-      const userCheck = await checkUserAccessStatus(userId, deviceId);
-      if (!userCheck.success) {
-        return res.status(403).json({
-          success: false,
-          status: userCheck.status,
-          message: userCheck.message,
-          user: userCheck.user
-        });
-      }
-    }
-
-    const showId = req.body?.showId || req.body?.show_id || req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.query.show_id;
+    const showId = req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.query.show_id;
     if (!showId) {
-      return res.status(400).json({ success: false, error: "Missing 'show_id'. Please pass 'show_id' in body or headers." });
+      return res.status(400).json({ success: false, error: "Missing 'show_id'. Please pass 'show_id' in headers." });
     }
 
     const headers = buildPocketHeaders(req);
@@ -914,21 +796,6 @@ app.post(['/api/widevine-license', '/widevine-license'], express.raw({ type: '*/
 
 app.all(['/unlock', '/api/unlock', '/api/subscribe', '/api/user_action'], async (req, res) => {
   try {
-    const userId = req.body?.userId || req.body?.user_id || req.query.userId || req.query.user_id || req.headers['x-user-id'] || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.query.deviceId || req.query.device_id || req.headers['x-app-device-id'] || '';
-
-    if (userId || deviceId) {
-      const userCheck = await checkUserAccessStatus(userId, deviceId);
-      if (!userCheck.success) {
-        return res.status(403).json({
-          success: false,
-          status: userCheck.status,
-          message: userCheck.message,
-          user: userCheck.user
-        });
-      }
-    }
-
     const headers = buildPocketHeaders(req);
 
     if (!headers.authorization || headers.authorization === 'Bearer ') {
@@ -1015,24 +882,27 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
   }
 });
 
+const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/StoryGram';
+const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
+
 app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
   const isFormatJson = req.query.format === 'json' ||
     req.headers['x-response-format'] === 'json' ||
     (req.body && (req.body.action === 'update_language' || req.body.format === 'json'));
 
   try {
-    const { email, name, photoUrl, photo_url, deviceId, device_id, userId, user_id, google_id, language, lang, action, req_action } = req.body || {};
+    const { email, name, photoUrl, photo_url, deviceId, device_id, userId, user_id, google_id, language, lang, action, req_action } = req.body;
     
-    if (!email && !userId && !user_id && !google_id) {
+    if (!email) {
       if (isFormatJson) {
-        return res.status(400).json({ success: false, error: 'Email or userId is required' });
+        return res.status(400).json({ success: false, error: 'Email is required' });
       }
       return res.status(400).send('<div style="color:#f87171;padding:20px;text-align:center;">Email is required</div>');
     }
 
     const payload = {
       user_id: user_id || userId || google_id || '',
-      email: email || '',
+      email,
       name: name || 'User',
       photo_url: photoUrl || photo_url || '',
       device_id: deviceId || device_id || '',
@@ -1080,18 +950,6 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
     const userName = (phpResponse.data && phpResponse.data.user && phpResponse.data.user.name) || payload.name || 'User';
     const userEmail = (phpResponse.data && phpResponse.data.user && phpResponse.data.user.email) || payload.email || '';
 
-    let badgeText = 'No Access';
-    const status = (phpResponse.data && phpResponse.data.status) || 'pending';
-    if (status === 'blocked') {
-      badgeText = 'Blocked';
-    } else if (status === 'expired') {
-      badgeText = 'Validity Expired';
-    } else if (status === 'device_mismatch' || status === 'multiple') {
-      badgeText = 'Device Not Matched';
-    } else {
-      badgeText = 'No Access';
-    }
-
     const avatarHtml = userPhoto
       ? `<img src="${userPhoto}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
       : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
@@ -1116,7 +974,7 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
     </div>
   </div>
   <div class="restricted-status-card">
-    <div class="restricted-status-badge">${badgeText}</div>
+    <div class="restricted-status-badge">No Access</div>
   </div>
 </div>`;
 
@@ -1130,46 +988,6 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
       });
     }
     return res.status(500).send('<div style="color:#f87171;padding:20px;text-align:center;">Failed to connect to verification server</div>');
-  }
-});
-
-app.post(['/api/user/language', '/api/user/update-language'], async (req, res) => {
-  try {
-    const userId = req.body?.userId || req.body?.user_id || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || '';
-    const language = req.body?.language || req.body?.lang || 'hindi';
-
-    if (userId || deviceId) {
-      const userCheck = await checkUserAccessStatus(userId, deviceId);
-      if (!userCheck.success) {
-        return res.status(403).json({
-          success: false,
-          status: userCheck.status,
-          message: userCheck.message
-        });
-      }
-    }
-
-    try {
-      await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, {
-        action: 'update_language',
-        user_id: userId,
-        device_id: deviceId,
-        language: language,
-        api_key: PHP_API_KEY
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-KEY': PHP_API_KEY
-        },
-        timeout: 8000,
-        validateStatus: () => true
-      });
-    } catch (e) { }
-
-    return res.status(200).json({ success: true, language: language });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -1221,21 +1039,6 @@ app.post(['/api/admin/users', '/admin/users'], async (req, res) => {
 
 app.all(['/api/library', '/library'], async (req, res) => {
   try {
-    const userId = req.body?.userId || req.body?.uid || req.query.userId || req.query.uid || '';
-    const deviceId = req.body?.deviceId || req.body?.device_id || req.query.deviceId || req.query.device_id || '';
-
-    if (userId || deviceId) {
-      const userCheck = await checkUserAccessStatus(userId, deviceId);
-      if (!userCheck.success) {
-        return res.status(403).json({
-          success: false,
-          status: userCheck.status,
-          message: userCheck.message,
-          user: userCheck.user
-        });
-      }
-    }
-
     const method = req.method.toLowerCase();
     const config = {
       method: method,
@@ -1248,17 +1051,9 @@ app.all(['/api/library', '/library'], async (req, res) => {
       validateStatus: () => true
     };
     if (method === 'post' || method === 'put') {
-      config.data = {
-        ...req.body,
-        uid: userId || req.body?.uid || req.body?.userId,
-        device_id: deviceId
-      };
+      config.data = req.body;
     } else {
-      config.params = {
-        ...req.query,
-        uid: userId || req.query?.uid || req.query?.userId,
-        device_id: deviceId
-      };
+      config.params = req.query;
     }
     const phpResponse = await axios(config);
     return res.status(phpResponse.status).json(phpResponse.data);
