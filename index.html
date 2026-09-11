@@ -314,16 +314,26 @@
   </div>
 
   <script>
-    async function verifyUserAndRender() {
+    async function verifyUserAndRender(arg1, arg2, arg3, arg4, arg5) {
       let u = null;
-      try {
-        if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
-          const raw = window.AndroidBridge.getUserData();
-          if (raw) u = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        }
-      } catch (e) {}
+      if (typeof arg1 === 'object' && arg1 !== null) {
+        u = arg1;
+      } else if (typeof arg1 === 'string' && arg1.trim().startsWith('{')) {
+        try { u = JSON.parse(arg1); } catch (e) {}
+      } else if (arg1 || arg2 || arg3 || arg4 || arg5) {
+        u = { name: arg1, email: arg2, photoUrl: arg3, deviceId: arg4, userId: arg5 };
+      }
 
-      if (!u || !u.email) {
+      if (!u) {
+        try {
+          if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
+            const raw = window.AndroidBridge.getUserData();
+            if (raw) u = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          }
+        } catch (e) {}
+      }
+
+      if (!u || (!u.email && !u.userId && !u.uid && !u.deviceId && !u.device_id)) {
         try {
           u = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         } catch (e) {}
@@ -340,7 +350,11 @@
       const email = (u && u.email) || '';
       const name = (u && (u.name || u.displayName)) || 'User';
       const photo = (u && (u.photoUrl || u.photo || u.avatarUrl)) || '';
-      const userId = (u && (u.userId || u.uid)) || '';
+      const userId = (u && (u.userId || u.uid || u.user_id)) || '';
+
+      if (u) {
+        try { localStorage.setItem('storygram_user', JSON.stringify({ ...u, deviceId: dev, userId, email, name, photoUrl: photo })); } catch (e) {}
+      }
 
       try {
         const res = await fetch('/api/user/verify', {
