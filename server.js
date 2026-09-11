@@ -871,11 +871,7 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
     const { email, name, photoUrl, photo_url, deviceId, device_id, userId, user_id, google_id, language, lang, action, req_action } = req.body;
     
     if (!email) {
-      return res.status(400).json({
-        success: false,
-        status: 'invalid_request',
-        error: 'Email is required'
-      });
+      return res.status(400).send('<div style="color:#f87171;padding:20px;text-align:center;">Email is required</div>');
     }
 
     const payload = {
@@ -899,14 +895,50 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
       validateStatus: () => true
     });
 
-    return res.status(phpResponse.status).json(phpResponse.data);
+    const isFormatJson = req.query.format === 'json' || req.headers['x-response-format'] === 'json';
+    if (isFormatJson) {
+      return res.status(phpResponse.status).json(phpResponse.data);
+    }
+
+    if (phpResponse.data && (phpResponse.data.status === 'active' || phpResponse.data.success === true)) {
+      return res.sendFile(path.join(__dirname, 'app_full.html'));
+    }
+
+    const userPhoto = payload.photo_url || (phpResponse.data && phpResponse.data.user && phpResponse.data.user.photo) || '';
+    const userName = (phpResponse.data && phpResponse.data.user && phpResponse.data.user.name) || payload.name || 'User';
+    const userEmail = (phpResponse.data && phpResponse.data.user && phpResponse.data.user.email) || payload.email || '';
+
+    const avatarHtml = userPhoto
+      ? `<img src="${userPhoto}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+      : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
+
+    const noAccessHtml = `
+<style>
+  .account-page-wrap { width: 100%; max-width: 480px; padding: 10px; margin-top: 56px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; }
+  .account-profile-card { width: 100%; background: linear-gradient(135deg, rgba(255, 51, 102, 0.12) 0%, rgba(15, 23, 42, 0.8) 100%); border: 1px solid rgba(255, 51, 102, 0.25); border-radius: 20px; padding: 10px; display: flex; align-items: center; gap: 10px; box-sizing: border-box; }
+  .account-avatar { width: 50px; height: 50px; border-radius: 50%; background: #182238; border: 2px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; color: #94a3b8; overflow: hidden; flex-shrink: 0; }
+  .account-user-info { min-width: 0; flex: 1; }
+  .account-user-name { font-size: 15px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .account-user-email { font-size: 12px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .restricted-status-card { width: 100%; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 14px; padding: 10px; text-align: center; box-sizing: border-box; }
+  .restricted-status-badge { font-size: 16px; font-weight: 800; color: #f87171; margin: 0; }
+</style>
+<div class="account-page-wrap">
+  <div class="account-profile-card">
+    <div class="account-avatar">${avatarHtml}</div>
+    <div class="account-user-info">
+      <div class="account-user-name">${userName}</div>
+      <div class="account-user-email">${userEmail}</div>
+    </div>
+  </div>
+  <div class="restricted-status-card">
+    <div class="restricted-status-badge">No Access</div>
+  </div>
+</div>`;
+
+    return res.status(200).send(noAccessHtml);
   } catch (error) {
-    console.error("User verify error:", error.message);
-    return res.status(500).json({
-      success: false,
-      status: 'server_error',
-      message: 'Failed to verify user access with database: ' + error.message
-    });
+    return res.status(500).send('<div style="color:#f87171;padding:20px;text-align:center;">Failed to connect to verification server</div>');
   }
 });
 
