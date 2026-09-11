@@ -49,7 +49,13 @@
         let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
         let deviceId = '';
         try {
-          deviceId = localStorage.getItem('storygram_device_id') || '';
+          if (window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
+            const did = window.AndroidBridge.getDeviceId();
+            if (did && did.trim()) deviceId = did.trim();
+          }
+          if (!deviceId) {
+            deviceId = localStorage.getItem('storygram_device_id') || '';
+          }
         } catch (e) {}
 
         let sig = '';
