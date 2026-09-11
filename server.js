@@ -866,10 +866,17 @@ const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/S
 const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
 
 app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
+  const isFormatJson = req.query.format === 'json' ||
+    req.headers['x-response-format'] === 'json' ||
+    (req.body && (req.body.action === 'update_language' || req.body.format === 'json'));
+
   try {
     const { email, name, photoUrl, photo_url, deviceId, device_id, userId, user_id, google_id, language, lang, action, req_action } = req.body;
     
     if (!email) {
+      if (isFormatJson) {
+        return res.status(400).json({ success: false, error: 'Email is required' });
+      }
       return res.status(400).send('<div style="color:#f87171;padding:20px;text-align:center;">Email is required</div>');
     }
 
@@ -885,16 +892,32 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
       ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
     };
 
-    const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-KEY': PHP_API_KEY
-      },
-      timeout: 15000,
-      validateStatus: () => true
-    });
+    let phpResponse = null;
+    let lastError = null;
 
-    const isFormatJson = req.query.format === 'json' || req.headers['x-response-format'] === 'json';
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, payload, {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-KEY': PHP_API_KEY
+          },
+          timeout: 10000,
+          validateStatus: () => true
+        });
+        if (phpResponse && phpResponse.data) {
+          break;
+        }
+      } catch (err) {
+        lastError = err;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    if (!phpResponse || !phpResponse.data) {
+      throw (lastError || new Error('Verification backend unreachable'));
+    }
+
     if (isFormatJson) {
       return res.status(phpResponse.status).json(phpResponse.data);
     }
@@ -937,6 +960,13 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
 
     return res.status(200).send(noAccessHtml);
   } catch (error) {
+    if (isFormatJson) {
+      return res.status(500).json({
+        success: false,
+        status: 'server_error',
+        message: 'Failed to connect to verification server'
+      });
+    }
     return res.status(500).send('<div style="color:#f87171;padding:20px;text-align:center;">Failed to connect to verification server</div>');
   }
 });
