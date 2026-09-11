@@ -3484,9 +3484,12 @@
       try {
         let saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
         if (saved && saved.email) {
-          fetch('/api/user/verify', {
+          fetch('/api/user/verify?format=json', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Response-Format': 'json'
+            },
             body: JSON.stringify({
               action: 'update_language',
               email: saved.email,
@@ -5685,9 +5688,12 @@
         let data = null;
 
         try {
-          const res = await fetch('/api/user/verify', {
+          const res = await fetch('/api/user/verify?format=json', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Response-Format': 'json'
+            },
             body: JSON.stringify(payload)
           });
           if (res && res.ok) {
