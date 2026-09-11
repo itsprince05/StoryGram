@@ -45,9 +45,118 @@ let cachedToken = '';
 let lastFetchDate = '';
 let isRefreshing = false;
 
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const APP_CLIENT_SECRET = 'StoryGramSecClient_98741488';
+const APP_HMAC_SECRET = 'StoryGram_Sec_Hmac_98741488_Key_v1';
+const rateLimitMap = new Map();
+const usedNonces = new Map();
+
+function verifyDynamicSignature(req) {
+  const ts = req.headers['x-app-timestamp'];
+  const nonce = req.headers['x-app-nonce'];
+  const sig = req.headers['x-app-signature'];
+  const deviceId = req.headers['x-app-device-id'] || '';
+  if (!ts || !nonce || !sig) return false;
+
+  const now = Date.now();
+  const reqTime = parseInt(ts, 10);
+  if (isNaN(reqTime) || Math.abs(now - reqTime) > 15000) {
+    return false;
+  }
+
+  if (usedNonces.has(nonce)) {
+    return false;
+  }
+  usedNonces.set(nonce, reqTime + 15000);
+  if (usedNonces.size > 10000) {
+    for (const [k, exp] of usedNonces.entries()) {
+      if (now > exp) usedNonces.delete(k);
+    }
+  }
+
+  const payloadWithDevice = `${ts}:${nonce}:${req.path}:${deviceId}`;
+  const payloadPlain = `${ts}:${nonce}:${req.path}`;
+
+  const expectedSig1 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadWithDevice).digest('hex');
+  const expectedSig2 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadPlain).digest('hex');
+
+  const sigBuf = Buffer.from(sig);
+  const buf1 = Buffer.from(expectedSig1);
+  const buf2 = Buffer.from(expectedSig2);
+
+  if (sigBuf.length === buf1.length && crypto.timingSafeEqual(sigBuf, buf1)) {
+    return true;
+  }
+  if (sigBuf.length === buf2.length && crypto.timingSafeEqual(sigBuf, buf2)) {
+    return true;
+  }
+  return false;
+}
+
+function rateLimiterMiddleware(req, res, next) {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+  const now = Date.now();
+  const windowMs = 30000;
+  const maxRequests = 120;
+
+  const record = rateLimitMap.get(ip) || { count: 0, resetTime: now + windowMs };
+  if (now > record.resetTime) {
+    record.count = 1;
+    record.resetTime = now + windowMs;
+  } else {
+    record.count++;
+  }
+  rateLimitMap.set(ip, record);
+
+  if (record.count > maxRequests) {
+    return res.status(429).json({ success: false, error: 'Too many requests' });
+  }
+
+  if (rateLimitMap.size > 5000) {
+    for (const [k, v] of rateLimitMap.entries()) {
+      if (now > v.resetTime) rateLimitMap.delete(k);
+    }
+  }
+  next();
+}
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || origin === 'null' || origin.startsWith('file://') || origin.endsWith('.onrender.com') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+  credentials: true
+}));
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(rateLimiterMiddleware);
+
+app.use((req, res, next) => {
+  if (req.path === '/' || req.path === '/index.html') {
+    return next();
+  }
+
+  const token = req.headers['x-app-token'] || req.headers['x_app_token'] || req.query.app_token;
+  const ua = (req.headers['user-agent'] || '').toLowerCase();
+
+  const isScraper = ua.includes('curl') || ua.includes('python') || ua.includes('postman') || ua.includes('insomnia') || ua.includes('scrapy') || ua.includes('aiohttp') || ua.includes('go-http-client');
+  if (isScraper && !token && !req.headers['x-app-signature']) {
+    return res.status(403).json({ success: false, error: 'Forbidden' });
+  }
+
+  if (req.path.startsWith('/api/') || req.path.startsWith('/user/') || req.path.startsWith('/library')) {
+    const isSignedApp = verifyDynamicSignature(req);
+    const isTokenVerified = (token === APP_CLIENT_SECRET) && (ua.includes('storygramapp') || ua.includes('wv') || req.query.mode === 'app' || Boolean(req.headers['x-requested-with']));
+
+    if (!isSignedApp && !isTokenVerified) {
+      return res.status(403).json({ success: false, error: 'Unauthorized API call' });
+    }
+  }
+
+  next();
+});
 
 async function fetchDailyCookiesFromWebsite() {
   const targetUrls = [
