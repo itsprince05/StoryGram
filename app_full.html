@@ -3127,6 +3127,13 @@
 
     updateLanguageLabels();
 
+    function formatPlaysText(val) {
+      if (!val && val !== 0) return '1M+';
+      let str = String(val).trim();
+      str = str.replace(/\s*plays?\s*$/gi, '').trim();
+      return str || '1M+';
+    }
+
     let currentShowId = null;
     let currentShowObj = null;
     let currentNextPtr = 0;
@@ -3504,6 +3511,29 @@
       renderLanguageGrid();
       closeLanguageModal();
       fetchHomeFeed();
+
+      try {
+        let saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        let email = saved.email || '';
+        let userId = saved.userId || saved.uid || '';
+        let deviceId = getDeviceId();
+        if (email) {
+          fetch('/api/user/verify?format=json', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Response-Format': 'json'
+            },
+            body: JSON.stringify({
+              action: 'update_language',
+              email: email,
+              language: currentLanguage,
+              deviceId: deviceId,
+              userId: userId
+            })
+          }).catch(() => { });
+        }
+      } catch (e) { }
     }
 
     function openEpisodeRangeModal(pushHistory = true) {
@@ -3588,7 +3618,7 @@
         const hasRank = show.category_rank != null && show.category_rank !== '';
         const hasRating = show.rating != null && show.rating !== '';
         const hasPlays = show.plays != null && show.plays !== '';
-        const playsText = hasPlays ? (show.plays.toString().toLowerCase().includes('play') ? show.plays : `${show.plays} Plays`) : '';
+        const playsText = hasPlays ? `${formatPlaysText(show.plays)} Plays` : '';
 
         return `
         <div class="hero-slide" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
@@ -3665,11 +3695,22 @@
         `;
       }
 
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+
       try {
         const response = await fetch('/home', {
+          method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'language': currentLanguage
-          }
+          },
+          body: JSON.stringify({
+            email: saved.email || '',
+            userId: saved.userId || saved.uid || '',
+            deviceId: getDeviceId(),
+            language: currentLanguage
+          })
         });
         if (response.ok) {
           const data = await response.json();
@@ -3768,7 +3809,7 @@
                   </div>
                 </div>
                 <div class="card-title">${escapeHtml(show.title || 'Untitled')}</div>
-                <div class="card-meta"><i data-lucide="headphones"></i> ${show.plays || '1M+'} plays</div>
+                <div class="card-meta"><i data-lucide="headphones"></i> ${formatPlaysText(show.plays)} plays</div>
               </div>
             `).join('')}
           </div>
@@ -3998,13 +4039,26 @@
       if (mode === 'replace') {
         currentTopPtr = currPtr;
       }
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+
       try {
         const response = await fetch('/show', {
+          method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'show_id': showId,
             'curr_ptr': String(currPtr),
             'language': currentLanguage
-          }
+          },
+          body: JSON.stringify({
+            email: saved.email || '',
+            userId: saved.userId || saved.uid || '',
+            deviceId: getDeviceId(),
+            showId: showId,
+            currPtr: currPtr,
+            language: currentLanguage
+          })
         });
         if (response.ok) {
           const data = await response.json();
@@ -4033,8 +4087,8 @@
               document.getElementById('show-badge-rating').style.display = 'none';
             }
 
-            if (showData.stats && showData.stats.total_plays_display) {
-              document.getElementById('show-badge-plays-text').innerText = `${showData.stats.total_plays_display} Plays`;
+            if (showData.stats && (showData.stats.total_plays_display || showData.stats.total_plays)) {
+              document.getElementById('show-badge-plays-text').innerText = `${formatPlaysText(showData.stats.total_plays_display || showData.stats.total_plays)} Plays`;
               document.getElementById('show-badge-plays').style.display = 'inline-flex';
             } else {
               document.getElementById('show-badge-plays').style.display = 'none';
@@ -5392,12 +5446,24 @@
 
       container.innerHTML = `<div class="loader" style="min-height: 40vh;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>`;
 
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+
       try {
         const res = await fetch('/search', {
+          method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'query': query,
             'language': currentLanguage
-          }
+          },
+          body: JSON.stringify({
+            email: saved.email || '',
+            userId: saved.userId || saved.uid || '',
+            deviceId: getDeviceId(),
+            query: query,
+            language: currentLanguage
+          })
         });
         if (res.ok) {
           const data = await res.json();
