@@ -3063,20 +3063,6 @@
   <audio id="audio-element" preload="auto"></audio>
 
   <script>
-    const _origFetch = window.fetch;
-    window.fetch = function (url, options) {
-      options = options || {};
-      options.headers = options.headers || {};
-      if (typeof options.headers.set === 'function') {
-        options.headers.set('X-App-Token', 'StoryGramSecClient_98741488');
-      } else if (Array.isArray(options.headers)) {
-        options.headers.push(['X-App-Token', 'StoryGramSecClient_98741488']);
-      } else {
-        options.headers['X-App-Token'] = 'StoryGramSecClient_98741488';
-      }
-      return _origFetch.call(this, url, options);
-    };
-
     let currentLanguage = (localStorage.getItem('storygram_language') || 'hindi').toLowerCase().trim();
     let currentShowId = null;
     let currentShowObj = null;
@@ -5746,11 +5732,15 @@
 
           return data;
         } else {
-          console.warn("Verify user access could not reach server.");
+          if (userAccessStatus === 'allowed') {
+            return;
+          }
           setAppState('restricted', { name, email, photoUrl, deviceId, status: 'pending' });
         }
       } catch (err) {
-        console.error("Failed to verify user access:", err);
+        if (userAccessStatus === 'allowed') {
+          return;
+        }
         let saved = {};
         try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
         setAppState('restricted', { ...saved, status: 'pending' });
