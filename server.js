@@ -65,6 +65,82 @@ let cachedToken = '';
 let lastFetchDate = '';
 let isRefreshing = false;
 
+const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/StoryGram';
+const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
+const userAccessCache = new Map();
+
+async function checkUserVerification(email, deviceId, userId) {
+  if (!email || !email.trim()) {
+    return {
+      success: false,
+      access_denied: true,
+      status: 'pending',
+      message: 'No Access',
+      user: { email: '', device: deviceId || '', status: 'pending', validity: 0 }
+    };
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanDevice = (deviceId || '').trim();
+  const cacheKey = `${cleanEmail}:${cleanDevice}`;
+
+  const cached = userAccessCache.get(cacheKey);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) {
+    return cached.result;
+  }
+
+  try {
+    const payload = {
+      email: cleanEmail,
+      device_id: cleanDevice,
+      user_id: userId || '',
+      api_key: PHP_API_KEY
+    };
+
+    const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': PHP_API_KEY
+      },
+      timeout: 5000,
+      validateStatus: () => true
+    });
+
+    if (phpResponse && phpResponse.data) {
+      const data = phpResponse.data;
+      const isAllowed = (data.status === 'active' || data.status === 'allowed' || data.success === true);
+      const result = {
+        success: isAllowed,
+        access_denied: !isAllowed,
+        status: isAllowed ? 'active' : (data.status || 'pending'),
+        message: data.message || (isAllowed ? 'Access granted' : 'No Access'),
+        user: (data && data.user) ? data.user : { email: cleanEmail, device: cleanDevice, status: data.status || 'pending', validity: data.validity || 0 }
+      };
+
+      userAccessCache.set(cacheKey, {
+        result,
+        expiresAt: now + (isAllowed ? 10000 : 3000)
+      });
+
+      return result;
+    }
+  } catch (err) {
+    console.error("checkUserVerification error:", err.message);
+    if (cached && (now - cached.expiresAt < 30000) && cached.result.success) {
+      return cached.result;
+    }
+  }
+
+  return {
+    success: false,
+    access_denied: true,
+    status: 'server_error',
+    message: 'Verification failed',
+    user: { email: cleanEmail, device: cleanDevice, status: 'pending', validity: 0 }
+  };
+}
+
 const APP_CLIENT_SECRET = 'StoryGramSecClient_98741488';
 const APP_HMAC_SECRET = 'StoryGram_Sec_Hmac_98741488_Key_v1';
 const rateLimitMap = new Map();
@@ -427,8 +503,17 @@ app.get(['/refresh-cookies', '/api/refresh-cookies'], async (req, res) => {
   });
 });
 
-app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
+app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
+    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
+    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
+    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
+
+    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    if (!verifyRes.success) {
+      return res.status(200).json(verifyRes);
+    }
+
     const headers = buildPocketHeaders(req);
 
     if (!headers.authorization || headers.authorization === 'Bearer ') {
@@ -440,13 +525,13 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
       });
     }
 
-    const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
-    const apiType = req.headers['api_type'] || req.headers['api-type'] || req.query.api_type || 'explore_v2';
+    const language = req.body?.language || req.body?.selected_language || req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+    const apiType = req.body?.api_type || req.headers['api_type'] || req.headers['api-type'] || req.query.api_type || 'explore_v2';
 
     const queryParams = new URLSearchParams({
       api_type: apiType,
       selected_language: language,
-      ...req.query
+      ...(req.method === 'GET' ? req.query : {})
     }).toString();
 
     const url = `${BASE_URL}/v2/feed_api/get_feed_data?${queryParams}`;
@@ -520,8 +605,17 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
   }
 });
 
-app.get(['/search', '/api/search'], async (req, res) => {
+app.all(['/search', '/api/search'], async (req, res) => {
   try {
+    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
+    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
+    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
+
+    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    if (!verifyRes.success) {
+      return res.status(200).json(verifyRes);
+    }
+
     const headers = buildPocketHeaders(req);
 
     if (!headers.authorization || headers.authorization === 'Bearer ') {
@@ -531,16 +625,16 @@ app.get(['/search', '/api/search'], async (req, res) => {
       });
     }
 
-    const query = req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
-    const genre = req.headers['genre'] || req.query.genre || '';
-    const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+    const query = req.body?.query || req.body?.q || req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
+    const genre = req.body?.genre || req.headers['genre'] || req.query.genre || '';
+    const language = req.body?.language || req.body?.selected_language || req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
 
     const queryParams = new URLSearchParams({
       query: query,
       genre: genre,
       selected_language: language,
       language: language,
-      ...req.query
+      ...(req.method === 'GET' ? req.query : {})
     }).toString();
 
     const url = `${BASE_URL}/v3/search/universal.search?${queryParams}`;
@@ -580,14 +674,23 @@ app.get(['/search', '/api/search'], async (req, res) => {
   }
 });
 
-app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
+app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
   try {
-    const showId = req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.params.show_id || req.query.show_id;
+    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
+    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
+    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
+
+    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    if (!verifyRes.success) {
+      return res.status(200).json(verifyRes);
+    }
+
+    const showId = req.body?.show_id || req.body?.showId || req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.params.show_id || req.query.show_id;
 
     if (!showId) {
       return res.status(400).json({
         success: false,
-        error: "Missing 'show_id'. Pass it in headers (show_id: ...) or query params (?show_id=...)"
+        error: "Missing 'show_id'. Pass it in headers, body (show_id: ...) or query params (?show_id=...)"
       });
     }
 
@@ -600,9 +703,9 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       });
     }
 
-    const startPtr = parseInt(req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
-    const pageSource = req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
-    const batchSize = Math.min(Math.max(parseInt(req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
+    const startPtr = parseInt(req.body?.start_ptr || req.body?.startPtr || req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
+    const pageSource = req.body?.page_source || req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
+    const batchSize = Math.min(Math.max(parseInt(req.body?.batch_size || req.body?.limit || req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
 
     const ptrList = [];
     for (let i = 0; i < batchSize; i++) {
@@ -720,11 +823,20 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
   }
 });
 
-app.get(['/api/license', '/api/get_license'], async (req, res) => {
+app.all(['/api/license', '/api/get_license'], async (req, res) => {
   try {
-    const showId = req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.query.show_id;
+    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
+    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
+    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
+
+    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    if (!verifyRes.success) {
+      return res.status(200).json(verifyRes);
+    }
+
+    const showId = req.body?.show_id || req.body?.showId || req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.query.show_id;
     if (!showId) {
-      return res.status(400).json({ success: false, error: "Missing 'show_id'. Please pass 'show_id' in headers." });
+      return res.status(400).json({ success: false, error: "Missing 'show_id'. Please pass 'show_id' in headers or body." });
     }
 
     const headers = buildPocketHeaders(req);
@@ -845,8 +957,17 @@ app.all(['/unlock', '/api/unlock', '/api/subscribe', '/api/user_action'], async 
   }
 });
 
-app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_stories'], async (req, res) => {
+app.all(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_stories'], async (req, res) => {
   try {
+    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
+    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
+    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
+
+    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    if (!verifyRes.success) {
+      return res.status(200).json(verifyRes);
+    }
+
     const headers = buildPocketHeaders(req);
 
     if (!headers.authorization || headers.authorization === 'Bearer ') {
@@ -856,7 +977,7 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
       });
     }
 
-    const showIds = req.headers['show_id'] || req.headers['show-id'] || req.headers['show_ids'] || req.headers['show-ids'] || req.headers['showid'] || req.query.show_id || req.query.show_ids;
+    const showIds = req.body?.show_ids || req.body?.showIds || req.body?.show_id || req.headers['show_id'] || req.headers['show-id'] || req.headers['show_ids'] || req.headers['show-ids'] || req.headers['showid'] || req.query.show_id || req.query.show_ids;
 
     if (!showIds) {
       return res.status(400).json({
@@ -1039,6 +1160,15 @@ app.post(['/api/admin/users', '/admin/users'], async (req, res) => {
 
 app.all(['/api/library', '/library'], async (req, res) => {
   try {
+    const email = req.body?.email || req.headers['x-app-user-email'] || req.query.email || '';
+    const deviceId = req.body?.deviceId || req.body?.device_id || req.headers['x-app-device-id'] || req.query.deviceId || '';
+    const userId = req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.uid || req.query.userId || '';
+
+    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    if (!verifyRes.success) {
+      return res.status(200).json(verifyRes);
+    }
+
     const method = req.method.toLowerCase();
     const config = {
       method: method,
