@@ -152,23 +152,174 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(rateLimiterMiddleware);
 
-app.use((req, res, next) => {
-  if (req.path === '/' || req.path === '/index.html') {
+const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/StoryGram';
+const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
+const verifiedUserCache = new Map();
+
+function buildNoAccessHtml(status = 'restricted', userName = 'User', userEmail = '', userPhoto = '') {
+  let badgeText = 'No Access';
+  let badgeColor = '#f87171';
+  let cardBg = 'rgba(239, 68, 68, 0.12)';
+  let cardBorder = 'rgba(239, 68, 68, 0.3)';
+
+  if (status === 'multiple' || status === 'device_mismatch') {
+    badgeText = 'Device Not Matched';
+    badgeColor = '#f87171';
+    cardBg = 'rgba(239, 68, 68, 0.12)';
+    cardBorder = 'rgba(239, 68, 68, 0.3)';
+  } else if (status === 'expired') {
+    badgeText = 'Validity Expired';
+    badgeColor = '#fb923c';
+    cardBg = 'rgba(249, 115, 22, 0.12)';
+    cardBorder = 'rgba(249, 115, 22, 0.3)';
+  } else if (status === 'blocked') {
+    badgeText = 'Blocked';
+    badgeColor = '#f87171';
+    cardBg = 'rgba(239, 68, 68, 0.12)';
+    cardBorder = 'rgba(239, 68, 68, 0.3)';
+  } else if (status === 'server_error') {
+    badgeText = 'Server Error';
+  }
+
+  const avatarHtml = userPhoto
+    ? `<img src="${userPhoto}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+    : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
+
+  return `
+<style>
+  .account-page-wrap { width: 100%; max-width: 480px; padding: 10px; margin-top: 56px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; }
+  .account-profile-card { width: 100%; background: linear-gradient(135deg, rgba(255, 51, 102, 0.12) 0%, rgba(15, 23, 42, 0.8) 100%); border: 1px solid rgba(255, 51, 102, 0.25); border-radius: 20px; padding: 10px; display: flex; align-items: center; gap: 10px; box-sizing: border-box; }
+  .account-avatar { width: 50px; height: 50px; border-radius: 50%; background: #182238; border: 2px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; color: #94a3b8; overflow: hidden; flex-shrink: 0; }
+  .account-user-info { min-width: 0; flex: 1; }
+  .account-user-name { font-size: 15px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .account-user-email { font-size: 12px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .restricted-status-card { width: 100%; background: ${cardBg}; border: 1px solid ${cardBorder}; border-radius: 14px; padding: 10px; text-align: center; box-sizing: border-box; }
+  .restricted-status-badge { font-size: 16px; font-weight: 800; color: ${badgeColor}; margin: 0; }
+</style>
+<div class="account-page-wrap">
+  <div class="account-profile-card">
+    <div class="account-avatar">${avatarHtml}</div>
+    <div class="account-user-info">
+      <div class="account-user-name">${userName || 'User'}</div>
+      <div class="account-user-email">${userEmail || ''}</div>
+    </div>
+  </div>
+  <div class="restricted-status-card">
+    <div class="restricted-status-badge">${badgeText}</div>
+  </div>
+</div>`;
+}
+
+async function checkUserAccess(req) {
+  const userId = req.body?.userId || req.body?.user_id || req.query?.userId || req.query?.user_id || req.headers['x-app-user-id'] || '';
+  const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query?.deviceId || req.query?.device_id || '';
+  const email = req.body?.email || req.query?.email || req.headers['x-app-email'] || '';
+
+  if (!email && !userId && !deviceId) {
+    return {
+      allowed: false,
+      status: 'restricted',
+      message: 'Missing user credentials',
+      user: { name: 'User', email: '' },
+      html: buildNoAccessHtml('restricted', 'User', '')
+    };
+  }
+
+  const cacheKey = `${userId || email}:${deviceId}`;
+  const now = Date.now();
+  const cached = verifiedUserCache.get(cacheKey);
+
+  if (cached && cached.expiresAt > now) {
+    return cached.result;
+  }
+
+  try {
+    const payload = {
+      user_id: userId,
+      email: email,
+      device_id: deviceId,
+      api_key: PHP_API_KEY,
+      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
+    };
+
+    const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': PHP_API_KEY
+      },
+      timeout: 8000,
+      validateStatus: () => true
+    });
+
+    const data = phpResponse.data;
+    const isAllowed = Boolean(data && (data.status === 'active' || data.status === 'allowed' || data.success === true));
+    const status = (data && data.status) || (isAllowed ? 'active' : 'restricted');
+    const user = (data && data.user) ? data.user : { name: 'User', email: email, photo: '' };
+
+    const result = {
+      allowed: isAllowed,
+      status: status,
+      message: (data && data.message) || (isAllowed ? 'OK' : 'Access Denied'),
+      user: user,
+      html: isAllowed ? '' : buildNoAccessHtml(status, user.name, user.email, user.photo)
+    };
+
+    const ttl = isAllowed ? 3 * 60 * 1000 : 20 * 1000;
+    verifiedUserCache.set(cacheKey, { expiresAt: now + ttl, result });
+
+    if (verifiedUserCache.size > 2000) {
+      for (const [k, v] of verifiedUserCache.entries()) {
+        if (v.expiresAt < now) verifiedUserCache.delete(k);
+      }
+    }
+
+    return result;
+  } catch (err) {
+    console.error('Error verifying user with PHP backend:', err.message);
+    return {
+      allowed: false,
+      status: 'server_error',
+      message: 'Failed to connect to verification server',
+      user: { name: 'User', email: email },
+      html: buildNoAccessHtml('server_error', 'User', email)
+    };
+  }
+}
+
+app.use(async (req, res, next) => {
+  if (req.path === '/' || req.path === '/index.html' || req.path === '/health' || req.path === '/ping') {
     return next();
   }
 
-  const token = req.headers['x-app-token'] || req.headers['x_app_token'] || req.query.app_token;
-  const ua = (req.headers['user-agent'] || '').toLowerCase();
-
-  const isScraper = ua.includes('curl') || ua.includes('python') || ua.includes('postman') || ua.includes('insomnia') || ua.includes('scrapy') || ua.includes('aiohttp') || ua.includes('go-http-client');
-  if (isScraper && !token && !req.headers['x-app-signature']) {
-    return res.status(403).json({ success: false, error: 'Forbidden' });
+  const isSignedApp = verifyDynamicSignature(req);
+  if (!isSignedApp) {
+    return res.status(403).json({ success: false, error: 'Unauthorized: Invalid or expired dynamic signature' });
   }
 
-  if (req.path.startsWith('/api/') || req.path.startsWith('/user/') || req.path.startsWith('/library')) {
-    const isSignedApp = verifyDynamicSignature(req);
-    if (!isSignedApp) {
-      return res.status(403).json({ success: false, error: 'Unauthorized: Invalid or expired dynamic signature' });
+  if (req.path === '/api/user/verify' || req.path === '/user/verify') {
+    return next();
+  }
+
+  const access = await checkUserAccess(req);
+  if (!access.allowed) {
+    const isJson = req.query.format === 'json' ||
+      (req.headers['accept'] && req.headers['accept'].includes('application/json')) ||
+      req.headers['x-response-format'] === 'json' ||
+      req.path.startsWith('/api/') ||
+      req.path.startsWith('/search') ||
+      req.path.startsWith('/show') ||
+      req.path.startsWith('/feed') ||
+      req.path.startsWith('/home');
+
+    if (isJson) {
+      return res.status(403).json({
+        success: false,
+        status: access.status,
+        message: access.message,
+        html: access.html
+      });
+    } else {
+      return res.status(403).send(access.html);
     }
   }
 
@@ -882,27 +1033,24 @@ app.get(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
   }
 });
 
-const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/StoryGram';
-const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
-
 app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
   const isFormatJson = req.query.format === 'json' ||
     req.headers['x-response-format'] === 'json' ||
     (req.body && (req.body.action === 'update_language' || req.body.format === 'json'));
 
   try {
-    const { email, name, photoUrl, photo_url, deviceId, device_id, userId, user_id, google_id, language, lang, action, req_action } = req.body;
+    const { email, name, photoUrl, photo_url, deviceId, device_id, userId, user_id, google_id, language, lang, action, req_action } = req.body || {};
     
-    if (!email) {
+    if (!email && !userId) {
       if (isFormatJson) {
-        return res.status(400).json({ success: false, error: 'Email is required' });
+        return res.status(400).json({ success: false, error: 'Email or User ID is required' });
       }
       return res.status(400).send('<div style="color:#f87171;padding:20px;text-align:center;">Email is required</div>');
     }
 
     const payload = {
       user_id: user_id || userId || google_id || '',
-      email,
+      email: email || '',
       name: name || 'User',
       photo_url: photoUrl || photo_url || '',
       device_id: deviceId || device_id || '',
@@ -938,46 +1086,30 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
       throw (lastError || new Error('Verification backend unreachable'));
     }
 
+    const cacheKey = `${payload.user_id || payload.email}:${payload.device_id}`;
+    const isAllowed = Boolean(phpResponse.data && (phpResponse.data.status === 'active' || phpResponse.data.status === 'allowed' || phpResponse.data.success === true));
+    const status = (phpResponse.data && phpResponse.data.status) || (isAllowed ? 'active' : 'restricted');
+    const user = (phpResponse.data && phpResponse.data.user) ? phpResponse.data.user : { name: payload.name, email: payload.email, photo: payload.photo_url };
+
+    const cacheResult = {
+      allowed: isAllowed,
+      status: status,
+      message: (phpResponse.data && phpResponse.data.message) || (isAllowed ? 'OK' : 'Access Denied'),
+      user: user,
+      html: isAllowed ? '' : buildNoAccessHtml(status, user.name, user.email, user.photo)
+    };
+    const ttl = isAllowed ? 3 * 60 * 1000 : 20 * 1000;
+    verifiedUserCache.set(cacheKey, { expiresAt: Date.now() + ttl, result: cacheResult });
+
     if (isFormatJson) {
       return res.status(phpResponse.status).json(phpResponse.data);
     }
 
-    if (phpResponse.data && (phpResponse.data.status === 'active' || phpResponse.data.success === true)) {
+    if (isAllowed) {
       return res.sendFile(path.join(__dirname, 'app_full.html'));
     }
 
-    const userPhoto = payload.photo_url || (phpResponse.data && phpResponse.data.user && phpResponse.data.user.photo) || '';
-    const userName = (phpResponse.data && phpResponse.data.user && phpResponse.data.user.name) || payload.name || 'User';
-    const userEmail = (phpResponse.data && phpResponse.data.user && phpResponse.data.user.email) || payload.email || '';
-
-    const avatarHtml = userPhoto
-      ? `<img src="${userPhoto}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
-      : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
-
-    const noAccessHtml = `
-<style>
-  .account-page-wrap { width: 100%; max-width: 480px; padding: 10px; margin-top: 56px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; }
-  .account-profile-card { width: 100%; background: linear-gradient(135deg, rgba(255, 51, 102, 0.12) 0%, rgba(15, 23, 42, 0.8) 100%); border: 1px solid rgba(255, 51, 102, 0.25); border-radius: 20px; padding: 10px; display: flex; align-items: center; gap: 10px; box-sizing: border-box; }
-  .account-avatar { width: 50px; height: 50px; border-radius: 50%; background: #182238; border: 2px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; color: #94a3b8; overflow: hidden; flex-shrink: 0; }
-  .account-user-info { min-width: 0; flex: 1; }
-  .account-user-name { font-size: 15px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .account-user-email { font-size: 12px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-  .restricted-status-card { width: 100%; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 14px; padding: 10px; text-align: center; box-sizing: border-box; }
-  .restricted-status-badge { font-size: 16px; font-weight: 800; color: #f87171; margin: 0; }
-</style>
-<div class="account-page-wrap">
-  <div class="account-profile-card">
-    <div class="account-avatar">${avatarHtml}</div>
-    <div class="account-user-info">
-      <div class="account-user-name">${userName}</div>
-      <div class="account-user-email">${userEmail}</div>
-    </div>
-  </div>
-  <div class="restricted-status-card">
-    <div class="restricted-status-badge">No Access</div>
-  </div>
-</div>`;
-
+    const noAccessHtml = buildNoAccessHtml(status, user.name, user.email, user.photo || payload.photo_url);
     return res.status(200).send(noAccessHtml);
   } catch (error) {
     if (isFormatJson) {
