@@ -27,7 +27,7 @@
       });
 
       const originalFetch = window.fetch;
-      window.fetch = function (input, init) {
+      window.fetch = async function (input, init) {
         init = init || {};
         init.headers = init.headers || {};
         const urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
@@ -45,13 +45,24 @@
           return originalFetch.call(this, input, init);
         }
 
-        let ts = Date.now().toString();
-        let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
-        let deviceId = '';
+        let u = null;
         try {
-          deviceId = localStorage.getItem('storygram_device_id') || '';
+          u = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         } catch (e) {}
 
+        let deviceId = (u && (u.deviceId || u.device_id)) || localStorage.getItem('storygram_device_id') || '';
+        if (!deviceId && window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
+          try { deviceId = window.AndroidBridge.getDeviceId() || ''; } catch (e) {}
+        }
+        if (deviceId) {
+          try { localStorage.setItem('storygram_device_id', deviceId); } catch (e) {}
+        }
+
+        const userId = (u && (u.userId || u.user_id || u.uid || u.googleId || u.google_id)) || '';
+        const email = (u && (u.email || u.user_email)) || '';
+
+        let ts = Date.now().toString();
+        let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
         let sig = '';
         if (window.AndroidBridge) {
           if (typeof window.AndroidBridge.getSignedHeaders === 'function') {
@@ -86,8 +97,98 @@
         setHeader('X-App-Nonce', nonce);
         if (deviceId) setHeader('X-App-Device-ID', deviceId);
         if (sig) setHeader('X-App-Signature', sig);
+        if (userId) setHeader('X-App-User-ID', userId);
+        if (email) setHeader('X-App-Email', email);
 
-        return originalFetch.call(this, input, init);
+        const method = (init.method || 'GET').toUpperCase();
+        if (method === 'GET') {
+          try {
+            const uObj = new URL(urlStr, window.location.href);
+            if (userId && !uObj.searchParams.has('userId') && !uObj.searchParams.has('user_id')) {
+              uObj.searchParams.set('userId', userId);
+            }
+            if (deviceId && !uObj.searchParams.has('deviceId') && !uObj.searchParams.has('device_id')) {
+              uObj.searchParams.set('deviceId', deviceId);
+            }
+            if (email && !uObj.searchParams.has('email')) {
+              uObj.searchParams.set('email', email);
+            }
+            if (typeof input === 'string') {
+              input = uObj.pathname + uObj.search;
+            } else if (input && input.url) {
+              input = new Request(uObj.pathname + uObj.search, init);
+            }
+          } catch (e) {}
+        } else if (['POST', 'PUT', 'PATCH'].includes(method)) {
+          if (typeof init.body === 'string') {
+            try {
+              const bodyObj = JSON.parse(init.body);
+              if (typeof bodyObj === 'object' && bodyObj !== null) {
+                if (userId && !bodyObj.userId && !bodyObj.user_id) bodyObj.userId = userId;
+                if (deviceId && !bodyObj.deviceId && !bodyObj.device_id) bodyObj.deviceId = deviceId;
+                if (email && !bodyObj.email) bodyObj.email = email;
+                init.body = JSON.stringify(bodyObj);
+              }
+            } catch (e) {}
+          } else if (!init.body && (userId || deviceId || email)) {
+            init.body = JSON.stringify({ userId, deviceId, email });
+            setHeader('Content-Type', 'application/json');
+          }
+        }
+
+        const response = await originalFetch.call(this, input, init);
+
+        if (response.status === 403 || response.status === 401) {
+          try {
+            const cloned = response.clone();
+            let isNoAccess = false;
+            let statusType = 'restricted';
+            let htmlContent = '';
+            
+            const contentType = cloned.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+              const json = await cloned.json();
+              if (json.status === 'blocked' || json.status === 'expired' || json.status === 'multiple' || json.status === 'device_mismatch' || json.status === 'restricted' || json.success === false) {
+                isNoAccess = true;
+                statusType = json.status || 'restricted';
+                htmlContent = json.html || '';
+              }
+            } else {
+              const text = await cloned.text();
+              if (text.includes('restricted-status') || text.includes('No Access') || text.includes('Blocked') || text.includes('Validity Expired') || text.includes('Device Not Matched')) {
+                isNoAccess = true;
+                htmlContent = text;
+              }
+            }
+
+            if (isNoAccess) {
+              try {
+                document.querySelectorAll('video, audio').forEach(m => {
+                  try { m.pause(); m.src = ''; } catch(e){}
+                });
+                if (window.shakaPlayer) {
+                  try { window.shakaPlayer.unload(); } catch(e){}
+                }
+                if (typeof window.closePlayerBar === 'function') {
+                  window.closePlayerBar();
+                }
+              } catch(e){}
+
+              if (typeof window.setAppState === 'function') {
+                window.setAppState('restricted', { ...u, status: statusType });
+              } else {
+                const mount = document.getElementById('content-mount');
+                if (mount && htmlContent) {
+                  mount.innerHTML = htmlContent;
+                }
+                const spinner = document.getElementById('app-spinner');
+                if (spinner) spinner.style.display = 'none';
+              }
+            }
+          } catch(e){}
+        }
+
+        return response;
       };
 
       const ua = navigator.userAgent || '';
@@ -285,10 +386,18 @@
         try { localStorage.setItem('storygram_device_id', dev); } catch (e) {}
       }
 
-      const email = (u && u.email) || '';
+      const email = (u && (u.email || u.user_email)) || '';
       const name = (u && (u.name || u.displayName)) || 'User';
       const photo = (u && (u.photoUrl || u.photo || u.avatarUrl)) || '';
-      const userId = (u && (u.userId || u.uid)) || '';
+      const userId = (u && (u.userId || u.uid || u.user_id || u.googleId || u.google_id)) || '';
+
+      if (email || userId) {
+        try {
+          localStorage.setItem('storygram_user', JSON.stringify({
+            userId, email, name, photoUrl: photo, deviceId: dev
+          }));
+        } catch (e) {}
+      }
 
       try {
         const res = await fetch('/api/user/verify', {
