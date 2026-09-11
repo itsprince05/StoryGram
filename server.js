@@ -40,6 +40,14 @@ function decryptPocketFmBlob(clientTs, deviceId, cipherBase64) {
   return decrypted;
 }
 
+function cleanPlaysDisplay(val) {
+  if (!val && val !== 0) return '';
+  let str = String(val).trim();
+  str = str.replace(/\s*plays?\s*$/gi, '').trim();
+  if (!str) return '';
+  return `${str} Plays`;
+}
+
 let cachedCookies = '';
 let cachedToken = '';
 let lastFetchDate = '';
@@ -133,23 +141,18 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(rateLimiterMiddleware);
 
 app.use((req, res, next) => {
-  if (req.path === '/' || req.path === '/index.html') {
+  if (req.path === '/' || req.path === '/index.html' || req.path === '/health' || req.path === '/ping') {
     return next();
   }
 
-  const token = req.headers['x-app-token'] || req.headers['x_app_token'] || req.query.app_token;
-  const ua = (req.headers['user-agent'] || '').toLowerCase();
-
-  const isScraper = ua.includes('curl') || ua.includes('python') || ua.includes('postman') || ua.includes('insomnia') || ua.includes('scrapy') || ua.includes('aiohttp') || ua.includes('go-http-client');
-  if (isScraper && !token && !req.headers['x-app-signature']) {
-    return res.status(403).json({ success: false, error: 'Forbidden' });
+  const isSignedApp = verifyDynamicSignature(req);
+  if (!isSignedApp) {
+    return res.status(403).json({ success: false, error: 'Unauthorized: Invalid or expired dynamic signature' });
   }
 
-  if (req.path.startsWith('/api/') || req.path.startsWith('/user/') || req.path.startsWith('/library')) {
-    const isSignedApp = verifyDynamicSignature(req);
-    if (!isSignedApp) {
-      return res.status(403).json({ success: false, error: 'Unauthorized: Invalid or expired dynamic signature' });
-    }
+  const userEmail = req.headers['x-app-user-email'] || (req.body && req.body.email) || '';
+  if (!userEmail && req.path !== '/api/user/verify' && req.path !== '/user/verify' && req.path !== '/api/widevine-license' && req.path !== '/widevine-license') {
+    return res.status(403).json({ success: false, error: 'Unauthorized: User authentication required' });
   }
 
   next();
@@ -407,7 +410,7 @@ app.get(['/refresh-cookies', '/api/refresh-cookies'], async (req, res) => {
   });
 });
 
-app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
+app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
 
@@ -420,8 +423,8 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
       });
     }
 
-    const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
-    const apiType = req.headers['api_type'] || req.headers['api-type'] || req.query.api_type || 'explore_v2';
+    const language = req.headers['x-app-language'] || req.headers['language'] || req.headers['selected_language'] || (req.body && req.body.language) || req.query.language || req.query.selected_language || 'hindi';
+    const apiType = req.headers['api_type'] || req.headers['api-type'] || (req.body && req.body.api_type) || req.query.api_type || 'explore_v2';
 
     const queryParams = new URLSearchParams({
       api_type: apiType,
@@ -456,7 +459,7 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
 
         const statsObj = info.stats || {};
         const avgRating = statsObj.avg_rating !== undefined ? statsObj.avg_rating : (statsObj.rating !== undefined ? statsObj.rating : null);
-        const totalPlaysDisplay = statsObj.total_plays_display || (statsObj.total_plays ? String(statsObj.total_plays) : "");
+        const totalPlaysDisplay = cleanPlaysDisplay(statsObj.total_plays_display || statsObj.total_plays || "");
 
         if (showTitle || showId) {
           entities.push({
@@ -500,7 +503,7 @@ app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
   }
 });
 
-app.get(['/search', '/api/search'], async (req, res) => {
+app.all(['/search', '/api/search'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
 
@@ -511,9 +514,9 @@ app.get(['/search', '/api/search'], async (req, res) => {
       });
     }
 
-    const query = req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
-    const genre = req.headers['genre'] || req.query.genre || '';
-    const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+    const query = (req.body && (req.body.query || req.body.q)) || req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
+    const genre = (req.body && req.body.genre) || req.headers['genre'] || req.query.genre || '';
+    const language = req.headers['x-app-language'] || req.headers['language'] || req.headers['selected_language'] || (req.body && req.body.language) || req.query.language || req.query.selected_language || 'hindi';
 
     const queryParams = new URLSearchParams({
       query: query,
@@ -533,7 +536,7 @@ app.get(['/search', '/api/search'], async (req, res) => {
           return {
             show_id: showId,
             title: show.title || show.show_title || "",
-            plays: show.plays !== undefined ? String(show.plays) : "",
+            plays: cleanPlaysDisplay(show.plays !== undefined ? show.plays : (show.stats?.total_plays_display || "")),
             avg_rating: show.avg_rating !== undefined ? show.avg_rating : (show.rating !== undefined ? show.rating : null),
             image_url: show.image_url || show.cover_url || ""
           };
@@ -560,14 +563,14 @@ app.get(['/search', '/api/search'], async (req, res) => {
   }
 });
 
-app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
+app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
   try {
-    const showId = req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.params.show_id || req.query.show_id;
+    const showId = (req.body && (req.body.showId || req.body.show_id)) || req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.params.show_id || req.query.show_id;
 
     if (!showId) {
       return res.status(400).json({
         success: false,
-        error: "Missing 'show_id'. Pass it in headers (show_id: ...) or query params (?show_id=...)"
+        error: "Missing 'show_id'. Pass it in headers (show_id: ...) or body or query params (?show_id=...)"
       });
     }
 
@@ -580,9 +583,9 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       });
     }
 
-    const startPtr = parseInt(req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
-    const pageSource = req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
-    const batchSize = Math.min(Math.max(parseInt(req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
+    const startPtr = parseInt((req.body && (req.body.currPtr !== undefined ? req.body.currPtr : req.body.curr_ptr)) || req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
+    const pageSource = (req.body && req.body.page_source) || req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
+    const batchSize = Math.min(Math.max(parseInt((req.body && req.body.limit) || req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
 
     const ptrList = [];
     for (let i = 0; i < batchSize; i++) {
@@ -684,7 +687,7 @@ app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
           next_ptr: startPtr + allStories.length,
           stats: {
             avg_rating: baseShow.stats?.avg_rating !== undefined ? baseShow.stats.avg_rating : null,
-            total_plays_display: baseShow.stats?.total_plays_display || ""
+            total_plays_display: cleanPlaysDisplay(baseShow.stats?.total_plays_display || baseShow.stats?.total_plays || "")
           }
         }
       ]
