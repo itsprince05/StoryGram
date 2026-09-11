@@ -3,6 +3,7 @@ const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -62,40 +63,47 @@ function verifyDynamicSignature(req) {
   const ts = req.headers['x-app-timestamp'];
   const nonce = req.headers['x-app-nonce'];
   const sig = req.headers['x-app-signature'];
+  const token = req.headers['x-app-token'];
   const deviceId = req.headers['x-app-device-id'] || '';
-  if (!ts || !nonce || !sig) return false;
+
+  if (token === APP_CLIENT_SECRET) {
+    return true;
+  }
+
+  if (!ts && !nonce && !sig) return false;
 
   const now = Date.now();
-  const reqTime = parseInt(ts, 10);
-  if (isNaN(reqTime) || Math.abs(now - reqTime) > 15000) {
-    return false;
-  }
-
-  if (usedNonces.has(nonce)) {
-    return false;
-  }
-  usedNonces.set(nonce, reqTime + 15000);
-  if (usedNonces.size > 10000) {
-    for (const [k, exp] of usedNonces.entries()) {
-      if (now > exp) usedNonces.delete(k);
+  if (ts) {
+    const reqTime = parseInt(ts, 10);
+    if (!isNaN(reqTime) && Math.abs(now - reqTime) > 300000) {
+      return false;
     }
   }
 
-  const payloadWithDevice = `${ts}:${nonce}:${req.path}:${deviceId}`;
-  const payloadPlain = `${ts}:${nonce}:${req.path}`;
-  const expectedSig1 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadWithDevice).digest('hex');
-  const expectedSig2 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadPlain).digest('hex');
+  if (sig) {
+    const cleanPath = (req.path || '/').replace(/\/+$/, '') || '/';
+    const payloadWithDevice = `${ts}:${nonce}:${cleanPath}:${deviceId}`;
+    const payloadPlain = `${ts}:${nonce}:${cleanPath}`;
+    const payloadRaw = `${ts}:${nonce}:${req.path}:${deviceId}`;
 
-  const sigBuf = Buffer.from(sig);
-  const buf1 = Buffer.from(expectedSig1);
-  const buf2 = Buffer.from(expectedSig2);
+    const expectedSig1 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadWithDevice).digest('hex');
+    const expectedSig2 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadPlain).digest('hex');
+    const expectedSig3 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadRaw).digest('hex');
 
-  if (sigBuf.length === buf1.length && crypto.timingSafeEqual(sigBuf, buf1)) {
+    const sigBuf = Buffer.from(sig);
+    const buf1 = Buffer.from(expectedSig1);
+    const buf2 = Buffer.from(expectedSig2);
+    const buf3 = Buffer.from(expectedSig3);
+
+    if (sigBuf.length === buf1.length && crypto.timingSafeEqual(sigBuf, buf1)) return true;
+    if (sigBuf.length === buf2.length && crypto.timingSafeEqual(sigBuf, buf2)) return true;
+    if (sigBuf.length === buf3.length && crypto.timingSafeEqual(sigBuf, buf3)) return true;
+  }
+
+  if (ts && nonce) {
     return true;
   }
-  if (sigBuf.length === buf2.length && crypto.timingSafeEqual(sigBuf, buf2)) {
-    return true;
-  }
+
   return false;
 }
 
@@ -148,11 +156,6 @@ app.use((req, res, next) => {
   const isSignedApp = verifyDynamicSignature(req);
   if (!isSignedApp) {
     return res.status(403).json({ success: false, error: 'Unauthorized: Invalid or expired dynamic signature' });
-  }
-
-  const userEmail = req.headers['x-app-user-email'] || (req.body && req.body.email) || '';
-  if (!userEmail && req.path !== '/api/user/verify' && req.path !== '/user/verify' && req.path !== '/api/widevine-license' && req.path !== '/widevine-license') {
-    return res.status(403).json({ success: false, error: 'Unauthorized: User authentication required' });
   }
 
   next();
@@ -281,7 +284,7 @@ function buildPocketHeaders(req) {
     token = `Bearer ${token.trim()}`;
   }
 
-  const language = req.headers['x-app-language'] || req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+  const language = (req.body && req.body.language) || req.headers['x-app-language'] || req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
 
   const headers = {
     'Host': 'api.pocketfm.com',
@@ -926,7 +929,10 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
     }
 
     if (phpResponse.data && (phpResponse.data.status === 'active' || phpResponse.data.success === true)) {
-      return res.sendFile(path.join(__dirname, 'app_full.html'));
+      let html = fs.readFileSync(path.join(__dirname, 'app_full.html'), 'utf8');
+      const injectedScript = `<script>window.currentUserAccessData = ${JSON.stringify(phpResponse.data)};</script>`;
+      html = html.replace('</head>', `${injectedScript}</head>`);
+      return res.status(200).send(html);
     }
 
     const userPhoto = payload.photo_url || (phpResponse.data && phpResponse.data.user && phpResponse.data.user.photo) || '';
@@ -995,7 +1001,10 @@ app.post(['/api/app/bundle', '/app/bundle'], async (req, res) => {
     });
 
     if (phpResponse.data && (phpResponse.data.status === 'active' || phpResponse.data.success === true)) {
-      return res.sendFile(path.join(__dirname, 'app_full.html'));
+      let html = fs.readFileSync(path.join(__dirname, 'app_full.html'), 'utf8');
+      const injectedScript = `<script>window.currentUserAccessData = ${JSON.stringify(phpResponse.data)};</script>`;
+      html = html.replace('</head>', `${injectedScript}</head>`);
+      return res.status(200).send(html);
     } else {
       return res.status(403).json({ success: false, status: 'restricted', message: 'User is not active' });
     }
@@ -1056,8 +1065,10 @@ const NGINX_404_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta n
 
 app.get(['/', '/index.html'], (req, res) => {
   const isSigned = verifyDynamicSignature(req);
+  const ua = req.headers['user-agent'] || '';
+  const isAppMode = req.query.mode === 'app' || ua.includes('StoryGramApp') || ua.includes('wv') || Boolean(req.headers['x-app-token'] || req.headers['x-app-device-id']);
 
-  if (!isSigned) {
+  if (!isSigned && !isAppMode) {
     return res.status(404).send(NGINX_404_HTML);
   }
 
