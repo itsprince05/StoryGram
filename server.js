@@ -148,10 +148,8 @@ app.use((req, res, next) => {
 
   if (req.path.startsWith('/api/') || req.path.startsWith('/user/') || req.path.startsWith('/library')) {
     const isSignedApp = verifyDynamicSignature(req);
-    const isTokenVerified = (token === APP_CLIENT_SECRET) && (ua.includes('storygramapp') || ua.includes('wv') || req.query.mode === 'app' || Boolean(req.headers['x-requested-with']));
-
-    if (!isSignedApp && !isTokenVerified) {
-      return res.status(403).json({ success: false, error: 'Unauthorized API call' });
+    if (!isSignedApp) {
+      return res.status(403).json({ success: false, error: 'Unauthorized: Invalid or expired dynamic signature' });
     }
   }
 
