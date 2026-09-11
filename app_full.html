@@ -48,48 +48,26 @@
         let ts = Date.now().toString();
         let nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
         let deviceId = '';
-        let userEmail = '';
-        let userId = '';
-        let userName = '';
-        let userLang = '';
         try {
           deviceId = localStorage.getItem('storygram_device_id') || '';
-          const userStr = localStorage.getItem('storygram_user');
-          if (userStr) {
-            const u = JSON.parse(userStr);
-            if (u) {
-              userEmail = u.email || '';
-              userId = u.userId || u.user_id || u.uid || '';
-              userName = u.name || '';
-            }
-          }
-          userLang = localStorage.getItem('storygram_language') || '';
-        } catch (e) { }
+        } catch (e) {}
 
         let sig = '';
-        let token = 'StoryGramSecClient_98741488';
         if (window.AndroidBridge) {
           if (typeof window.AndroidBridge.getSignedHeaders === 'function') {
             try {
               const res = JSON.parse(window.AndroidBridge.getSignedHeaders(pathname));
-              if (res) {
-                if (res.signature) sig = res.signature;
+              if (res && res.signature) {
+                sig = res.signature;
                 if (res.timestamp) ts = res.timestamp;
                 if (res.nonce) nonce = res.nonce;
                 if (res.deviceId) deviceId = res.deviceId;
-                if (res.token) token = res.token;
               }
-            } catch (e) { }
-          }
-          if (!sig && typeof window.AndroidBridge.getHmacSignature === 'function') {
+            } catch (e) {}
+          } else if (typeof window.AndroidBridge.getHmacSignature === 'function') {
             try {
               sig = window.AndroidBridge.getHmacSignature(ts, nonce, pathname, deviceId);
-            } catch (e) { }
-          }
-          if (typeof window.AndroidBridge.getDeviceId === 'function' && !deviceId) {
-            try {
-              deviceId = window.AndroidBridge.getDeviceId() || deviceId;
-            } catch (e) { }
+            } catch (e) {}
           }
         }
 
@@ -108,32 +86,6 @@
         setHeader('X-App-Nonce', nonce);
         if (deviceId) setHeader('X-App-Device-ID', deviceId);
         if (sig) setHeader('X-App-Signature', sig);
-        setHeader('X-App-Token', 'StoryGramSecClient_98741488');
-
-        if (!init.method || init.method.toUpperCase() === 'GET') {
-          init.method = 'POST';
-          setHeader('Content-Type', 'application/json');
-          init.body = JSON.stringify({
-            email: userEmail,
-            userId: userId,
-            name: userName,
-            deviceId: deviceId,
-            language: userLang || 'hindi'
-          });
-        } else if (init.body) {
-          try {
-            let parsed = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
-            if (typeof parsed === 'object' && parsed !== null) {
-              if (!parsed.email && userEmail) parsed.email = userEmail;
-              if (!parsed.userId && !parsed.user_id && userId) parsed.userId = userId;
-              if (!parsed.deviceId && !parsed.device_id && deviceId) parsed.deviceId = deviceId;
-              if (!parsed.name && userName) parsed.name = userName;
-              if (!parsed.language && !parsed.lang && userLang) parsed.language = userLang;
-              init.body = JSON.stringify(parsed);
-              setHeader('Content-Type', 'application/json');
-            }
-          } catch (e) { }
-        }
 
         return originalFetch.call(this, input, init);
       };
@@ -277,7 +229,7 @@
       padding-bottom: calc(var(--player-height) + var(--nav-height) + 10px);
     }
 
-
+    
     .action-bar {
       width: 100%;
       max-width: 480px;
@@ -399,7 +351,7 @@
       border-radius: var(--radius-full);
     }
 
-
+    
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -562,7 +514,7 @@
       opacity: 1;
     }
 
-
+    
     .tab-content {
       display: none;
       flex-direction: column;
@@ -585,7 +537,7 @@
       }
     }
 
-
+    
     .hero-slider-wrapper {
       margin: 10px;
       position: relative;
@@ -745,7 +697,7 @@
       box-shadow: 0 0 8px var(--primary);
     }
 
-
+    
     .section {
       margin-top: 10px;
       padding: 0 10px;
@@ -886,7 +838,7 @@
       gap: 4px;
     }
 
-
+    
     .search-box {
       margin: 10px;
       position: relative;
@@ -1022,7 +974,7 @@
       line-height: 1.3;
     }
 
-
+    
     .show-page-header {
       width: 100%;
       max-width: 480px;
@@ -1294,7 +1246,7 @@
       background: var(--bg-surface-hover);
     }
 
-
+    
     .player-bar {
       position: fixed;
       bottom: var(--nav-height);
@@ -1495,7 +1447,7 @@
       background: rgba(239, 68, 68, 0.2);
     }
 
-
+    
     .fs-player-backdrop {
       position: fixed;
       inset: 0;
@@ -1896,7 +1848,7 @@
       fill: #fff;
     }
 
-
+    
     .fs-bottom-actions-row {
       width: 100%;
       display: flex;
@@ -1951,7 +1903,7 @@
       gap: 8px;
     }
 
-
+    
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -1996,7 +1948,7 @@
       transform: translateY(-2px);
     }
 
-
+    
     .library-header-pills {
       display: flex;
       gap: 10px;
@@ -2039,7 +1991,7 @@
       height: 14px;
     }
 
-
+    
     .account-page-wrap {
       padding: 12px 10px 24px;
       display: flex;
@@ -2185,7 +2137,7 @@
       background: rgba(239, 68, 68, 0.2);
     }
 
-
+    
     .loader {
       display: flex;
       align-items: center;
@@ -2260,7 +2212,7 @@
       display: none !important;
     }
 
-
+    
     .lucide,
     svg.lucide,
     [data-lucide] {
@@ -2580,7 +2532,7 @@
       box-shadow: 0 4px 14px rgba(255, 51, 102, 0.4);
     }
 
-
+    
     .app-fullscreen-screen {
       position: fixed;
       top: 0;
@@ -2652,7 +2604,7 @@
 
 <body>
 
-
+  
   <div id="app-loading-screen" class="app-fullscreen-screen" style="justify-content: flex-start;">
     <header class="action-bar" style="display: flex; width: 100%;">
       <div class="action-bar-top">
@@ -2683,9 +2635,9 @@
     </div>
   </div>
 
-
+  
   <div id="app-restricted-screen" class="app-fullscreen-screen" style="display: none; justify-content: flex-start;">
-
+    
     <header class="action-bar" style="display: flex; width: 100%;">
       <div class="action-bar-top">
         <div class="brand">
@@ -2703,7 +2655,7 @@
 
     <div class="account-page-wrap"
       style="width: 100%; max-width: 480px; padding: 10px; margin-top: 56px; display: flex; flex-direction: column; gap: 10px;">
-
+      
       <div class="account-profile-card" style="padding: 10px; gap: 10px;">
         <div class="account-avatar" id="restricted-avatar-container">
           <svg id="restricted-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -2719,16 +2671,16 @@
         </div>
       </div>
 
-
+      
       <div class="restricted-status-card" id="restricted-status-card" style="padding: 10px;">
         <div class="restricted-status-badge" id="restricted-status-badge">No Access</div>
       </div>
     </div>
   </div>
 
-
+  
   <div class="app-frame" id="app-frame" style="display: none;">
-
+    
     <header class="action-bar">
       <div class="action-bar-top">
         <a href="#" class="brand" id="action-bar-brand" onclick="switchTab('home')">
@@ -2756,9 +2708,9 @@
     </header>
 
     <main>
-
+      
       <div id="tab-home" class="tab-content active">
-
+        
         <div id="hero-slider-container" class="hero-slider-wrapper" style="display: none;">
           <div id="hero-slides-track" class="hero-slides-track"></div>
           <div id="hero-dots" class="hero-dots"></div>
@@ -2781,7 +2733,7 @@
         </div>
       </div>
 
-
+      
       <div id="tab-show-detail" class="tab-content">
         <div class="show-page-header">
           <div class="icon-btn" onclick="goBack()" title="Back">
@@ -2834,7 +2786,7 @@
         </div>
       </div>
 
-
+      
       <div id="tab-search" class="tab-content">
         <form class="search-box" id="search-form" onsubmit="handleSearchSubmit(event)" action="javascript:void(0);">
           <input type="search" id="search-input" class="search-input" placeholder="Search shows, characters, stories..."
@@ -2854,7 +2806,7 @@
         </div>
       </div>
 
-
+      
       <div id="tab-library" class="tab-content">
         <div class="library-header-pills">
           <button class="library-tab-pill active" id="lib-pill-episodes" onclick="switchLibrarySection('episodes')">
@@ -2870,9 +2822,9 @@
         <div id="library-content-container" style="padding: 10px;"></div>
       </div>
 
-
+      
       <div id="tab-account" class="tab-content">
-        <div class="account-page-wrap" style="padding: 10px;">
+        <div class="account-page-wrap" style="padding: 16px 12px;">
           <div class="account-profile-card">
             <div class="account-avatar" id="account-avatar-container">
               <svg id="account-avatar-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -2889,7 +2841,7 @@
             </div>
           </div>
 
-          <div class="account-card">
+          <div class="account-card" style="margin-top: 16px;">
             <div class="account-row" onclick="openLanguageModal()" style="cursor: pointer;">
               <div class="account-row-left">
                 <i data-lucide="globe" style="color: var(--primary);"></i>
@@ -2914,7 +2866,7 @@
       </div>
     </main>
 
-
+    
     <div id="player-bar" class="player-bar hidden" onclick="openFullscreenPlayer()">
       <div class="player-progress-wrap" onclick="seekAudio(event); event.stopPropagation();">
         <div id="player-buffer-bar" class="player-buffer-bar"></div>
@@ -2940,7 +2892,7 @@
       </div>
     </div>
 
-
+    
     <div id="player-modal-backdrop" class="fs-player-backdrop" onclick="closeFullscreenPlayerOnBackdrop(event)">
       <div id="fullscreen-player-modal" class="fs-player-sheet">
         <div class="fs-bg-glow">
@@ -3038,7 +2990,7 @@
       </div>
     </div>
 
-
+    
     <nav class="bottom-nav">
       <div class="nav-item active" onclick="switchTab('home')">
         <i data-lucide="home"></i>
@@ -3064,7 +3016,7 @@
     </nav>
   </div>
 
-
+  
   <div id="language-modal" class="modal-backdrop" onclick="closeLanguageModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -3076,7 +3028,7 @@
     </div>
   </div>
 
-
+  
   <div id="episodes-range-modal" class="modal-backdrop" onclick="closeEpisodeRangeModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -3088,7 +3040,7 @@
     </div>
   </div>
 
-
+  
   <div id="speed-modal" class="modal-backdrop" onclick="closeSpeedModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -3099,7 +3051,7 @@
     </div>
   </div>
 
-
+  
   <div id="sleep-timer-modal" class="modal-backdrop" onclick="closeSleepTimerModalOnBackdrop(event)">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -3110,60 +3062,17 @@
     </div>
   </div>
 
-
+  
   <div id="toast" class="toast">
     <i data-lucide="check-circle-2" style="color: #4ade80;"></i>
     <span id="toast-message">Notification</span>
   </div>
 
-
+  
   <audio id="audio-element" preload="auto"></audio>
 
   <script>
-    const AVAILABLE_LANGUAGES = [
-      { id: 'hindi', name: 'Hindi' },
-      { id: 'english', name: 'English' },
-      { id: 'tamil', name: 'Tamil' },
-      { id: 'bengali', name: 'Bengali' },
-      { id: 'marathi', name: 'Marathi' },
-      { id: 'telugu', name: 'Telugu' },
-      { id: 'malayalam', name: 'Malayalam' },
-      { id: 'kannada', name: 'Kannada' },
-      { id: 'spanish', name: 'Spanish' },
-      { id: 'german', name: 'German' },
-      { id: 'portuguese', name: 'Portuguese' },
-      { id: 'french', name: 'French' }
-    ];
-
-    function getLanguageDisplayName(langId) {
-      const clean = (langId || 'hindi').toLowerCase().trim();
-      const found = AVAILABLE_LANGUAGES.find(l => l.id === clean);
-      return found ? found.name : (clean.charAt(0).toUpperCase() + clean.slice(1));
-    }
-
     let currentLanguage = (localStorage.getItem('storygram_language') || 'hindi').toLowerCase().trim();
-
-    function updateLanguageLabels() {
-      const saved = (localStorage.getItem('storygram_language') || currentLanguage || 'hindi').toLowerCase().trim();
-      currentLanguage = saved;
-      const displayName = getLanguageDisplayName(saved);
-      const btn = document.getElementById('current-lang-label');
-      if (btn) btn.innerText = displayName;
-      const acc = document.getElementById('account-current-lang');
-      if (acc) acc.innerText = displayName;
-      const set = document.getElementById('settings-current-lang');
-      if (set) set.innerText = displayName;
-    }
-
-    updateLanguageLabels();
-
-    function formatPlaysText(val) {
-      if (!val && val !== 0) return '1M+';
-      let str = String(val).trim();
-      str = str.replace(/\s*plays?\s*$/gi, '').trim();
-      return str || '1M+';
-    }
-
     let currentShowId = null;
     let currentShowObj = null;
     let currentNextPtr = 0;
@@ -3189,20 +3098,7 @@
     let isLoadingMoreLibrary = false;
 
     function formatValidUntilDate(val) {
-      if (val === undefined || val === null || val === '') {
-        if (window.currentUserAccessData) {
-          val = window.currentUserAccessData.validity !== undefined ? window.currentUserAccessData.validity : (window.currentUserAccessData.user && window.currentUserAccessData.user.validity);
-        }
-        if (val === undefined || val === null || val === '') {
-          try {
-            const saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
-            if (saved && saved.validity !== undefined) {
-              val = saved.validity;
-            }
-          } catch (e) { }
-        }
-      }
-      if (val === undefined || val === null || val === '' || val === 0 || val === '0' || val === 'lifetime' || val === 'Lifetime') {
+      if (!val || val === 0 || val === '0' || val === 'lifetime' || val === 'Lifetime') {
         return 'Lifetime';
       }
       let dateObj = null;
@@ -3217,7 +3113,7 @@
         }
       }
       if (!dateObj || isNaN(dateObj.getTime())) {
-        return 'Lifetime';
+        return val || 'Lifetime';
       }
 
       let hours = dateObj.getHours();
@@ -3225,13 +3121,12 @@
       const ampm = hours >= 12 ? 'PM' : 'AM';
       hours = hours % 12;
       hours = hours ? hours : 12;
-      const hoursStr = String(hours).padStart(2, '0');
 
       const day = String(dateObj.getDate()).padStart(2, '0');
       const month = String(dateObj.getMonth() + 1).padStart(2, '0');
       const year = dateObj.getFullYear();
 
-      return `${hoursStr}:${minutes} ${ampm} - ${day}/${month}/${year}`;
+      return `${hours}:${minutes} ${ampm} - ${day}/${month}/${year}`;
     }
 
     let playHistory = [];
@@ -3505,11 +3400,27 @@
           langEl.innerText = langObj ? langObj.name : currentLanguage;
         }
         const accExpiry = document.getElementById('account-vip-expiry');
-        if (accExpiry) {
-          accExpiry.innerText = formatValidUntilDate();
+        if (accExpiry && currentUserAccessData) {
+          let val = currentUserAccessData.validity !== undefined ? currentUserAccessData.validity : (currentUserAccessData.allowed_until !== undefined ? currentUserAccessData.allowed_until : (currentUserAccessData.user && currentUserAccessData.user.validity));
+          accExpiry.innerText = formatValidUntilDate(val);
         }
       }
     }
+
+    const AVAILABLE_LANGUAGES = [
+      { id: 'hindi', name: 'Hindi' },
+      { id: 'english', name: 'English' },
+      { id: 'tamil', name: 'Tamil' },
+      { id: 'bengali', name: 'Bengali' },
+      { id: 'marathi', name: 'Marathi' },
+      { id: 'telugu', name: 'Telugu' },
+      { id: 'malayalam', name: 'Malayalam' },
+      { id: 'kannada', name: 'Kannada' },
+      { id: 'spanish', name: 'Spanish' },
+      { id: 'german', name: 'German' },
+      { id: 'portuguese', name: 'Portuguese' },
+      { id: 'french', name: 'French' }
+    ];
 
     function openLanguageModal(pushHistory = true) {
       renderLanguageGrid();
@@ -3550,17 +3461,24 @@
     function selectAppLanguage(langId) {
       currentLanguage = (langId || 'hindi').toLowerCase().trim();
       try { localStorage.setItem('storygram_language', currentLanguage); } catch (e) { }
-      updateLanguageLabels();
+      const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
+      const label = langObj ? langObj.name : currentLanguage;
+      const btnLabel = document.getElementById('current-lang-label');
+      if (btnLabel) btnLabel.innerText = label;
+
+      const settingsLang = document.getElementById('settings-current-lang');
+      if (settingsLang) settingsLang.innerText = label;
+
+      const accountLang = document.getElementById('account-current-lang');
+      if (accountLang) accountLang.innerText = label;
+
       renderLanguageGrid();
       closeLanguageModal();
       fetchHomeFeed();
 
       try {
         let saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
-        let email = saved.email || '';
-        let userId = saved.userId || saved.uid || '';
-        let deviceId = getDeviceId();
-        if (email) {
+        if (saved && saved.email) {
           fetch('/api/user/verify?format=json', {
             method: 'POST',
             headers: {
@@ -3569,10 +3487,9 @@
             },
             body: JSON.stringify({
               action: 'update_language',
-              email: email,
+              email: saved.email,
               language: currentLanguage,
-              deviceId: deviceId,
-              userId: userId
+              deviceId: getDeviceId()
             })
           }).catch(() => { });
         }
@@ -3661,7 +3578,7 @@
         const hasRank = show.category_rank != null && show.category_rank !== '';
         const hasRating = show.rating != null && show.rating !== '';
         const hasPlays = show.plays != null && show.plays !== '';
-        const playsText = hasPlays ? `${formatPlaysText(show.plays)} Plays` : '';
+        const playsText = hasPlays ? (show.plays.toString().toLowerCase().includes('play') ? show.plays : `${show.plays} Plays`) : '';
 
         return `
         <div class="hero-slide" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
@@ -3738,22 +3655,11 @@
         `;
       }
 
-      let saved = {};
-      try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
-
       try {
         const response = await fetch('/home', {
-          method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'language': currentLanguage
-          },
-          body: JSON.stringify({
-            email: saved.email || '',
-            userId: saved.userId || saved.uid || '',
-            deviceId: getDeviceId(),
-            language: currentLanguage
-          })
+          }
         });
         if (response.ok) {
           const data = await response.json();
@@ -3852,7 +3758,7 @@
                   </div>
                 </div>
                 <div class="card-title">${escapeHtml(show.title || 'Untitled')}</div>
-                <div class="card-meta"><i data-lucide="headphones"></i> ${formatPlaysText(show.plays)} Plays</div>
+                <div class="card-meta"><i data-lucide="headphones"></i> ${show.plays || '1M+'} plays</div>
               </div>
             `).join('')}
           </div>
@@ -4082,26 +3988,13 @@
       if (mode === 'replace') {
         currentTopPtr = currPtr;
       }
-      let saved = {};
-      try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
-
       try {
         const response = await fetch('/show', {
-          method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'show_id': showId,
             'curr_ptr': String(currPtr),
             'language': currentLanguage
-          },
-          body: JSON.stringify({
-            email: saved.email || '',
-            userId: saved.userId || saved.uid || '',
-            deviceId: getDeviceId(),
-            showId: showId,
-            currPtr: currPtr,
-            language: currentLanguage
-          })
+          }
         });
         if (response.ok) {
           const data = await response.json();
@@ -4130,8 +4023,8 @@
               document.getElementById('show-badge-rating').style.display = 'none';
             }
 
-            if (showData.stats && (showData.stats.total_plays_display || showData.stats.total_plays)) {
-              document.getElementById('show-badge-plays-text').innerText = `${formatPlaysText(showData.stats.total_plays_display || showData.stats.total_plays)} Plays`;
+            if (showData.stats && showData.stats.total_plays_display) {
+              document.getElementById('show-badge-plays-text').innerText = `${showData.stats.total_plays_display} Plays`;
               document.getElementById('show-badge-plays').style.display = 'inline-flex';
             } else {
               document.getElementById('show-badge-plays').style.display = 'none';
@@ -5165,6 +5058,7 @@
       if (currentAppState !== 'allowed' && userAccessStatus !== 'allowed' && userAccessStatus !== 'active') {
         const lockModal = document.getElementById('access-lock-modal');
         if (lockModal) lockModal.classList.remove('hidden');
+        verifyUserAccess();
         return;
       }
 
@@ -5489,24 +5383,12 @@
 
       container.innerHTML = `<div class="loader" style="min-height: 40vh;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>`;
 
-      let saved = {};
-      try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
-
       try {
         const res = await fetch('/search', {
-          method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'query': query,
             'language': currentLanguage
-          },
-          body: JSON.stringify({
-            email: saved.email || '',
-            userId: saved.userId || saved.uid || '',
-            deviceId: getDeviceId(),
-            query: query,
-            language: currentLanguage
-          })
+          }
         });
         if (res.ok) {
           const data = await res.json();
@@ -5622,10 +5504,11 @@
         if (appFrame) appFrame.style.display = 'none';
       } else if (state === 'login') {
         if (loadingScreen) loadingScreen.style.display = 'none';
-        if (window.AndroidBridge && typeof window.AndroidBridge.requestLogin === 'function') {
-          window.AndroidBridge.requestLogin();
-        } else {
-          setAppState('allowed', { name: 'User', email: 'user@storygram.com', status: 'active' });
+        if (restrictedScreen) restrictedScreen.style.display = 'none';
+        if (appFrame) appFrame.style.display = 'none';
+
+        if (window.AndroidBridge && typeof window.AndroidBridge.requestLogout === 'function') {
+          window.AndroidBridge.requestLogout();
         }
       } else if (state === 'restricted') {
         if (loadingScreen) loadingScreen.style.display = 'none';
@@ -5926,7 +5809,6 @@
       let avatarUrl = '';
       let deviceId = '';
       let userId = '';
-      let validity = 0;
 
       if (typeof arg1 === 'object' && arg1 !== null) {
         name = arg1.name || arg1.displayName || 'User';
@@ -5934,7 +5816,6 @@
         avatarUrl = arg1.avatarUrl || arg1.photoUrl || arg1.photo_url || '';
         deviceId = arg1.deviceId || arg1.device_id || '';
         userId = arg1.userId || arg1.user_id || arg1.googleId || arg1.google_id || arg1.id || '';
-        validity = arg1.validity !== undefined ? arg1.validity : (arg1.user && arg1.user.validity !== undefined ? arg1.user.validity : 0);
       } else if (typeof arg1 === 'string' && (arg1.trim().startsWith('{') || !arg2)) {
         try {
           const parsed = JSON.parse(arg1);
@@ -5944,7 +5825,6 @@
             avatarUrl = parsed.avatarUrl || parsed.photoUrl || parsed.photo_url || '';
             deviceId = parsed.deviceId || parsed.device_id || '';
             userId = parsed.userId || parsed.user_id || parsed.googleId || parsed.google_id || parsed.id || '';
-            validity = parsed.validity !== undefined ? parsed.validity : (parsed.user && parsed.user.validity !== undefined ? parsed.user.validity : 0);
           } else {
             name = arg1;
           }
@@ -5957,10 +5837,6 @@
         avatarUrl = arg3 || '';
         deviceId = arg4 || '';
         userId = arg5 || '';
-      }
-
-      if (!validity && window.currentUserAccessData) {
-        validity = window.currentUserAccessData.validity !== undefined ? window.currentUserAccessData.validity : (window.currentUserAccessData.user && window.currentUserAccessData.user.validity !== undefined ? window.currentUserAccessData.user.validity : 0);
       }
 
       if (!deviceId || !deviceId.trim()) {
@@ -5976,8 +5852,7 @@
         name: name || 'User',
         email: email || '',
         avatarUrl: avatarUrl || '',
-        deviceId: deviceId,
-        validity: validity
+        deviceId: deviceId
       };
 
       try {
@@ -5985,13 +5860,16 @@
       } catch (e) { }
 
       if (!email || !email.trim()) {
+        console.warn("updateUserProfile called without email. Setting login state.");
         setAppState('login');
         return;
       }
 
-      userAccessStatus = 'allowed';
-      setAppState('allowed', userObj);
-      updateLanguageLabels();
+      if (currentAppState !== 'allowed') {
+        setAppState('loading');
+      }
+
+      verifyUserAccess(userObj);
     }
 
     function loadSavedUserProfile() {
@@ -6011,49 +5889,13 @@
       try {
         const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         if (saved && saved.email && saved.email.trim()) {
-          if (window.currentUserAccessData) {
-            const val = window.currentUserAccessData.validity !== undefined ? window.currentUserAccessData.validity : (window.currentUserAccessData.user && window.currentUserAccessData.user.validity);
-            if (val !== undefined && val !== null) {
-              saved.validity = val;
-              try { localStorage.setItem('storygram_user', JSON.stringify(saved)); } catch (e) { }
-            }
-          }
-          userAccessStatus = 'allowed';
-          setAppState('allowed', saved);
-          updateLanguageLabels();
+          setAppState('loading');
+          verifyUserAccess(saved);
           return;
         }
       } catch (e) { }
 
-      if (window.currentUserAccessData && (window.currentUserAccessData.status === 'active' || window.currentUserAccessData.success === true)) {
-        const u = window.currentUserAccessData.user || {};
-        const val = window.currentUserAccessData.validity !== undefined ? window.currentUserAccessData.validity : u.validity;
-        const userObj = {
-          userId: u.uid || u.userId || '',
-          name: u.name || 'User',
-          email: u.email || 'user@storygram.com',
-          avatarUrl: u.photo || u.photoUrl || '',
-          deviceId: u.device || getDeviceId(),
-          validity: val !== undefined ? val : 0
-        };
-        try { localStorage.setItem('storygram_user', JSON.stringify(userObj)); } catch (e) { }
-        userAccessStatus = 'allowed';
-        setAppState('allowed', userObj);
-        updateLanguageLabels();
-        return;
-      }
-
-      const defaultUser = {
-        userId: '',
-        name: 'User',
-        email: 'user@storygram.com',
-        avatarUrl: '',
-        deviceId: getDeviceId(),
-        validity: 0
-      };
-      userAccessStatus = 'allowed';
-      setAppState('allowed', defaultUser);
-      updateLanguageLabels();
+      setAppState('login');
     }
 
     window.updateUserProfile = updateUserProfile;
@@ -6064,14 +5906,15 @@
     window.getDeviceId = getDeviceId;
     window.triggerAppLogin = triggerAppLogin;
     window.setAppState = setAppState;
-    window.updateLanguageLabels = updateLanguageLabels;
-
-    loadSavedUserProfile();
-    updateLanguageLabels();
 
     window.addEventListener('DOMContentLoaded', () => {
       initShakaPlayer();
-      updateLanguageLabels();
+      const initialLangObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
+      const initialLabel = initialLangObj ? initialLangObj.name : currentLanguage;
+      const initialBtn = document.getElementById('current-lang-label');
+      if (initialBtn) initialBtn.innerText = initialLabel;
+      const initialAcc = document.getElementById('account-current-lang');
+      if (initialAcc) initialAcc.innerText = initialLabel;
       refreshIcons();
       loadSavedUserProfile();
 
