@@ -5742,8 +5742,8 @@
         const photoUrl = (user && (user.avatarUrl || user.photoUrl)) ? (user.avatarUrl || user.photoUrl) : '';
         const userId = (user && (user.userId || user.user_id)) ? (user.userId || user.user_id) : '';
 
-        if (!email) {
-          setAppState('login');
+        if (!email && !userId && !deviceId) {
+          setAppState('allowed', { name: 'User', deviceId: getDeviceId(), status: 'active' });
           return null;
         }
 
@@ -5982,17 +5982,10 @@
         localStorage.setItem('storygram_user', JSON.stringify(userObj));
       } catch (e) { }
 
-      if (!email || !email.trim()) {
-        console.warn("updateUserProfile called without email. Setting login state.");
-        setAppState('login');
-        return;
-      }
-
       if (currentAppState === 'allowed') {
         setAppState('allowed', userObj);
       } else {
-        setAppState('loading');
-        verifyUserAccess(userObj);
+        setAppState('allowed', userObj);
       }
     }
 
@@ -6007,25 +6000,23 @@
         }
       } catch (e) { }
 
-      if (!u || !u.email) {
+      if (!u || (!u.email && !u.userId && !u.uid && !u.deviceId && !u.device_id)) {
         try {
           u = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         } catch (e) { }
       }
 
-      if (u && (u.email || u.userId || u.uid)) {
-        const devId = (u && (u.deviceId || u.device_id)) || localStorage.getItem('storygram_device_id') || getDeviceId();
-        const fullUser = {
-          ...u,
-          deviceId: devId,
-          status: 'active'
-        };
-        try { localStorage.setItem('storygram_user', JSON.stringify(fullUser)); } catch (e) { }
-        setAppState('allowed', fullUser);
-        return;
-      }
-
-      setAppState('login');
+      const devId = (u && (u.deviceId || u.device_id)) || localStorage.getItem('storygram_device_id') || getDeviceId();
+      const fullUser = {
+        userId: (u && (u.userId || u.uid || u.user_id)) || '',
+        name: (u && (u.name || u.displayName)) || 'User',
+        email: (u && u.email) || '',
+        photoUrl: (u && (u.photoUrl || u.avatarUrl || u.photo)) || '',
+        deviceId: devId,
+        status: 'active'
+      };
+      try { localStorage.setItem('storygram_user', JSON.stringify(fullUser)); } catch (e) { }
+      setAppState('allowed', fullUser);
     }
 
     window.handleAccessRevoked = handleAccessRevoked;
