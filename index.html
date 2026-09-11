@@ -71,6 +71,9 @@
           }
         }
 
+        let userObj = {};
+        try { userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch(e){}
+
         const setHeader = (k, v) => {
           if (!v) return;
           if (init.headers instanceof Headers) {
@@ -86,6 +89,8 @@
         setHeader('X-App-Nonce', nonce);
         if (deviceId) setHeader('X-App-Device-ID', deviceId);
         if (sig) setHeader('X-App-Signature', sig);
+        if (userObj.email) setHeader('X-App-User-Email', userObj.email);
+        if (userObj.userId || userObj.uid) setHeader('X-App-User-ID', userObj.userId || userObj.uid);
 
         return originalFetch.call(this, input, init);
       };
