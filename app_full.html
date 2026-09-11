@@ -52,19 +52,13 @@
         let email = '';
         try {
           deviceId = localStorage.getItem('storygram_device_id') || '';
-          const userObj = JSON.parse(localStorage.getItem('storygram_user') || 'null');
-          if (userObj) {
-            userId = userObj.userId || userObj.uid || userObj.user_id || '';
-            email = userObj.email || '';
-            if (!deviceId && (userObj.deviceId || userObj.device_id)) {
-              deviceId = userObj.deviceId || userObj.device_id;
-            }
+          const savedU = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+          if (savedU) {
+            userId = savedU.userId || savedU.user_id || savedU.uid || '';
+            email = savedU.email || '';
+            if (!deviceId) deviceId = savedU.deviceId || savedU.device_id || '';
           }
         } catch (e) {}
-
-        if (!deviceId && window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
-          try { deviceId = window.AndroidBridge.getDeviceId() || ''; } catch (e) {}
-        }
 
         let sig = '';
         if (window.AndroidBridge) {
@@ -98,59 +92,35 @@
 
         setHeader('X-App-Timestamp', ts);
         setHeader('X-App-Nonce', nonce);
+        if (deviceId) setHeader('X-App-Device-ID', deviceId);
+        if (userId) setHeader('X-App-User-ID', userId);
+        if (email) setHeader('X-App-User-Email', email);
         if (sig) setHeader('X-App-Signature', sig);
 
-        const reqMethod = (init.method || 'GET').toUpperCase();
-        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(reqMethod)) {
-          if (init.body && typeof init.body === 'string') {
-            try {
-              const bodyObj = JSON.parse(init.body);
-              if (typeof bodyObj === 'object' && bodyObj !== null) {
-                if (userId && !bodyObj.userId && !bodyObj.user_id) {
-                  bodyObj.userId = userId;
-                  bodyObj.user_id = userId;
-                }
-                if (deviceId && !bodyObj.deviceId && !bodyObj.device_id) {
-                  bodyObj.deviceId = deviceId;
-                  bodyObj.device_id = deviceId;
-                }
-                if (email && !bodyObj.email) {
-                  bodyObj.email = email;
-                }
-                init.body = JSON.stringify(bodyObj);
-              }
-            } catch(e) {}
-          } else if (!init.body) {
-            init.body = JSON.stringify({ userId, user_id: userId, deviceId, device_id: deviceId, email: email || '' });
-            setHeader('Content-Type', 'application/json');
-          }
-        } else if (reqMethod === 'GET') {
+        if (init.body && typeof init.body === 'string' && (init.method || 'GET').toUpperCase() !== 'GET') {
           try {
-            const parsed = new URL(urlStr, window.location.href);
-            if (userId && !parsed.searchParams.has('user_id') && !parsed.searchParams.has('userId')) {
-              parsed.searchParams.set('user_id', userId);
-            }
-            if (deviceId && !parsed.searchParams.has('device_id') && !parsed.searchParams.has('deviceId')) {
-              parsed.searchParams.set('device_id', deviceId);
-            }
-            if (typeof input === 'string') {
-              input = parsed.toString();
+            const parsedBody = JSON.parse(init.body);
+            if (parsedBody && typeof parsedBody === 'object') {
+              if (userId && !parsedBody.userId && !parsedBody.user_id) parsedBody.userId = userId;
+              if (deviceId && !parsedBody.deviceId && !parsedBody.device_id) parsedBody.deviceId = deviceId;
+              if (email && !parsedBody.email) parsedBody.email = email;
+              init.body = JSON.stringify(parsedBody);
             }
           } catch (e) {}
         }
 
         const response = await originalFetch.call(this, input, init);
 
-        if (response.status === 403 || response.status === 401) {
+        if (response.status === 403) {
           try {
-            const clone = response.clone();
-            const data = await clone.json();
-            if (data && (data.status === 'restricted' || data.status === 'blocked' || data.status === 'expired' || data.status === 'multiple' || data.status === 'device_mismatch' || data.status === 'pending' || data.access_status)) {
-              if (typeof window.handleAccessRevoked === 'function') {
-                window.handleAccessRevoked(data);
+            const cloned = response.clone();
+            const data = await cloned.json();
+            if (data && (data.status === 'expired' || data.status === 'blocked' || data.status === 'device_mismatch' || data.status === 'multiple' || data.status === 'restricted' || data.status === 'pending' || data.success === false)) {
+              if (typeof window.handleUserRestricted === 'function') {
+                window.handleUserRestricted(data);
               }
             }
-          } catch(e) {}
+          } catch (e) {}
         }
 
         return response;
@@ -3163,14 +3133,6 @@
     let isFetchingDbLibrary = false;
     let isLoadingMoreLibrary = false;
 
-    function formatPlaysLabel(val, suffix = 'Plays') {
-      if (!val && val !== 0) return '1M+ ' + suffix;
-      let str = String(val).trim();
-      str = str.replace(/\s*plays?$/i, '').trim();
-      if (!str) return '1M+ ' + suffix;
-      return str + ' ' + suffix;
-    }
-
     function formatValidUntilDate(val) {
       if (!val || val === 0 || val === '0' || val === 'lifetime' || val === 'Lifetime') {
         return 'Lifetime';
@@ -3536,7 +3498,7 @@
       currentLanguage = (langId || 'hindi').toLowerCase().trim();
       try { localStorage.setItem('storygram_language', currentLanguage); } catch (e) { }
       const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
-      const label = langObj ? langObj.name : (currentLanguage.charAt(0).toUpperCase() + currentLanguage.slice(1));
+      const label = langObj ? langObj.name : currentLanguage;
       const btnLabel = document.getElementById('current-lang-label');
       if (btnLabel) btnLabel.innerText = label;
 
@@ -3552,23 +3514,18 @@
 
       try {
         let saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
-        const email = saved.email || '';
-        const userId = saved.userId || saved.uid || saved.user_id || '';
-        const devId = getDeviceId();
-        if (email || userId) {
-          fetch('/api/user/update-language', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              userId: userId,
-              email: email,
-              language: currentLanguage,
-              deviceId: devId
-            })
-          }).catch(() => { });
-        }
+        fetch('/api/user/update_language', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: saved.userId || saved.user_id || '',
+            deviceId: getDeviceId(),
+            email: saved.email || '',
+            language: currentLanguage
+          })
+        }).catch(() => { });
       } catch (e) { }
     }
 
@@ -3636,6 +3593,13 @@
       fetchShowEpisodes(currentShowId, startPtr, 'replace', startNum);
     }
 
+    function formatPlays(val) {
+      if (val == null || val === '') return '';
+      let s = String(val).trim();
+      s = s.replace(/\s*plays$/i, '').trim();
+      return s ? `${s} Plays` : '';
+    }
+
     function renderBannerSlider(shows) {
       const sliderContainer = document.getElementById('hero-slider-container');
       const track = document.getElementById('hero-slides-track');
@@ -3653,8 +3617,8 @@
       track.innerHTML = bannerList.map(show => {
         const hasRank = show.category_rank != null && show.category_rank !== '';
         const hasRating = show.rating != null && show.rating !== '';
-        const hasPlays = show.plays != null && show.plays !== '';
-        const playsText = hasPlays ? formatPlaysLabel(show.plays) : '';
+        const playsText = formatPlays(show.plays);
+        const hasPlays = Boolean(playsText);
 
         return `
         <div class="hero-slide" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
@@ -3764,7 +3728,7 @@
           image_url: s.image_url || '',
           category_rank: s.show_category_rank !== undefined ? s.show_category_rank : (s.category_rank !== undefined ? s.category_rank : null),
           rating: s.stats?.avg_rating || s.rating || null,
-          plays: s.stats?.total_plays_display || s.plays || '1M+'
+          plays: formatPlays(s.stats?.total_plays_display || s.plays || '1M+')
         }));
       }
       if (mod.entities && Array.isArray(mod.entities)) {
@@ -3776,7 +3740,7 @@
             image_url: val.image_url || '',
             category_rank: val.show_category_rank !== undefined ? val.show_category_rank : (val.category_rank !== undefined ? val.category_rank : null),
             rating: val.stats?.avg_rating || val.rating || null,
-            plays: val.stats?.total_plays_display || val.plays || '1M+'
+            plays: formatPlays(val.stats?.total_plays_display || val.plays || '1M+')
           };
         }).filter(s => s.show_id || s.title);
       }
@@ -3834,7 +3798,7 @@
                   </div>
                 </div>
                 <div class="card-title">${escapeHtml(show.title || 'Untitled')}</div>
-                <div class="card-meta"><i data-lucide="headphones"></i> ${formatPlaysLabel(show.plays)}</div>
+                <div class="card-meta"><i data-lucide="headphones"></i> ${formatPlays(show.plays) || '1M+ Plays'}</div>
               </div>
             `).join('')}
           </div>
@@ -4099,8 +4063,9 @@
               document.getElementById('show-badge-rating').style.display = 'none';
             }
 
-            if (showData.stats && showData.stats.total_plays_display) {
-              document.getElementById('show-badge-plays-text').innerText = formatPlaysLabel(showData.stats.total_plays_display);
+            const playsFormatted = formatPlays(showData.stats?.total_plays_display || showData.plays);
+            if (playsFormatted) {
+              document.getElementById('show-badge-plays-text').innerText = playsFormatted;
               document.getElementById('show-badge-plays').style.display = 'inline-flex';
             } else {
               document.getElementById('show-badge-plays').style.display = 'none';
@@ -5567,6 +5532,19 @@
     let currentUserAccessData = null;
     let homeFeedLoaded = false;
 
+    function handleUserRestricted(data = {}) {
+      console.warn("User access restricted:", data);
+      userAccessStatus = data.status || 'restricted';
+      try {
+        stopAndUnloadVideo();
+        stopAndUnloadAudio();
+        closePlayerBar();
+        closeFullscreenPlayer();
+      } catch (e) { }
+      setAppState('restricted', data);
+    }
+    window.handleUserRestricted = handleUserRestricted;
+
     function setAppState(state, data = {}) {
       currentAppState = state;
       const loadingScreen = document.getElementById('app-loading-screen');
@@ -5591,17 +5569,18 @@
         if (appFrame) appFrame.style.display = 'none';
 
         try {
-          const active = getActiveMediaElement();
-          if (active && !active.paused) active.pause();
+          stopAndUnloadVideo();
+          stopAndUnloadAudio();
           closePlayerBar();
+          closeFullscreenPlayer();
         } catch (e) { }
 
         let saved = {};
         try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
-        const name = data.name || saved.name || 'User';
-        const email = data.email || saved.email || 'user@mail.com';
-        const photoUrl = data.photoUrl || data.photo_url || saved.avatarUrl || saved.photoUrl || '';
-        const status = data.status || saved.status || 'pending';
+        const name = data.name || (data.user && data.user.name) || saved.name || 'User';
+        const email = data.email || (data.user && data.user.email) || saved.email || 'user@mail.com';
+        const photoUrl = data.photoUrl || data.photo_url || (data.user && (data.user.photo || data.user.photo_url)) || saved.avatarUrl || saved.photoUrl || '';
+        const status = data.status || (data.user && data.user.status) || saved.status || 'pending';
 
         const rName = document.getElementById('restricted-user-name');
         const rEmail = document.getElementById('restricted-user-email');
@@ -5659,7 +5638,7 @@
           }
         } else {
           if (rBadge) {
-            rBadge.innerText = 'No Access';
+            rBadge.innerText = data.message || 'No Access';
             rBadge.style.color = '#f87171';
           }
           if (rCard) {
@@ -5674,10 +5653,10 @@
 
         let saved = {};
         try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
-        const name = data.name || saved.name || 'User';
-        const email = data.email || saved.email || 'user@mail.com';
-        const photoUrl = data.photoUrl || data.photo_url || saved.avatarUrl || saved.photoUrl || '';
-        const deviceId = data.deviceId || data.device_id || saved.deviceId || getDeviceId();
+        const name = data.name || (data.user && data.user.name) || saved.name || 'User';
+        const email = data.email || (data.user && data.user.email) || saved.email || 'user@mail.com';
+        const photoUrl = data.photoUrl || data.photo_url || (data.user && (data.user.photo || data.user.photo_url)) || saved.avatarUrl || saved.photoUrl || '';
+        const deviceId = data.deviceId || data.device_id || (data.user && (data.user.device || data.user.device_id)) || saved.deviceId || getDeviceId();
 
         const accName = document.getElementById('account-user-name');
         const accEmail = document.getElementById('account-user-email');
@@ -5729,7 +5708,6 @@
     async function verifyUserAccess(userInfo = null) {
       try {
         const deviceId = getDeviceId();
-
         let user = userInfo;
         if (!user) {
           try {
@@ -5742,8 +5720,8 @@
         const photoUrl = (user && (user.avatarUrl || user.photoUrl)) ? (user.avatarUrl || user.photoUrl) : '';
         const userId = (user && (user.userId || user.user_id)) ? (user.userId || user.user_id) : '';
 
-        if (!email && !userId && !deviceId) {
-          setAppState('allowed', { name: 'User', deviceId: getDeviceId(), status: 'active' });
+        if (!email) {
+          setAppState('login');
           return null;
         }
 
@@ -5756,7 +5734,6 @@
         };
 
         let data = null;
-
         try {
           const res = await fetch('/api/user/verify?format=json', {
             method: 'POST',
@@ -5790,44 +5767,14 @@
           };
 
           if (isAllowed) {
-            const buyerLang = data.language || (data.user && data.user.language) || '';
-            const localLang = (localStorage.getItem('storygram_language') || '').trim();
-
-            if (buyerLang && buyerLang.trim()) {
-              currentLanguage = buyerLang.toLowerCase().trim();
-              try { localStorage.setItem('storygram_language', currentLanguage); } catch (e) { }
-            } else if (localLang) {
-              currentLanguage = localLang.toLowerCase().trim();
-            }
-
-            const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
-            const label = langObj ? langObj.name : currentLanguage;
-            const btnLabel = document.getElementById('current-lang-label');
-            if (btnLabel) btnLabel.innerText = label;
-            const accountLang = document.getElementById('account-current-lang');
-            if (accountLang) accountLang.innerText = label;
-            const settingsLang = document.getElementById('settings-current-lang');
-            if (settingsLang) settingsLang.innerText = label;
-
             setAppState('allowed', mergedData);
           } else {
             setAppState('restricted', mergedData);
           }
-
           return data;
-        } else {
-          if (userAccessStatus === 'allowed') {
-            return;
-          }
-          setAppState('restricted', { name, email, photoUrl, deviceId, status: 'pending' });
         }
       } catch (err) {
-        if (userAccessStatus === 'allowed') {
-          return;
-        }
-        let saved = {};
-        try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
-        setAppState('restricted', { ...saved, status: 'pending' });
+        console.error("verifyUserAccess err:", err);
       }
     }
 
@@ -5848,9 +5795,10 @@
       } catch (e) { }
 
       try {
-        const active = getActiveMediaElement();
-        if (active && !active.paused) active.pause();
+        stopAndUnloadVideo();
+        stopAndUnloadAudio();
         closePlayerBar();
+        closeFullscreenPlayer();
       } catch (e) { }
 
       userAccessStatus = 'logged_out';
@@ -5876,54 +5824,6 @@
       setTimeout(() => {
         if (icon) icon.classList.remove('spin-animation');
       }, 700);
-    }
-
-    function handleAccessRevoked(data = {}) {
-      try {
-        const audio = document.getElementById('audio-element');
-        if (audio) {
-          audio.pause();
-          audio.src = '';
-        }
-        const video = document.getElementById('fs-video-element');
-        if (video) {
-          video.pause();
-          video.src = '';
-        }
-        if (window.shakaPlayer) {
-          try { window.shakaPlayer.unload(); } catch(e){}
-        }
-        isPlaying = false;
-        isAudioBuffering = false;
-        updatePlayPauseButtons();
-        closePlayerBar();
-        closeFullscreenPlayer();
-      } catch (e) { }
-
-      const accessStatus = data.access_status || data.status || 'restricted';
-      const statusReason = (data.reason || data.message || accessStatus).toLowerCase();
-
-      let finalStatus = 'pending';
-      if (statusReason.includes('block') || accessStatus === 'blocked') {
-        finalStatus = 'blocked';
-      } else if (statusReason.includes('expir') || accessStatus === 'expired') {
-        finalStatus = 'expired';
-      } else if (statusReason.includes('device') || statusReason.includes('match') || accessStatus === 'multiple' || accessStatus === 'device_mismatch') {
-        finalStatus = 'multiple';
-      }
-
-      let saved = {};
-      try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
-
-      const payload = {
-        name: (data.user && data.user.name) || saved.name || 'User',
-        email: (data.user && data.user.email) || saved.email || '',
-        photoUrl: (data.user && (data.user.photo || data.user.photo_url)) || saved.avatarUrl || saved.photoUrl || '',
-        deviceId: (data.user && (data.user.device || data.user.device_id)) || saved.deviceId || getDeviceId(),
-        status: finalStatus
-      };
-
-      setAppState('restricted', payload);
     }
 
     function updateUserProfile(arg1, arg2, arg3, arg4, arg5) {
@@ -5975,51 +5875,85 @@
         name: name || 'User',
         email: email || '',
         avatarUrl: avatarUrl || '',
-        deviceId: deviceId
+        deviceId: deviceId,
+        status: 'active'
       };
 
       try {
         localStorage.setItem('storygram_user', JSON.stringify(userObj));
       } catch (e) { }
 
-      if (currentAppState === 'allowed') {
-        setAppState('allowed', userObj);
-      } else {
-        setAppState('allowed', userObj);
+      const accName = document.getElementById('account-user-name');
+      const accEmail = document.getElementById('account-user-email');
+      const accAvatarImg = document.getElementById('account-avatar-img');
+      const accAvatarSvg = document.getElementById('account-avatar-svg');
+      if (accName) accName.innerText = name;
+      if (accEmail) accEmail.innerText = email;
+      if (avatarUrl && avatarUrl.trim()) {
+        if (accAvatarImg) { accAvatarImg.src = avatarUrl; accAvatarImg.style.display = 'block'; }
+        if (accAvatarSvg) accAvatarSvg.style.display = 'none';
       }
     }
 
     function loadSavedUserProfile() {
-      let u = null;
+      let saved = null;
       try {
         if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
           const rawData = window.AndroidBridge.getUserData();
           if (rawData) {
-            u = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+            const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+            if (data && (data.email || data.user_email)) {
+              saved = data;
+            }
           }
         }
       } catch (e) { }
 
-      if (!u || (!u.email && !u.userId && !u.uid && !u.deviceId && !u.device_id)) {
+      if (!saved) {
         try {
-          u = JSON.parse(localStorage.getItem('storygram_user') || 'null');
+          saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
         } catch (e) { }
       }
 
-      const devId = (u && (u.deviceId || u.device_id)) || localStorage.getItem('storygram_device_id') || getDeviceId();
-      const fullUser = {
-        userId: (u && (u.userId || u.uid || u.user_id)) || '',
-        name: (u && (u.name || u.displayName)) || 'User',
-        email: (u && u.email) || '',
-        photoUrl: (u && (u.photoUrl || u.avatarUrl || u.photo)) || '',
-        deviceId: devId,
-        status: 'active'
-      };
-      try { localStorage.setItem('storygram_user', JSON.stringify(fullUser)); } catch (e) { }
-      setAppState('allowed', fullUser);
+      if (saved && (saved.email || saved.user_email)) {
+        const name = saved.name || saved.displayName || 'User';
+        const email = saved.email || saved.user_email || '';
+        const avatarUrl = saved.avatarUrl || saved.photoUrl || saved.photo_url || '';
+        const userId = saved.userId || saved.user_id || saved.googleId || saved.google_id || saved.id || '';
+        const deviceId = saved.deviceId || saved.device_id || getDeviceId();
+
+        const userObj = { userId, name, email, avatarUrl, deviceId, status: 'active' };
+        try { localStorage.setItem('storygram_user', JSON.stringify(userObj)); } catch (e) {}
+
+        const accName = document.getElementById('account-user-name');
+        const accEmail = document.getElementById('account-user-email');
+        const accAvatarImg = document.getElementById('account-avatar-img');
+        const accAvatarSvg = document.getElementById('account-avatar-svg');
+        if (accName) accName.innerText = name;
+        if (accEmail) accEmail.innerText = email;
+        if (avatarUrl && avatarUrl.trim()) {
+          if (accAvatarImg) { accAvatarImg.src = avatarUrl; accAvatarImg.style.display = 'block'; }
+          if (accAvatarSvg) accAvatarSvg.style.display = 'none';
+        }
+
+        const localLang = (localStorage.getItem('storygram_language') || 'hindi').toLowerCase().trim();
+        currentLanguage = localLang;
+        const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
+        const label = langObj ? langObj.name : currentLanguage;
+        const btnLabel = document.getElementById('current-lang-label');
+        if (btnLabel) btnLabel.innerText = label;
+        const accountLang = document.getElementById('account-current-lang');
+        if (accountLang) accountLang.innerText = label;
+        const settingsLang = document.getElementById('settings-current-lang');
+        if (settingsLang) settingsLang.innerText = label;
+
+        setAppState('allowed', userObj);
+        return;
+      }
+
+      setAppState('allowed', { name: 'User' });
     }
 
-    window.handleAccessRevoked = handleAccessRevoked;
     window.updateUserProfile = updateUserProfile;
     window.setUserData = updateUserProfile;
     window.verifyUserAccess = verifyUserAccess;
@@ -6031,8 +5965,10 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       initShakaPlayer();
+      const initialLang = (localStorage.getItem('storygram_language') || 'hindi').toLowerCase().trim();
+      currentLanguage = initialLang;
       const initialLangObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
-      const initialLabel = initialLangObj ? initialLangObj.name : (currentLanguage.charAt(0).toUpperCase() + currentLanguage.slice(1));
+      const initialLabel = initialLangObj ? initialLangObj.name : currentLanguage;
       const initialBtn = document.getElementById('current-lang-label');
       if (initialBtn) initialBtn.innerText = initialLabel;
       const initialAcc = document.getElementById('account-current-lang');
