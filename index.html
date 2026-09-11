@@ -56,7 +56,7 @@
           if (!deviceId) {
             deviceId = localStorage.getItem('storygram_device_id') || '';
           }
-        } catch (e) {}
+        } catch (e) { }
 
         let sig = '';
         if (window.AndroidBridge) {
@@ -69,16 +69,16 @@
                 if (res.nonce) nonce = res.nonce;
                 if (res.deviceId) deviceId = res.deviceId;
               }
-            } catch (e) {}
+            } catch (e) { }
           } else if (typeof window.AndroidBridge.getHmacSignature === 'function') {
             try {
               sig = window.AndroidBridge.getHmacSignature(ts, nonce, pathname, deviceId);
-            } catch (e) {}
+            } catch (e) { }
           }
         }
 
         let userObj = {};
-        try { userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch(e){}
+        try { userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
 
         const setHeader = (k, v) => {
           if (!v) return;
@@ -116,7 +116,9 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <style>
     :root {
       --bg-main: #070a12;
@@ -126,7 +128,9 @@
       --header-height: 56px;
     }
 
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
@@ -135,7 +139,8 @@
       font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Inter", "Segoe UI", sans-serif !important;
     }
 
-    html, body {
+    html,
+    body {
       width: 100%;
       min-height: 100vh;
       background-color: #020617;
@@ -261,8 +266,16 @@
 
     <div class="spinner-wrap" id="app-spinner">
       <div class="spinner">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2v4" /><path d="m16.2 7.8 2.9-2.9" /><path d="M18 12h4" /><path d="m16.2 16.2 2.9 2.9" /><path d="M12 18v4" /><path d="m4.9 19.1 2.9-2.9" /><path d="M2 12h4" /><path d="m4.9 4.9 2.9 2.9" />
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v4" />
+          <path d="m16.2 7.8 2.9-2.9" />
+          <path d="M18 12h4" />
+          <path d="m16.2 16.2 2.9 2.9" />
+          <path d="M12 18v4" />
+          <path d="m4.9 19.1 2.9-2.9" />
+          <path d="M2 12h4" />
+          <path d="m4.9 4.9 2.9 2.9" />
         </svg>
       </div>
     </div>
@@ -278,20 +291,20 @@
           const raw = window.AndroidBridge.getUserData();
           if (raw) u = typeof raw === 'string' ? JSON.parse(raw) : raw;
         }
-      } catch (e) {}
+      } catch (e) { }
 
       if (!u || !u.email) {
         try {
           u = JSON.parse(localStorage.getItem('storygram_user') || 'null');
-        } catch (e) {}
+        } catch (e) { }
       }
 
       let dev = (u && (u.deviceId || u.device_id)) || localStorage.getItem('storygram_device_id') || '';
       if (!dev && window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
-        try { dev = window.AndroidBridge.getDeviceId() || ''; } catch (e) {}
+        try { dev = window.AndroidBridge.getDeviceId() || ''; } catch (e) { }
       }
       if (dev) {
-        try { localStorage.setItem('storygram_device_id', dev); } catch (e) {}
+        try { localStorage.setItem('storygram_device_id', dev); } catch (e) { }
       }
 
       const email = (u && u.email) || '';
