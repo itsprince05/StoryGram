@@ -91,12 +91,11 @@
           }
         };
 
-        setHeader('X-App-Timestamp', ts);
-        setHeader('X-App-Nonce', nonce);
-        if (deviceId) setHeader('X-App-Device-ID', deviceId);
-        if (sig) setHeader('X-App-Signature', sig);
-        if (userObj.email) setHeader('X-App-User-Email', userObj.email);
-        if (userObj.userId || userObj.uid) setHeader('X-App-User-ID', userObj.userId || userObj.uid);
+        if (deviceId) setHeader('deviceid', deviceId);
+        if (userObj.userId || userObj.uid) setHeader('userid', userObj.userId || userObj.uid);
+        setHeader('nonce', nonce);
+        if (sig) setHeader('signature', sig);
+        setHeader('timestamp', ts);
 
         const response = await originalFetch.call(this, input, init);
 
@@ -3524,23 +3523,16 @@
       closeLanguageModal();
       fetchHomeFeed();
 
-      try {
-        let saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
-        const userEmail = (saved && saved.email) ? saved.email : ((currentUserAccessData && currentUserAccessData.user && currentUserAccessData.user.email) || '');
-        if (userEmail) {
-          fetch('/api/user/verify?format=json', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Response-Format': 'json'
-            },
-            body: JSON.stringify({
-              action: 'update_language',
-              language: currentLanguage
-            })
-          }).catch(() => { });
-        }
-      } catch (e) { }
+        fetch('/api/user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'update_language',
+            language: currentLanguage
+          })
+        }).catch(() => { });
     }
 
     function openEpisodeRangeModal(pushHistory = true) {
@@ -3869,7 +3861,7 @@
 
       fetchShowEpisodes(showId, 0, 'replace', 1);
 
-        fetch('/api/library', {
+        fetch('/library', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -3914,7 +3906,7 @@
       } catch (e) { }
 
       try {
-        fetch('/api/library', {
+        fetch('/library', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -4137,12 +4129,12 @@
       isFetchingDbLibrary = true;
       try {
         const [resHist, resFav] = await Promise.allSettled([
-          fetch('/api/library', {
+          fetch('/library', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ req_action: 'list', action: 'history' })
           }),
-          fetch('/api/library', {
+          fetch('/library', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ req_action: 'list', action: 'saved' })
@@ -4218,7 +4210,7 @@
     function clearShowHistory() {
       dbHistoryShows = [];
       try {
-        fetch('/api/library', {
+        fetch('/library', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -4235,7 +4227,7 @@
       dbHistoryShows = dbHistoryShows.filter(s => s.show_id !== showId);
       try {
         if (showId) {
-          fetch('/api/library', {
+          fetch('/library', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -4259,7 +4251,7 @@
 
       try {
         if (showId) {
-          fetch('/api/library', {
+          fetch('/library', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -4806,7 +4798,7 @@
 
             if (targetShowId) {
               try {
-                const licRes = await fetch('/api/license', {
+                const licRes = await fetch('/license', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -5795,11 +5787,10 @@
         let data = null;
 
         try {
-          const res = await fetch('/api/user/verify?format=json', {
+          const res = await fetch('/api/user', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'X-Response-Format': 'json'
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
           });
