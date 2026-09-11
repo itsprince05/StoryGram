@@ -27,7 +27,7 @@
       });
 
       const originalFetch = window.fetch;
-      window.fetch = async function (input, init) {
+      window.fetch = function (input, init) {
         init = init || {};
         init.headers = init.headers || {};
         const urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
@@ -82,23 +82,12 @@
           }
         };
 
-        setHeader('x-app-timestamp', ts);
-        setHeader('x-app-nonce', nonce);
-        if (sig) setHeader('x-app-signature', sig);
+        setHeader('X-App-Timestamp', ts);
+        setHeader('X-App-Nonce', nonce);
+        if (deviceId) setHeader('X-App-Device-ID', deviceId);
+        if (sig) setHeader('X-App-Signature', sig);
 
-        const resp = await originalFetch.call(this, input, init);
-        if (resp && resp.status === 403) {
-          try {
-            const clone = resp.clone();
-            const body = await clone.json();
-            if (body && (body.status === 'blocked' || body.status === 'expired' || body.status === 'device_mismatch' || body.status === 'multiple' || body.status === 'pending' || body.status === 'no_access')) {
-              if (typeof window.handleApiAccessDenied === 'function') {
-                window.handleApiAccessDenied(body);
-              }
-            }
-          } catch (e) {}
-        }
-        return resp;
+        return originalFetch.call(this, input, init);
       };
 
       const ua = navigator.userAgent || '';
@@ -3108,6 +3097,26 @@
     let isFetchingDbLibrary = false;
     let isLoadingMoreLibrary = false;
 
+    function formatPlaysDisplay(val) {
+      if (val === undefined || val === null || val === '') return '';
+      if (typeof val === 'number') {
+        if (isNaN(val) || val <= 0) return '';
+        if (val >= 1e9) return (val / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
+        if (val >= 1e6) return (val / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+        if (val >= 1e3) return (val / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+        return String(val);
+      }
+      let str = String(val).trim();
+      if (!str) return '';
+      if (/^\d+(\.\d+)?$/.test(str)) {
+        const num = parseFloat(str);
+        return formatPlaysDisplay(num);
+      }
+      str = str.replace(/plays?/gi, '').trim();
+      str = str.replace(/\s+/g, '');
+      return str;
+    }
+
     function formatValidUntilDate(val) {
       if (!val || val === 0 || val === '0' || val === 'lifetime' || val === 'Lifetime') {
         return 'Lifetime';
@@ -3433,32 +3442,6 @@
       { id: 'french', name: 'French' }
     ];
 
-    function getUserId() {
-      try {
-        const saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
-        return saved.userId || saved.uid || saved.user_id || '';
-      } catch (e) {
-        return '';
-      }
-    }
-
-    function getDeviceId() {
-      let dev = '';
-      try {
-        dev = localStorage.getItem('storygram_device_id') || '';
-      } catch (e) {}
-      if (!dev && window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
-        try { dev = window.AndroidBridge.getDeviceId() || ''; } catch (e) {}
-      }
-      return dev;
-    }
-
-    function cleanPlaysNumber(val) {
-      if (val === null || val === undefined || val === '') return '1M+';
-      const cleaned = String(val).replace(/\s*plays\b/gi, '').trim();
-      return cleaned || '1M+';
-    }
-
     function openLanguageModal(pushHistory = true) {
       renderLanguageGrid();
       const modal = document.getElementById('language-modal');
@@ -3500,7 +3483,6 @@
       try { localStorage.setItem('storygram_language', currentLanguage); } catch (e) { }
       const langObj = AVAILABLE_LANGUAGES.find(l => l.id === currentLanguage);
       const label = langObj ? langObj.name : currentLanguage;
-      
       const btnLabel = document.getElementById('current-lang-label');
       if (btnLabel) btnLabel.innerText = label;
 
@@ -3515,17 +3497,22 @@
       fetchHomeFeed();
 
       try {
-        fetch('/api/user/language', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: getUserId(),
-            deviceId: getDeviceId(),
-            language: currentLanguage
-          })
-        }).catch(() => { });
+        let saved = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        if (saved && saved.email) {
+          fetch('/api/user/verify?format=json', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Response-Format': 'json'
+            },
+            body: JSON.stringify({
+              action: 'update_language',
+              email: saved.email,
+              language: currentLanguage,
+              deviceId: getDeviceId()
+            })
+          }).catch(() => { });
+        }
       } catch (e) { }
     }
 
@@ -3610,9 +3597,9 @@
       track.innerHTML = bannerList.map(show => {
         const hasRank = show.category_rank != null && show.category_rank !== '';
         const hasRating = show.rating != null && show.rating !== '';
-        const hasPlays = show.plays != null && show.plays !== '';
-        const playsNum = hasPlays ? cleanPlaysNumber(show.plays) : '';
-        const playsText = playsNum ? `${playsNum} Plays` : '';
+        const cleanPlays = formatPlaysDisplay(show.plays);
+        const hasPlays = Boolean(cleanPlays);
+        const playsText = hasPlays ? `${cleanPlays} Plays` : '';
 
         return `
         <div class="hero-slide" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
@@ -3691,15 +3678,9 @@
 
       try {
         const response = await fetch('/home', {
-          method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: getUserId(),
-            deviceId: getDeviceId(),
-            language: currentLanguage
-          })
+            'language': currentLanguage
+          }
         });
         if (response.ok) {
           const data = await response.json();
@@ -3728,7 +3709,7 @@
           image_url: s.image_url || '',
           category_rank: s.show_category_rank !== undefined ? s.show_category_rank : (s.category_rank !== undefined ? s.category_rank : null),
           rating: s.stats?.avg_rating || s.rating || null,
-          plays: cleanPlaysNumber(s.stats?.total_plays_display || s.plays || '1M+')
+          plays: formatPlaysDisplay(s.stats?.total_plays_display || s.plays || '') || '1M+'
         }));
       }
       if (mod.entities && Array.isArray(mod.entities)) {
@@ -3740,7 +3721,7 @@
             image_url: val.image_url || '',
             category_rank: val.show_category_rank !== undefined ? val.show_category_rank : (val.category_rank !== undefined ? val.category_rank : null),
             rating: val.stats?.avg_rating || val.rating || null,
-            plays: cleanPlaysNumber(val.stats?.total_plays_display || val.plays || '1M+')
+            plays: formatPlaysDisplay(val.stats?.total_plays_display || val.plays || '') || '1M+'
           };
         }).filter(s => s.show_id || s.title);
       }
@@ -3798,7 +3779,7 @@
                   </div>
                 </div>
                 <div class="card-title">${escapeHtml(show.title || 'Untitled')}</div>
-                <div class="card-meta"><i data-lucide="headphones"></i> ${cleanPlaysNumber(show.plays)} plays</div>
+                <div class="card-meta"><i data-lucide="headphones"></i> ${formatPlaysDisplay(show.plays) || show.plays || '1M+'} plays</div>
               </div>
             `).join('')}
           </div>
@@ -3851,15 +3832,15 @@
       fetchShowEpisodes(showId, 0, 'replace', 1);
 
       try {
-        const uid = getUserId();
+        let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        let uid = userObj.uid || userObj.userId || userObj.email || '';
         if (uid) {
           fetch('/api/library', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              userId: uid,
-              deviceId: getDeviceId(),
               req_action: 'record',
+              uid: uid,
               action: 'history',
               show_id: showId,
               show_name: title || 'Show Details',
@@ -3902,15 +3883,15 @@
       } catch (e) { }
 
       try {
-        const uid = getUserId();
+        let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        let uid = userObj.uid || userObj.userId || userObj.email || '';
         if (uid) {
           fetch('/api/library', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              userId: uid,
-              deviceId: getDeviceId(),
               req_action: isSaved ? 'record' : 'remove',
+              uid: uid,
               action: 'saved',
               show_id: currentShowId,
               show_name: title,
@@ -4030,17 +4011,11 @@
       }
       try {
         const response = await fetch('/show', {
-          method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: getUserId(),
-            deviceId: getDeviceId(),
-            showId: showId,
-            currPtr: currPtr,
-            language: currentLanguage
-          })
+            'show_id': showId,
+            'curr_ptr': String(currPtr),
+            'language': currentLanguage
+          }
         });
         if (response.ok) {
           const data = await response.json();
@@ -4069,8 +4044,9 @@
               document.getElementById('show-badge-rating').style.display = 'none';
             }
 
-            if (showData.stats && showData.stats.total_plays_display) {
-              document.getElementById('show-badge-plays-text').innerText = cleanPlaysNumber(showData.stats.total_plays_display);
+            const cleanDetailPlays = formatPlaysDisplay(showData.stats?.total_plays_display || showData.plays || '');
+            if (cleanDetailPlays) {
+              document.getElementById('show-badge-plays-text').innerText = `${cleanDetailPlays} Plays`;
               document.getElementById('show-badge-plays').style.display = 'inline-flex';
             } else {
               document.getElementById('show-badge-plays').style.display = 'none';
@@ -4113,32 +4089,16 @@
 
     async function fetchDatabaseLibrary() {
       if (isFetchingDbLibrary) return;
-      const uid = getUserId();
+      let userObj = {};
+      try { userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+      const uid = userObj.uid || userObj.userId || userObj.email || '';
       if (!uid) return;
 
       isFetchingDbLibrary = true;
       try {
         const [resHist, resFav] = await Promise.allSettled([
-          fetch('/api/library', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: uid,
-              deviceId: getDeviceId(),
-              req_action: 'get',
-              action: 'history'
-            })
-          }),
-          fetch('/api/library', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: uid,
-              deviceId: getDeviceId(),
-              req_action: 'get',
-              action: 'saved'
-            })
-          })
+          fetch(`/api/library?uid=${encodeURIComponent(uid)}&action=history`),
+          fetch(`/api/library?uid=${encodeURIComponent(uid)}&action=saved`)
         ]);
 
         if (resHist.status === 'fulfilled' && resHist.value.ok) {
@@ -4210,15 +4170,15 @@
     function clearShowHistory() {
       dbHistoryShows = [];
       try {
-        const uid = getUserId();
+        let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        let uid = userObj.uid || userObj.userId || userObj.email || '';
         if (uid) {
           fetch('/api/library', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              userId: uid,
-              deviceId: getDeviceId(),
               req_action: 'clear',
+              uid: uid,
               action: 'history'
             })
           }).catch(() => { });
@@ -4231,15 +4191,15 @@
       if (e) e.stopPropagation();
       dbHistoryShows = dbHistoryShows.filter(s => s.show_id !== showId);
       try {
-        const uid = getUserId();
+        let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        let uid = userObj.uid || userObj.userId || userObj.email || '';
         if (uid && showId) {
           fetch('/api/library', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              userId: uid,
-              deviceId: getDeviceId(),
               req_action: 'remove',
+              uid: uid,
               action: 'history',
               show_id: showId
             })
@@ -4258,15 +4218,15 @@
       } catch (e) { }
 
       try {
-        const uid = getUserId();
+        let userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}');
+        let uid = userObj.uid || userObj.userId || userObj.email || '';
         if (uid && showId) {
           fetch('/api/library', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              userId: uid,
-              deviceId: getDeviceId(),
               req_action: 'remove',
+              uid: uid,
               action: 'saved',
               show_id: showId
             })
@@ -4809,16 +4769,10 @@
 
             if (targetShowId) {
               try {
-                const licRes = await fetch('/api/license', {
-                  method: 'POST',
+                const licRes = await fetch(`/api/license?show_id=${encodeURIComponent(targetShowId)}`, {
                   headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    userId: getUserId(),
-                    deviceId: getDeviceId(),
-                    showId: targetShowId
-                  })
+                    'show_id': targetShowId
+                  }
                 });
                 if (licRes.ok) {
                   const licData = await licRes.json();
@@ -5126,6 +5080,7 @@
       if (currentAppState !== 'allowed' && userAccessStatus !== 'allowed' && userAccessStatus !== 'active') {
         const lockModal = document.getElementById('access-lock-modal');
         if (lockModal) lockModal.classList.remove('hidden');
+        verifyUserAccess();
         return;
       }
 
@@ -5452,16 +5407,10 @@
 
       try {
         const res = await fetch('/search', {
-          method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: getUserId(),
-            deviceId: getDeviceId(),
-            query: query,
-            language: currentLanguage
-          })
+            'query': query,
+            'language': currentLanguage
+          }
         });
         if (res.ok) {
           const data = await res.json();
@@ -5724,34 +5673,6 @@
       refreshIcons();
     }
 
-    function handleApiAccessDenied(data) {
-      if (!data) return;
-      try {
-        const active = getActiveMediaElement();
-        if (active) {
-          active.pause();
-          active.src = '';
-        }
-        if (window.shakaPlayerInstance) {
-          try { window.shakaPlayerInstance.unload(); } catch (e) { }
-        }
-        closePlayerBar();
-      } catch (e) { }
-
-      let saved = {};
-      try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
-
-      const status = data.status || 'restricted';
-      setAppState('restricted', {
-        name: (data.user && data.user.name) || saved.name || 'User',
-        email: (data.user && data.user.email) || saved.email || '',
-        photoUrl: (data.user && (data.user.photo || data.user.photo_url)) || saved.avatarUrl || saved.photoUrl || '',
-        deviceId: (data.user && (data.user.device || data.user.device_id)) || saved.deviceId || getDeviceId(),
-        status: status
-      });
-    }
-    window.handleApiAccessDenied = handleApiAccessDenied;
-
     async function verifyUserAccess(userInfo = null) {
       try {
         const deviceId = getDeviceId();
@@ -5767,6 +5688,11 @@
         const name = (user && user.name) ? user.name.trim() : 'User';
         const photoUrl = (user && (user.avatarUrl || user.photoUrl)) ? (user.avatarUrl || user.photoUrl) : '';
         const userId = (user && (user.userId || user.user_id)) ? (user.userId || user.user_id) : '';
+
+        if (!email) {
+          setAppState('login');
+          return null;
+        }
 
         const payload = {
           userId: userId,
@@ -5836,8 +5762,20 @@
           }
 
           return data;
+        } else {
+          if (userAccessStatus === 'allowed') {
+            return;
+          }
+          setAppState('restricted', { name, email, photoUrl, deviceId, status: 'pending' });
         }
-      } catch (err) { }
+      } catch (err) {
+        if (userAccessStatus === 'allowed') {
+          return;
+        }
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+        setAppState('restricted', { ...saved, status: 'pending' });
+      }
     }
 
     function triggerAppLogin() {
@@ -5876,8 +5814,10 @@
         saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
       } catch (e) { }
 
-      if (saved) {
+      if (saved && saved.email) {
         await verifyUserAccess(saved);
+      } else {
+        setAppState('login');
       }
 
       setTimeout(() => {
@@ -5934,57 +5874,50 @@
         name: name || 'User',
         email: email || '',
         avatarUrl: avatarUrl || '',
-        photoUrl: avatarUrl || '',
-        deviceId: deviceId,
-        status: 'active'
+        deviceId: deviceId
       };
 
       try {
         localStorage.setItem('storygram_user', JSON.stringify(userObj));
       } catch (e) { }
 
-      setAppState('allowed', userObj);
+      if (!email || !email.trim()) {
+        console.warn("updateUserProfile called without email. Setting login state.");
+        setAppState('login');
+        return;
+      }
+
+      if (currentAppState !== 'allowed') {
+        setAppState('loading');
+      }
+
+      verifyUserAccess(userObj);
     }
 
     function loadSavedUserProfile() {
-      let u = null;
       try {
         if (window.AndroidBridge && typeof window.AndroidBridge.getUserData === 'function') {
           const rawData = window.AndroidBridge.getUserData();
           if (rawData) {
-            u = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+            const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+            if (data && (data.email || data.user_email)) {
+              updateUserProfile(data);
+              return;
+            }
           }
         }
       } catch (e) { }
 
-      if (!u || !u.email) {
-        try {
-          u = JSON.parse(localStorage.getItem('storygram_user') || 'null');
-        } catch (e) { }
-      }
-
-      let dev = (u && (u.deviceId || u.device_id)) || localStorage.getItem('storygram_device_id') || '';
-      if (!dev && window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === 'function') {
-        try { dev = window.AndroidBridge.getDeviceId() || ''; } catch (e) { }
-      }
-      if (dev) {
-        try { localStorage.setItem('storygram_device_id', dev); } catch (e) { }
-      }
-
-      const userObj = {
-        userId: (u && (u.userId || u.user_id || u.uid || u.googleId)) || '',
-        name: (u && (u.name || u.displayName)) || 'User',
-        email: (u && u.email) || '',
-        photoUrl: (u && (u.photoUrl || u.photo || u.avatarUrl)) || '',
-        deviceId: dev || getDeviceId(),
-        status: 'active'
-      };
-
       try {
-        localStorage.setItem('storygram_user', JSON.stringify(userObj));
+        const saved = JSON.parse(localStorage.getItem('storygram_user') || 'null');
+        if (saved && saved.email && saved.email.trim()) {
+          setAppState('loading');
+          verifyUserAccess(saved);
+          return;
+        }
       } catch (e) { }
 
-      setAppState('allowed', userObj);
+      setAppState('login');
     }
 
     window.updateUserProfile = updateUserProfile;
