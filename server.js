@@ -1003,9 +1003,6 @@ app.all(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
   }
 });
 
-const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/StoryGram';
-const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
-
 app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
   const isFormatJson = req.query.format === 'json' ||
     req.headers['x-response-format'] === 'json' ||
