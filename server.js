@@ -3,7 +3,6 @@ const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
-const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -41,14 +40,6 @@ function decryptPocketFmBlob(clientTs, deviceId, cipherBase64) {
   return decrypted;
 }
 
-function cleanPlaysDisplay(val) {
-  if (!val && val !== 0) return '';
-  let str = String(val).trim();
-  str = str.replace(/\s*plays?\s*$/gi, '').trim();
-  if (!str) return '';
-  return `${str} Plays`;
-}
-
 let cachedCookies = '';
 let cachedToken = '';
 let lastFetchDate = '';
@@ -63,47 +54,40 @@ function verifyDynamicSignature(req) {
   const ts = req.headers['x-app-timestamp'];
   const nonce = req.headers['x-app-nonce'];
   const sig = req.headers['x-app-signature'];
-  const token = req.headers['x-app-token'];
   const deviceId = req.headers['x-app-device-id'] || '';
-
-  if (token === APP_CLIENT_SECRET) {
-    return true;
-  }
-
-  if (!ts && !nonce && !sig) return false;
+  if (!ts || !nonce || !sig) return false;
 
   const now = Date.now();
-  if (ts) {
-    const reqTime = parseInt(ts, 10);
-    if (!isNaN(reqTime) && Math.abs(now - reqTime) > 300000) {
-      return false;
+  const reqTime = parseInt(ts, 10);
+  if (isNaN(reqTime) || Math.abs(now - reqTime) > 15000) {
+    return false;
+  }
+
+  if (usedNonces.has(nonce)) {
+    return false;
+  }
+  usedNonces.set(nonce, reqTime + 15000);
+  if (usedNonces.size > 10000) {
+    for (const [k, exp] of usedNonces.entries()) {
+      if (now > exp) usedNonces.delete(k);
     }
   }
 
-  if (sig) {
-    const cleanPath = (req.path || '/').replace(/\/+$/, '') || '/';
-    const payloadWithDevice = `${ts}:${nonce}:${cleanPath}:${deviceId}`;
-    const payloadPlain = `${ts}:${nonce}:${cleanPath}`;
-    const payloadRaw = `${ts}:${nonce}:${req.path}:${deviceId}`;
+  const payloadWithDevice = `${ts}:${nonce}:${req.path}:${deviceId}`;
+  const payloadPlain = `${ts}:${nonce}:${req.path}`;
+  const expectedSig1 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadWithDevice).digest('hex');
+  const expectedSig2 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadPlain).digest('hex');
 
-    const expectedSig1 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadWithDevice).digest('hex');
-    const expectedSig2 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadPlain).digest('hex');
-    const expectedSig3 = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payloadRaw).digest('hex');
+  const sigBuf = Buffer.from(sig);
+  const buf1 = Buffer.from(expectedSig1);
+  const buf2 = Buffer.from(expectedSig2);
 
-    const sigBuf = Buffer.from(sig);
-    const buf1 = Buffer.from(expectedSig1);
-    const buf2 = Buffer.from(expectedSig2);
-    const buf3 = Buffer.from(expectedSig3);
-
-    if (sigBuf.length === buf1.length && crypto.timingSafeEqual(sigBuf, buf1)) return true;
-    if (sigBuf.length === buf2.length && crypto.timingSafeEqual(sigBuf, buf2)) return true;
-    if (sigBuf.length === buf3.length && crypto.timingSafeEqual(sigBuf, buf3)) return true;
-  }
-
-  if (ts && nonce) {
+  if (sigBuf.length === buf1.length && crypto.timingSafeEqual(sigBuf, buf1)) {
     return true;
   }
-
+  if (sigBuf.length === buf2.length && crypto.timingSafeEqual(sigBuf, buf2)) {
+    return true;
+  }
   return false;
 }
 
@@ -149,13 +133,23 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(rateLimiterMiddleware);
 
 app.use((req, res, next) => {
-  if (req.path === '/' || req.path === '/index.html' || req.path === '/health' || req.path === '/ping') {
+  if (req.path === '/' || req.path === '/index.html') {
     return next();
   }
 
-  const isSignedApp = verifyDynamicSignature(req);
-  if (!isSignedApp) {
-    return res.status(403).json({ success: false, error: 'Unauthorized: Invalid or expired dynamic signature' });
+  const token = req.headers['x-app-token'] || req.headers['x_app_token'] || req.query.app_token;
+  const ua = (req.headers['user-agent'] || '').toLowerCase();
+
+  const isScraper = ua.includes('curl') || ua.includes('python') || ua.includes('postman') || ua.includes('insomnia') || ua.includes('scrapy') || ua.includes('aiohttp') || ua.includes('go-http-client');
+  if (isScraper && !token && !req.headers['x-app-signature']) {
+    return res.status(403).json({ success: false, error: 'Forbidden' });
+  }
+
+  if (req.path.startsWith('/api/') || req.path.startsWith('/user/') || req.path.startsWith('/library')) {
+    const isSignedApp = verifyDynamicSignature(req);
+    if (!isSignedApp) {
+      return res.status(403).json({ success: false, error: 'Unauthorized: Invalid or expired dynamic signature' });
+    }
   }
 
   next();
@@ -284,7 +278,7 @@ function buildPocketHeaders(req) {
     token = `Bearer ${token.trim()}`;
   }
 
-  const language = (req.body && req.body.language) || req.headers['x-app-language'] || req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+  const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
 
   const headers = {
     'Host': 'api.pocketfm.com',
@@ -413,7 +407,7 @@ app.get(['/refresh-cookies', '/api/refresh-cookies'], async (req, res) => {
   });
 });
 
-app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
+app.get(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
 
@@ -426,8 +420,8 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
       });
     }
 
-    const language = req.headers['x-app-language'] || req.headers['language'] || req.headers['selected_language'] || (req.body && req.body.language) || req.query.language || req.query.selected_language || 'hindi';
-    const apiType = req.headers['api_type'] || req.headers['api-type'] || (req.body && req.body.api_type) || req.query.api_type || 'explore_v2';
+    const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+    const apiType = req.headers['api_type'] || req.headers['api-type'] || req.query.api_type || 'explore_v2';
 
     const queryParams = new URLSearchParams({
       api_type: apiType,
@@ -462,7 +456,7 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
 
         const statsObj = info.stats || {};
         const avgRating = statsObj.avg_rating !== undefined ? statsObj.avg_rating : (statsObj.rating !== undefined ? statsObj.rating : null);
-        const totalPlaysDisplay = cleanPlaysDisplay(statsObj.total_plays_display || statsObj.total_plays || "");
+        const totalPlaysDisplay = statsObj.total_plays_display || (statsObj.total_plays ? String(statsObj.total_plays) : "");
 
         if (showTitle || showId) {
           entities.push({
@@ -506,7 +500,7 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
   }
 });
 
-app.all(['/search', '/api/search'], async (req, res) => {
+app.get(['/search', '/api/search'], async (req, res) => {
   try {
     const headers = buildPocketHeaders(req);
 
@@ -517,9 +511,9 @@ app.all(['/search', '/api/search'], async (req, res) => {
       });
     }
 
-    const query = (req.body && (req.body.query || req.body.q)) || req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
-    const genre = (req.body && req.body.genre) || req.headers['genre'] || req.query.genre || '';
-    const language = req.headers['x-app-language'] || req.headers['language'] || req.headers['selected_language'] || (req.body && req.body.language) || req.query.language || req.query.selected_language || 'hindi';
+    const query = req.headers['query'] || req.headers['q'] || req.query.query || req.query.q || '';
+    const genre = req.headers['genre'] || req.query.genre || '';
+    const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
 
     const queryParams = new URLSearchParams({
       query: query,
@@ -539,7 +533,7 @@ app.all(['/search', '/api/search'], async (req, res) => {
           return {
             show_id: showId,
             title: show.title || show.show_title || "",
-            plays: cleanPlaysDisplay(show.plays !== undefined ? show.plays : (show.stats?.total_plays_display || "")),
+            plays: show.plays !== undefined ? String(show.plays) : "",
             avg_rating: show.avg_rating !== undefined ? show.avg_rating : (show.rating !== undefined ? show.rating : null),
             image_url: show.image_url || show.cover_url || ""
           };
@@ -566,14 +560,14 @@ app.all(['/search', '/api/search'], async (req, res) => {
   }
 });
 
-app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
+app.get(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
   try {
-    const showId = (req.body && (req.body.showId || req.body.show_id)) || req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.params.show_id || req.query.show_id;
+    const showId = req.headers['show_id'] || req.headers['show-id'] || req.headers['showid'] || req.params.show_id || req.query.show_id;
 
     if (!showId) {
       return res.status(400).json({
         success: false,
-        error: "Missing 'show_id'. Pass it in headers (show_id: ...) or body or query params (?show_id=...)"
+        error: "Missing 'show_id'. Pass it in headers (show_id: ...) or query params (?show_id=...)"
       });
     }
 
@@ -586,9 +580,9 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       });
     }
 
-    const startPtr = parseInt((req.body && (req.body.currPtr !== undefined ? req.body.currPtr : req.body.curr_ptr)) || req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
-    const pageSource = (req.body && req.body.page_source) || req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
-    const batchSize = Math.min(Math.max(parseInt((req.body && req.body.limit) || req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
+    const startPtr = parseInt(req.headers['curr_ptr'] || req.headers['curr-ptr'] || req.headers['currptr'] || req.query.curr_ptr || '0', 10);
+    const pageSource = req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
+    const batchSize = Math.min(Math.max(parseInt(req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
 
     const ptrList = [];
     for (let i = 0; i < batchSize; i++) {
@@ -690,7 +684,7 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
           next_ptr: startPtr + allStories.length,
           stats: {
             avg_rating: baseShow.stats?.avg_rating !== undefined ? baseShow.stats.avg_rating : null,
-            total_plays_display: cleanPlaysDisplay(baseShow.stats?.total_plays_display || baseShow.stats?.total_plays || "")
+            total_plays_display: baseShow.stats?.total_plays_display || ""
           }
         }
       ]
@@ -872,14 +866,15 @@ const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/S
 const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
 
 app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
-  const isExplicitJson = req.query.format === 'json' ||
+  const isFormatJson = req.query.format === 'json' ||
+    req.headers['x-response-format'] === 'json' ||
     (req.body && (req.body.action === 'update_language' || req.body.format === 'json'));
 
   try {
     const { email, name, photoUrl, photo_url, deviceId, device_id, userId, user_id, google_id, language, lang, action, req_action } = req.body;
     
     if (!email) {
-      if (isExplicitJson) {
+      if (isFormatJson) {
         return res.status(400).json({ success: false, error: 'Email is required' });
       }
       return res.status(400).send('<div style="color:#f87171;padding:20px;text-align:center;">Email is required</div>');
@@ -923,15 +918,12 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
       throw (lastError || new Error('Verification backend unreachable'));
     }
 
-    if (isExplicitJson) {
+    if (isFormatJson) {
       return res.status(phpResponse.status).json(phpResponse.data);
     }
 
     if (phpResponse.data && (phpResponse.data.status === 'active' || phpResponse.data.success === true)) {
-      let html = fs.readFileSync(path.join(__dirname, 'app_full.html'), 'utf8');
-      const injectedScript = `<script>window.currentUserAccessData = ${JSON.stringify(phpResponse.data)};</script>`;
-      html = html.replace('</head>', `${injectedScript}</head>`);
-      return res.status(200).send(html);
+      return res.sendFile(path.join(__dirname, 'app_full.html'));
     }
 
     const userPhoto = payload.photo_url || (phpResponse.data && phpResponse.data.user && phpResponse.data.user.photo) || '';
@@ -968,7 +960,7 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
 
     return res.status(200).send(noAccessHtml);
   } catch (error) {
-    if (isExplicitJson) {
+    if (isFormatJson) {
       return res.status(500).json({
         success: false,
         status: 'server_error',
@@ -1000,10 +992,7 @@ app.post(['/api/app/bundle', '/app/bundle'], async (req, res) => {
     });
 
     if (phpResponse.data && (phpResponse.data.status === 'active' || phpResponse.data.success === true)) {
-      let html = fs.readFileSync(path.join(__dirname, 'app_full.html'), 'utf8');
-      const injectedScript = `<script>window.currentUserAccessData = ${JSON.stringify(phpResponse.data)};</script>`;
-      html = html.replace('</head>', `${injectedScript}</head>`);
-      return res.status(200).send(html);
+      return res.sendFile(path.join(__dirname, 'app_full.html'));
     } else {
       return res.status(403).json({ success: false, status: 'restricted', message: 'User is not active' });
     }
@@ -1064,10 +1053,8 @@ const NGINX_404_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta n
 
 app.get(['/', '/index.html'], (req, res) => {
   const isSigned = verifyDynamicSignature(req);
-  const ua = req.headers['user-agent'] || '';
-  const isAppMode = req.query.mode === 'app' || ua.includes('StoryGramApp') || ua.includes('wv') || Boolean(req.headers['x-app-token'] || req.headers['x-app-device-id']);
 
-  if (!isSigned && !isAppMode) {
+  if (!isSigned) {
     return res.status(404).send(NGINX_404_HTML);
   }
 
