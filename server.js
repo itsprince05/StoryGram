@@ -69,21 +69,22 @@ const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/S
 const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
 const userAccessCache = new Map();
 
-async function checkUserVerification(email, deviceId, userId) {
-  if (!email || !email.trim()) {
+async function checkUserVerification(userId, deviceId, email) {
+  const cleanUser = (userId || '').trim();
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanDevice = (deviceId || '').trim();
+
+  if (!cleanUser && !cleanEmail) {
     return {
       success: false,
       access_denied: true,
       status: 'pending',
       message: 'No Access',
-      user: { email: '', device: deviceId || '', status: 'pending', validity: 0 }
+      user: { uid: cleanUser, email: cleanEmail, device: cleanDevice, status: 'pending', validity: 0 }
     };
   }
 
-  const cleanEmail = email.trim().toLowerCase();
-  const cleanDevice = (deviceId || '').trim();
-  const cacheKey = `${cleanEmail}:${cleanDevice}`;
-
+  const cacheKey = `${cleanUser || cleanEmail}:${cleanDevice}`;
   const cached = userAccessCache.get(cacheKey);
   const now = Date.now();
   if (cached && cached.expiresAt > now) {
@@ -92,9 +93,11 @@ async function checkUserVerification(email, deviceId, userId) {
 
   try {
     const payload = {
+      user_id: cleanUser,
+      uid: cleanUser,
       email: cleanEmail,
       device_id: cleanDevice,
-      user_id: userId || '',
+      device: cleanDevice,
       api_key: PHP_API_KEY
     };
 
@@ -115,7 +118,7 @@ async function checkUserVerification(email, deviceId, userId) {
         access_denied: !isAllowed,
         status: isAllowed ? 'active' : (data.status || 'pending'),
         message: data.message || (isAllowed ? 'Access granted' : 'No Access'),
-        user: (data && data.user) ? data.user : { email: cleanEmail, device: cleanDevice, status: data.status || 'pending', validity: data.validity || 0 }
+        user: (data && data.user) ? data.user : { uid: cleanUser, email: cleanEmail, device: cleanDevice, status: data.status || 'pending', validity: data.validity || 0 }
       };
 
       userAccessCache.set(cacheKey, {
@@ -137,7 +140,7 @@ async function checkUserVerification(email, deviceId, userId) {
     access_denied: true,
     status: 'server_error',
     message: 'Verification failed',
-    user: { email: cleanEmail, device: cleanDevice, status: 'pending', validity: 0 }
+    user: { uid: cleanUser, email: cleanEmail, device: cleanDevice, status: 'pending', validity: 0 }
   };
 }
 
@@ -149,10 +152,10 @@ const rateLimitMap = new Map();
 const usedNonces = new Map();
 
 function verifyDynamicSignature(req) {
-  const ts = req.headers['x-app-timestamp'];
-  const nonce = req.headers['x-app-nonce'];
-  const sig = req.headers['x-app-signature'];
-  const deviceId = req.headers['x-app-device-id'] || '';
+  const ts = req.headers['timestamp'] || req.headers['x-app-timestamp'];
+  const nonce = req.headers['nonce'] || req.headers['x-app-nonce'];
+  const sig = req.headers['signature'] || req.headers['x-app-signature'];
+  const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || '';
   if (!ts || !nonce || !sig) return false;
 
   const now = Date.now();
@@ -507,11 +510,11 @@ app.get(['/refresh-cookies', '/api/refresh-cookies'], async (req, res) => {
 
 app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
+    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
     const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
-    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || '';
 
-    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
@@ -609,11 +612,11 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
 
 app.all(['/search', '/api/search'], async (req, res) => {
   try {
+    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
     const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
-    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || '';
 
-    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
@@ -678,11 +681,11 @@ app.all(['/search', '/api/search'], async (req, res) => {
 
 app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
   try {
+    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
     const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
-    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || '';
 
-    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
@@ -825,13 +828,13 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
   }
 });
 
-app.all(['/api/license', '/api/get_license'], async (req, res) => {
+app.all(['/license', '/api/license', '/api/get_license'], async (req, res) => {
   try {
+    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
     const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
-    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.headers['x-app-user-id'] || req.query.userId || '';
 
-    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
@@ -961,11 +964,11 @@ app.all(['/unlock', '/api/unlock', '/api/subscribe', '/api/user_action'], async 
 
 app.all(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_stories'], async (req, res) => {
   try {
+    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
     const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
-    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || '';
 
-    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
@@ -1005,33 +1008,36 @@ app.all(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
   }
 });
 
-app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
-  const isFormatJson = req.query.format === 'json' ||
+app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req, res) => {
+  const isFormatJson = req.path === '/api/user' || req.path === '/user' ||
+    req.query.format === 'json' ||
     req.headers['x-response-format'] === 'json' ||
-    (req.body && (req.body.action === 'update_language' || req.body.format === 'json'));
+    (req.body && (req.body.action === 'update_language' || req.body.format === 'json' || req.body.action === 'verify'));
 
   try {
+    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || '';
+    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.google_id || '';
     const email = req.headers['x-app-user-email'] || req.body?.email || '';
-    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || '';
-    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.google_id || '';
     const name = req.body?.name || 'User';
     const photoUrl = req.body?.photoUrl || req.body?.photo_url || '';
     const language = req.body?.language || req.body?.lang || '';
     const action = req.body?.action || req.body?.req_action || '';
     
-    if (!email) {
+    if (!userId && !email) {
       if (isFormatJson) {
-        return res.status(400).json({ success: false, error: 'Email is required' });
+        return res.status(400).json({ success: false, error: 'User ID or Email is required' });
       }
-      return res.status(400).send('<div style="color:#f87171;padding:20px;text-align:center;">Email is required</div>');
+      return res.status(400).send('<div style="color:#f87171;padding:20px;text-align:center;">User ID or Email is required</div>');
     }
 
     const payload = {
       user_id: userId,
+      uid: userId,
       email: email,
       name: name,
       photo_url: photoUrl,
       device_id: deviceId,
+      device: deviceId,
       language: language,
       action: action,
       api_key: PHP_API_KEY,
@@ -1119,15 +1125,19 @@ app.post(['/api/user/verify', '/user/verify'], async (req, res) => {
 
 app.post(['/api/app/bundle', '/app/bundle'], async (req, res) => {
   try {
+    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || '';
+    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || '';
     const email = req.headers['x-app-user-email'] || req.body?.email || '';
-    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || '';
-    if (!email) {
-      return res.status(400).json({ success: false, error: 'Email required' });
+    if (!userId && !email) {
+      return res.status(400).json({ success: false, error: 'User identification required' });
     }
 
     const phpResponse = await axios.post(`${PHP_BACKEND_URL}/verify_user.php`, {
-      email,
+      user_id: userId,
+      uid: userId,
+      email: email,
       device_id: deviceId,
+      device: deviceId,
       api_key: PHP_API_KEY
     }, {
       headers: {
@@ -1166,11 +1176,11 @@ app.post(['/api/admin/users', '/admin/users'], async (req, res) => {
 
 app.all(['/api/library', '/library'], async (req, res) => {
   try {
+    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.uid || req.query.userId || '';
     const email = req.headers['x-app-user-email'] || req.body?.email || req.query.email || '';
-    const deviceId = req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.uid || req.query.userId || '';
 
-    const verifyRes = await checkUserVerification(email, deviceId, userId);
+    const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
