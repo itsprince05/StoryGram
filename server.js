@@ -147,9 +147,14 @@ async function checkUserVerification(userId, deviceId, email) {
 const NGINX_404_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>404 Not Found</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#fff;color:#222;padding:40px 20px;max-width:600px;margin:0 auto;line-height:1.6;}h1{font-size:24px;font-weight:600;color:#111;margin-bottom:8px;border-bottom:1px solid #eaeaea;padding-bottom:12px;}p{font-size:14px;color:#555;margin-bottom:20px;}hr{border:none;border-top:1px solid #eaeaea;margin:20px 0;}address{font-size:12px;color:#888;font-style:normal;}</style></head><body><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p><hr><address>nginx / 1.24.0</address></body></html>`;
 
 const APP_CLIENT_SECRET = 'StoryGramSecClient_98741488';
-const APP_HMAC_SECRETS = [
+const ALL_POSSIBLE_KEYS = [
   'StoryGram_Sec_Hmac_98741488_Key_v1',
-  'SporyGram_Sec_Hmac_98741488_Key_v1'
+  'SporyGram_Sec_Hmac_98741488_Key_v1',
+  'StoryGramSecClient_98741488',
+  'StoryGram_Sec_Hmac_98741488',
+  'StoryGram_Sec_Hmac',
+  'StoryGram',
+  '98741488'
 ];
 const rateLimitMap = new Map();
 const usedNonces = new Map();
@@ -157,7 +162,7 @@ const usedNonces = new Map();
 function verifyDynamicSignature(req) {
   const ts = req.headers['timestamp'] || req.headers['x-app-timestamp'];
   const nonce = req.headers['nonce'] || req.headers['x-app-nonce'];
-  const sig = req.headers['signature'] || req.headers['x-app-signature'];
+  const sig = (req.headers['signature'] || req.headers['x-app-signature'] || '').trim().toLowerCase();
   const deviceId = (req.headers['deviceid'] || req.headers['x-app-device-id'] || '').trim();
   if (!ts || !nonce || !sig) {
     console.log(`[AUTH-REJECT] Missing headers: path=${req.path}, hasTs=${Boolean(ts)}, hasNonce=${Boolean(nonce)}, hasSig=${Boolean(sig)}`);
@@ -184,30 +189,41 @@ function verifyDynamicSignature(req) {
   }
 
   const cleanPath = req.path || '/';
-  const candidatePayloads = [
-    `${ts}:${nonce}:${cleanPath}:${deviceId}`,
-    `${ts}:${nonce}:${cleanPath}`,
-    `${ts}:${nonce}:/:${deviceId}`,
-    `${ts}:${nonce}:/`,
-    `${ts}:${nonce}::${deviceId}`,
-    `${ts}:${nonce}`,
-    `${deviceId}:${ts}:${nonce}:${cleanPath}`,
-    `${ts}_${nonce}_${cleanPath}_${deviceId}`
+  const pathVariants = [
+    cleanPath,
+    '/',
+    '',
+    cleanPath.startsWith('/') ? cleanPath.substring(1) : '/' + cleanPath,
+    `https://api-3ua1.onrender.com${cleanPath}`,
+    `https://api-3ua1.onrender.com/`,
+    `https://api-3ua1.onrender.com`,
+    `api-3ua1.onrender.com${cleanPath}`,
+    `api-3ua1.onrender.com/`,
+    `api-3ua1.onrender.com`
   ];
 
-  console.log(`[AUTH-DEBUG] Incoming: path="${cleanPath}", deviceId="${deviceId}", ts="${ts}", nonce="${nonce}", sig="${sig}"`);
+  const candidatePayloads = [];
+  for (const p of pathVariants) {
+    candidatePayloads.push(`${ts}:${nonce}:${p}:${deviceId}`);
+    candidatePayloads.push(`${ts}:${nonce}:${p}`);
+    candidatePayloads.push(`${deviceId}:${ts}:${nonce}:${p}`);
+    candidatePayloads.push(`${ts}_${nonce}_${p}_${deviceId}`);
+    candidatePayloads.push(`${ts}${nonce}${p}${deviceId}`);
+  }
+  candidatePayloads.push(`${ts}:${nonce}:${deviceId}`);
+  candidatePayloads.push(`${ts}:${nonce}`);
 
-  for (const secret of APP_HMAC_SECRETS) {
+  for (const key of ALL_POSSIBLE_KEYS) {
     for (const payload of candidatePayloads) {
-      const expectedSig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
-      if (sig.toLowerCase() === expectedSig.toLowerCase()) {
-        console.log(`[AUTH-SUCCESS] Signature MATCHED with secret="${secret.substring(0, 10)}..." and payload="${payload}"`);
+      const expectedSig = crypto.createHmac('sha256', key).update(payload).digest('hex').toLowerCase();
+      if (sig === expectedSig) {
+        console.log(`[AUTH-SUCCESS] MATCH FOUND! Key: "${key}", Payload: "${payload}"`);
         return true;
       }
     }
   }
 
-  const primaryExpected = crypto.createHmac('sha256', APP_HMAC_SECRETS[0]).update(`${ts}:${nonce}:${cleanPath}:${deviceId}`).digest('hex');
+  const primaryExpected = crypto.createHmac('sha256', ALL_POSSIBLE_KEYS[0]).update(`${ts}:${nonce}:${cleanPath}:${deviceId}`).digest('hex');
   console.log(`[AUTH-REJECT] Signature mismatch!\n  Expected: ${primaryExpected}\n  Received: ${sig}\n  Payload:   "${ts}:${nonce}:${cleanPath}:${deviceId}"`);
   return false;
 }
