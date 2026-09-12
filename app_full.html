@@ -240,6 +240,7 @@
       width: 100%;
       min-height: 100%;
       background-color: #020617;
+      overflow: hidden;
       scrollbar-width: none !important;
       -ms-overflow-style: none !important;
       font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
@@ -276,6 +277,8 @@
       width: 100%;
       min-height: 100vh;
       overflow-x: hidden;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
       margin: 0;
       padding: 0;
       scrollbar-width: none !important;
@@ -6400,6 +6403,9 @@
         }, { passive: true });
       }
     });
+  </script>
+  <script>
+    (function(){var s=document.createElement('style');s.setAttribute('id','no-scrollbar');s.textContent='*{scrollbar-width:none!important;-ms-overflow-style:none!important}::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}::-webkit-scrollbar-thumb{display:none!important}*::-webkit-scrollbar-thumb{display:none!important}::-webkit-scrollbar-track{display:none!important}*::-webkit-scrollbar-track{display:none!important}::-webkit-scrollbar-corner{display:none!important}*::-webkit-scrollbar-corner{display:none!important}';document.head.appendChild(s);})();
   </script>
 </body>
 
