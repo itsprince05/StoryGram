@@ -657,12 +657,21 @@
       padding: 15px;
     }
 
+    .hero-action-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      flex-wrap: nowrap;
+      overflow: hidden;
+    }
+
     .hero-badges-row {
       display: flex;
       align-items: center;
       gap: 6px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      overflow: hidden;
     }
 
     .hero-badge {
@@ -671,12 +680,14 @@
       gap: 4px;
       font-size: 11px;
       font-weight: 800;
-      padding: 3px 8px;
+      padding: 6px 8px;
       border-radius: var(--radius-full);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
       letter-spacing: 0.3px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .hero-badge-rank {
@@ -734,11 +745,12 @@
       font-size: 12px;
       font-weight: 800;
       padding: 6px 14px;
-      margin-bottom: 10px;
       border-radius: var(--radius-full);
       width: fit-content;
       box-shadow: 0 4px 12px rgba(255, 255, 255, 0.35);
       transition: all 0.2s;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
 
     .hero-btn:active {
@@ -3730,13 +3742,15 @@
         <div class="hero-slide" onclick="openShowPage('${escapeAttr(show.show_id)}', '${escapeAttr(show.title)}', '${escapeAttr(show.image_url)}')">
           <img class="hero-img" src="${escapeAttr(show.image_url || 'https://via.placeholder.com/480x220')}" alt="${escapeAttr(show.title)}" loading="lazy">
           <div class="hero-gradient">
-            <div class="hero-badges-row">
-              ${hasRank ? `<div class="hero-badge hero-badge-rank">#${show.category_rank}</div>` : ''}
-              ${hasRating ? `<div class="hero-badge hero-badge-rating"><i data-lucide="star"></i> ${show.rating}</div>` : ''}
-              ${hasPlays ? `<div class="hero-badge hero-badge-plays"><i data-lucide="headphones"></i> ${playsText}</div>` : ''}
-            </div>
             <div class="hero-title">${escapeHtml(show.title)}</div>
-            <div class="hero-btn"><i data-lucide="play"></i> Play Series</div>
+            <div class="hero-action-row">
+              <div class="hero-btn"><i data-lucide="play"></i> Play Series</div>
+              <div class="hero-badges-row">
+                ${hasRank ? `<div class="hero-badge hero-badge-rank">#${show.category_rank}</div>` : ''}
+                ${hasRating ? `<div class="hero-badge hero-badge-rating"><i data-lucide="star"></i> ${show.rating}</div>` : ''}
+                ${hasPlays ? `<div class="hero-badge hero-badge-plays"><i data-lucide="headphones"></i> ${playsText}</div>` : ''}
+              </div>
+            </div>
           </div>
         </div>
       `;
