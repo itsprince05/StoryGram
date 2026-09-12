@@ -184,54 +184,72 @@
       font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
     }
 
-    ::-webkit-scrollbar {
-      display: none !important;
-      width: 0 !important;
-      height: 0 !important;
-      background: transparent !important;
-    }
-
-    *::-webkit-scrollbar {
-      display: none !important;
-      width: 0 !important;
-      height: 0 !important;
-      background: transparent !important;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      display: none !important;
-      background: transparent !important;
-    }
-
-    *::-webkit-scrollbar-thumb {
-      display: none !important;
-      background: transparent !important;
-    }
-
-    ::-webkit-scrollbar-track {
-      display: none !important;
-      background: transparent !important;
-    }
-
-    *::-webkit-scrollbar-track {
-      display: none !important;
-      background: transparent !important;
-    }
-
-    ::-webkit-scrollbar-corner {
-      display: none !important;
-      background: transparent !important;
-    }
-
-    *::-webkit-scrollbar-corner {
-      display: none !important;
-      background: transparent !important;
-    }
-
     html,
-    body {
+    body,
+    div,
+    section,
+    main,
+    article,
+    aside,
+    nav,
+    ul,
+    ol,
+    li,
+    span,
+    p,
+    form,
+    header,
+    footer {
       scrollbar-width: none !important;
       -ms-overflow-style: none !important;
+    }
+
+    ::-webkit-scrollbar,
+    *::-webkit-scrollbar,
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar,
+    div::-webkit-scrollbar,
+    section::-webkit-scrollbar,
+    main::-webkit-scrollbar,
+    article::-webkit-scrollbar,
+    aside::-webkit-scrollbar,
+    nav::-webkit-scrollbar,
+    ul::-webkit-scrollbar,
+    ol::-webkit-scrollbar,
+    li::-webkit-scrollbar,
+    span::-webkit-scrollbar,
+    p::-webkit-scrollbar,
+    form::-webkit-scrollbar,
+    header::-webkit-scrollbar,
+    footer::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      max-width: 0 !important;
+      max-height: 0 !important;
+      background: transparent !important;
+      color: transparent !important;
+      border: none !important;
+      outline: none !important;
+    }
+
+    ::-webkit-scrollbar-thumb,
+    *::-webkit-scrollbar-thumb,
+    ::-webkit-scrollbar-track,
+    *::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-track-piece,
+    *::-webkit-scrollbar-track-piece,
+    ::-webkit-scrollbar-corner,
+    *::-webkit-scrollbar-corner,
+    ::-webkit-scrollbar-button,
+    *::-webkit-scrollbar-button,
+    ::-webkit-resizer,
+    *::-webkit-resizer {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      background: transparent !important;
+      border: none !important;
     }
 
     html {
