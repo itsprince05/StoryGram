@@ -2175,8 +2175,8 @@
     }
 
     .spinner {
-      width: 48px;
-      height: 48px;
+      width: 32px;
+      height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -2184,8 +2184,8 @@
     }
 
     .spinner svg {
-      width: 48px;
-      height: 48px;
+      width: 32px;
+      height: 32px;
       stroke: var(--primary);
     }
 
@@ -2647,7 +2647,7 @@
       </div>
     </header>
     <div style="flex: 1; display: flex; align-items: center; justify-content: center; margin-top: 56px;">
-      <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+      <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2v4" />
           <path d="m16.2 7.8 2.9-2.9" />
@@ -2744,7 +2744,7 @@
 
         <div id="home-feed-container">
           <div class="loader">
-            <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+            <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2v4" />
                 <path d="m16.2 7.8 2.9-2.9" />
@@ -3118,6 +3118,8 @@
     let currentLibrarySection = 'episodes';
     let dbHistoryShows = [];
     let dbFavoriteShows = [];
+    let isDbHistoryLoaded = false;
+    let isDbFavoriteLoaded = false;
     let historyDisplayLimit = 30;
     let favoriteDisplayLimit = 30;
     let isFetchingDbLibrary = false;
@@ -3593,7 +3595,7 @@
 
       const epContainer = document.getElementById('show-page-episodes-container');
       if (epContainer) {
-        epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>';
+        epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>';
       }
 
       fetchShowEpisodes(currentShowId, startPtr, 'replace', startNum);
@@ -3690,7 +3692,7 @@
       if (!isRetry || !container.querySelector('.spinner')) {
         container.innerHTML = `
           <div class="loader">
-            <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
+            <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
           </div>
         `;
       }
@@ -3723,7 +3725,7 @@
       } catch (err) {
         container.innerHTML = `
           <div class="loader">
-            <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
+            <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
           </div>
         `;
         homeFeedRetryTimer = setTimeout(() => fetchHomeFeed(true), 3000);
@@ -3846,7 +3848,7 @@
 
       const epContainer = document.getElementById('show-page-episodes-container');
       if (epContainer) {
-        epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>';
+        epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>';
       }
 
       updateFavoriteButtonState();
@@ -4108,7 +4110,7 @@
         if (mode === 'replace') {
           const epContainer = document.getElementById('show-page-episodes-container');
           if (epContainer && !epContainer.querySelector('.spinner')) {
-            epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>';
+            epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>';
           }
         }
         setTimeout(() => {
@@ -4124,7 +4126,11 @@
       let userObj = {};
       try { userObj = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
       const uid = userObj.uid || userObj.userId || userObj.email || '';
-      if (!uid) return;
+      if (!uid) {
+        isDbHistoryLoaded = true;
+        isDbFavoriteLoaded = true;
+        return;
+      }
 
       isFetchingDbLibrary = true;
       try {
@@ -4147,6 +4153,7 @@
             dbHistoryShows = dataHist.items;
           }
         }
+        isDbHistoryLoaded = true;
 
         if (resFav.status === 'fulfilled' && resFav.value.ok) {
           const dataFav = await resFav.value.json();
@@ -4164,10 +4171,16 @@
             try { localStorage.setItem('storygram_favorites', JSON.stringify(favoriteShowsMap)); } catch (e) { }
           }
         }
+        isDbFavoriteLoaded = true;
       } catch (err) {
         console.warn("Library database sync error:", err);
       } finally {
         isFetchingDbLibrary = false;
+        isDbHistoryLoaded = true;
+        isDbFavoriteLoaded = true;
+        if (currentTabName === 'library') {
+          renderLibraryTab();
+        }
       }
     }
 
@@ -4182,11 +4195,9 @@
       refreshIcons();
 
       if (section === 'history' || section === 'favorite') {
-        fetchDatabaseLibrary().then(() => {
-          if (currentTabName === 'library' && currentLibrarySection === section) {
-            renderLibraryTab();
-          }
-        });
+        if (!isDbHistoryLoaded || !isDbFavoriteLoaded) {
+          fetchDatabaseLibrary();
+        }
       }
     }
 
@@ -4209,6 +4220,7 @@
 
     function clearShowHistory() {
       dbHistoryShows = [];
+      isDbHistoryLoaded = true;
       try {
         fetch('/library', {
           method: 'POST',
@@ -4225,6 +4237,7 @@
     function removeHistoryShow(e, showId) {
       if (e) e.stopPropagation();
       dbHistoryShows = dbHistoryShows.filter(s => s.show_id !== showId);
+      isDbHistoryLoaded = true;
       try {
         if (showId) {
           fetch('/library', {
@@ -4245,6 +4258,7 @@
       if (e) e.stopPropagation();
       delete favoriteShowsMap[showId];
       dbFavoriteShows = dbFavoriteShows.filter(s => s.show_id !== showId);
+      isDbFavoriteLoaded = true;
       try {
         localStorage.setItem('storygram_favorites', JSON.stringify(favoriteShowsMap));
       } catch (e) { }
@@ -4321,6 +4335,19 @@
         `;
         refreshIcons();
       } else if (currentLibrarySection === 'history') {
+        if (!isDbHistoryLoaded || isFetchingDbLibrary) {
+          container.innerHTML = `
+            <div class="loader" style="min-height: 40vh;">
+              <div class="spinner">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/>
+                </svg>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
         const fullList = ((dbHistoryShows && dbHistoryShows.length > 0) ? dbHistoryShows : []).slice(0, 90);
         if (fullList.length === 0) {
           container.innerHTML = `
@@ -4364,12 +4391,25 @@
           </div>
           ${hasMore ? `
             <div id="lib-scroll-loader" style="display: flex; justify-content: center; align-items: center; padding: 20px 0; width: 100%;">
-              <div class="spinner" style="width: 24px; height: 24px;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
+              <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
             </div>
           ` : ''}
         `;
         refreshIcons();
       } else {
+        if (!isDbFavoriteLoaded || isFetchingDbLibrary) {
+          container.innerHTML = `
+            <div class="loader" style="min-height: 40vh;">
+              <div class="spinner">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/>
+                </svg>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
         const favMap = { ...favoriteShowsMap };
         if (dbFavoriteShows && dbFavoriteShows.length > 0) {
           dbFavoriteShows.forEach(show => {
@@ -4424,7 +4464,7 @@
           </div>
           ${hasMore ? `
             <div id="lib-scroll-loader" style="display: flex; justify-content: center; align-items: center; padding: 20px 0; width: 100%;">
-              <div class="spinner" style="width: 24px; height: 24px;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
+              <div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div>
             </div>
           ` : ''}
         `;
@@ -5443,7 +5483,7 @@
         return;
       }
 
-      container.innerHTML = `<div class="loader" style="min-height: 40vh;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>`;
+      container.innerHTML = `<div class="loader" style="min-height: 40vh;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>`;
 
       try {
         const res = await fetch('/search', {
@@ -5511,7 +5551,7 @@
         }
         throw new Error("Search API failed");
       } catch (err) {
-        container.innerHTML = `<div class="loader" style="min-height: 40vh;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>`;
+        container.innerHTML = `<div class="loader" style="min-height: 40vh;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>`;
         setTimeout(() => {
           const currentVal = document.getElementById('search-input')?.value.trim();
           if (currentVal === query) {
