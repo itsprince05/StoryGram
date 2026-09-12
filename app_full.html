@@ -829,6 +829,19 @@
       border: 1px solid rgba(251, 191, 36, 0.35);
     }
 
+    #show-badge-rating svg,
+    #show-badge-rating i,
+    .hero-badge-rating svg,
+    .hero-badge-rating i,
+    .card-tag-right svg,
+    .card-tag-right i,
+    svg.lucide-star,
+    i[data-lucide="star"],
+    [data-lucide="star"] {
+      fill: #fbbf24 !important;
+      stroke: #fbbf24 !important;
+    }
+
     .card-play-overlay {
       display: none;
     }
@@ -1094,12 +1107,20 @@
 
     .show-page-badges {
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       position: relative;
       z-index: 2;
+    }
+
+    .show-badges-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .show-page-episodes-wrap {
@@ -2808,27 +2829,31 @@
           <img id="show-page-img" class="show-page-poster" src="" alt="Show Poster">
           <h1 id="show-page-title" class="show-page-title">Show Title</h1>
           <div id="show-page-badges" class="show-page-badges">
-            <div id="show-badge-rank" class="status-badge"
-              style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); display: none;">
-              <i data-lucide="trophy"></i> <span id="show-badge-rank-text">#1</span>
+            <div class="show-badges-row">
+              <div id="show-badge-rank" class="status-badge"
+                style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); display: none;">
+                <i data-lucide="trophy"></i> <span id="show-badge-rank-text">#1 Rank</span>
+              </div>
+              <div id="show-badge-rating" class="status-badge"
+                style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); display: none;">
+                <i data-lucide="star" style="fill: #fbbf24;"></i> <span id="show-badge-rating-text">4.6 Rating</span>
+              </div>
             </div>
-            <div id="show-badge-rating" class="status-badge"
-              style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); display: none;">
-              <i data-lucide="star"></i> <span id="show-badge-rating-text">4.6</span>
-            </div>
-            <div id="show-badge-plays" class="status-badge"
-              style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); display: none;">
-              <i data-lucide="headphones"></i> <span id="show-badge-plays-text">55.6M</span>
-            </div>
-            <div id="show-page-ep-count" class="status-badge"
-              style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border-color: rgba(139, 92, 246, 0.3); display: none;">
-              <i data-lucide="list-ordered"></i> <span id="show-badge-ep-text">Episodes</span>
+            <div class="show-badges-row">
+              <div id="show-badge-plays" class="status-badge"
+                style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); display: none;">
+                <i data-lucide="headphones"></i> <span id="show-badge-plays-text">55.6M Plays</span>
+              </div>
+              <div id="show-page-ep-count" class="status-badge"
+                style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border-color: rgba(139, 92, 246, 0.3); display: none;">
+                <i data-lucide="list-ordered"></i> <span id="show-badge-ep-text">Episodes</span>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="show-page-episodes-wrap">
-          <div class="section-header" style="align-items: center;">
+          <div class="section-header" id="show-page-episodes-header-row" style="align-items: center; display: none;">
             <div class="section-title" style="font-size: 16px; font-weight: 800;">
               <i data-lucide="list-ordered"></i> <span id="show-page-ep-header-title">Episodes</span>
             </div>
@@ -3623,6 +3648,9 @@
         refreshIcons();
       }
 
+      const epHeaderRow = document.getElementById('show-page-episodes-header-row');
+      if (epHeaderRow) epHeaderRow.style.display = 'none';
+
       const epContainer = document.getElementById('show-page-episodes-container');
       if (epContainer) {
         epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>';
@@ -3873,6 +3901,9 @@
       document.getElementById('show-badge-plays').style.display = 'none';
       document.getElementById('show-page-ep-count').style.display = 'none';
 
+      const epHeaderRow = document.getElementById('show-page-episodes-header-row');
+      if (epHeaderRow) epHeaderRow.style.display = 'none';
+
       document.getElementById('show-page-ep-header-title').innerText = "Episodes";
       document.getElementById('episodes-counter-badge').innerHTML = `<span>Ep 1-20</span> <i data-lucide="chevron-down"></i>`;
 
@@ -3915,8 +3946,8 @@
       if (!currentShowId) return;
       const title = document.getElementById('show-page-title')?.innerText || "Show Details";
       const img = document.getElementById('show-page-img')?.src || "";
-      const rating = document.getElementById('show-badge-rating-text')?.innerText || "";
-      const plays = document.getElementById('show-badge-plays-text')?.innerText || "";
+      const rating = (document.getElementById('show-badge-rating-text')?.innerText || "").replace(/\s*Rating$/i, '').trim();
+      const plays = (document.getElementById('show-badge-plays-text')?.innerText || "").replace(/\s*Plays$/i, '').trim();
 
       let isSaved = false;
       if (favoriteShowsMap[currentShowId]) {
@@ -4180,14 +4211,14 @@
             }
 
             if (showData.show_category_rank) {
-              document.getElementById('show-badge-rank-text').innerText = `#${showData.show_category_rank}`;
+              document.getElementById('show-badge-rank-text').innerText = `#${showData.show_category_rank} Rank`;
               document.getElementById('show-badge-rank').style.display = 'inline-flex';
             } else {
               document.getElementById('show-badge-rank').style.display = 'none';
             }
 
             if (showData.stats && showData.stats.avg_rating) {
-              document.getElementById('show-badge-rating-text').innerText = showData.stats.avg_rating;
+              document.getElementById('show-badge-rating-text').innerText = `${showData.stats.avg_rating} Rating`;
               document.getElementById('show-badge-rating').style.display = 'inline-flex';
             } else {
               document.getElementById('show-badge-rating').style.display = 'none';
@@ -4207,11 +4238,15 @@
             document.getElementById('show-page-ep-count').style.display = totalCount ? 'inline-flex' : 'none';
             document.getElementById('show-page-ep-header-title').innerText = `${totalCount} Episodes`;
 
+            const epHeaderRow = document.getElementById('show-page-episodes-header-row');
+
             if (showData.stories && showData.stories.length > 0) {
+              if (epHeaderRow) epHeaderRow.style.display = 'flex';
               renderEpisodesList(showData.stories, mode, startEpisodeNum);
               currentNextPtr = showData.next_ptr || (currPtr + showData.stories.length);
               updateEpisodeCounterBadge();
             } else {
+              if (epHeaderRow) epHeaderRow.style.display = 'none';
               if (mode === 'replace') {
                 document.getElementById('show-page-episodes-container').innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted);"><i data-lucide="list-ordered" style="width: 24px; height: 24px; margin-bottom: 8px;"></i><p>No episodes found for this show.</p></div>';
                 refreshIcons();
@@ -4222,6 +4257,8 @@
         }
         throw new Error("Failed to load show details");
       } catch (err) {
+        const epHeaderRow = document.getElementById('show-page-episodes-header-row');
+        if (epHeaderRow && mode === 'replace') epHeaderRow.style.display = 'none';
         if (mode === 'replace') {
           const epContainer = document.getElementById('show-page-episodes-container');
           if (epContainer && !epContainer.querySelector('.spinner')) {
@@ -5074,7 +5111,15 @@
 
       currentLoadedVideoUrl = videoUrl;
       isAudioBuffering = true;
+      isPlaying = false;
       updatePlayPauseButton();
+
+      const posterImg = document.getElementById('fs-poster-img');
+      if (posterImg) posterImg.style.display = 'none';
+      if (videoElement) {
+        videoElement.style.display = 'block';
+        videoElement.muted = false;
+      }
 
       if (hlsVideoPlayer) {
         try {
@@ -5085,10 +5130,11 @@
         hlsVideoPlayer = null;
       }
 
-      if (window.Hls && Hls.isSupported() && (videoUrl.includes('.m3u8') || videoUrl.includes('hls') || videoUrl.includes('HLS') || videoUrl.includes('Default'))) {
+      if (window.Hls && Hls.isSupported() && (videoUrl.includes('.m3u8') || videoUrl.includes('hls') || videoUrl.includes('HLS') || videoUrl.includes('master') || videoUrl.includes('Default'))) {
         hlsVideoPlayer = new Hls({
           enableWorker: true,
-          lowLatencyMode: true
+          lowLatencyMode: true,
+          maxBufferLength: 30
         });
         hlsVideoPlayer.loadSource(videoUrl);
         hlsVideoPlayer.attachMedia(videoElement);
@@ -5105,12 +5151,51 @@
               isPlaying = true;
               updatePlayPauseButton();
             } catch (e) {
+              console.warn("Video play error:", e);
               isAudioBuffering = false;
               isPlaying = false;
               updatePlayPauseButton();
             }
           }
         });
+
+        hlsVideoPlayer.on(Hls.Events.ERROR, function(event, data) {
+          console.warn("HLS Video Error:", data);
+          if (data.fatal) {
+            switch(data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hlsVideoPlayer.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hlsVideoPlayer.recoverMediaError();
+                break;
+              default:
+                try { hlsVideoPlayer.destroy(); } catch (e) { }
+                hlsVideoPlayer = null;
+                videoElement.src = videoUrl;
+                if (shouldPlay) videoElement.play().catch(() => {});
+                break;
+            }
+          }
+        });
+      } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+        videoElement.src = videoUrl;
+        videoElement.playbackRate = currentPlaybackSpeed;
+        if (startTime > 0) {
+          videoElement.currentTime = startTime;
+        }
+        if (shouldPlay) {
+          try {
+            await videoElement.play();
+            isAudioBuffering = false;
+            isPlaying = true;
+            updatePlayPauseButton();
+          } catch (e) {
+            isAudioBuffering = false;
+            isPlaying = false;
+            updatePlayPauseButton();
+          }
+        }
       } else {
         videoElement.src = videoUrl;
         videoElement.playbackRate = currentPlaybackSpeed;
@@ -5279,6 +5364,9 @@
         return;
       }
 
+      isAudioBuffering = true;
+      isPlaying = false;
+
       const effectiveShowId = showId || currentShowId || (currentShowObj && currentShowObj.show_id) || "";
       if (effectiveShowId) {
         currentShowId = effectiveShowId;
@@ -5303,6 +5391,9 @@
         currentMediaMode = 'audio';
       }
 
+      updatePlayPauseButton();
+      updateEpisodeListIcons();
+
       const historyItem = {
         storyId,
         title: title || "Now Playing",
@@ -5324,8 +5415,6 @@
         renderLibraryTab();
       }
 
-      updateEpisodeListIcons();
-
       document.getElementById('player-title').innerText = title || "Now Playing";
       document.getElementById('player-subtitle').innerText = showTitle || "Story Gram";
       document.getElementById('player-thumb').src = thumbUrl || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=100&auto=format&fit=crop&q=80';
@@ -5337,8 +5426,19 @@
       openFullscreenPlayer();
 
       if (currentMediaMode === 'video') {
+        const posterImg = document.getElementById('fs-poster-img');
+        if (posterImg) posterImg.style.display = 'none';
+        if (videoElement) {
+          videoElement.style.display = 'block';
+          videoElement.muted = false;
+        }
         await startVideoStream(videoUrl, 0, true);
       } else {
+        const posterImg = document.getElementById('fs-poster-img');
+        if (posterImg) posterImg.style.display = 'block';
+        if (videoElement) {
+          videoElement.style.display = 'none';
+        }
         await startAudioStream(audioUrl, 0, true);
       }
     }
