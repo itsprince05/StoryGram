@@ -9,6 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = 'https://api.pocketfm.com';
 const WORKER_PROXY_URL = 'https://curl-proxy.bruceliu-dev.workers.dev/';
+const showMetadataCache = new Map();
 
 function decryptPocketFmBlob(clientTs, deviceId, cipherBase64) {
   const rawData = `${deviceId}:${clientTs}`;
@@ -739,6 +740,59 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
     const pageSource = req.body?.page_source || req.headers['page_source'] || req.headers['page-source'] || req.query.page_source || 'show_detail';
     const batchSize = Math.min(Math.max(parseInt(req.body?.batch_size || req.body?.limit || req.headers['limit'] || req.query.limit || '20', 10), 1), 50);
 
+    let baseShow = null;
+    const cachedMeta = showMetadataCache.get(showId);
+    if (cachedMeta && cachedMeta.expiresAt > Date.now()) {
+      baseShow = cachedMeta.baseShow;
+    }
+
+    const allStories = [];
+
+    if (startPtr >= 3000) {
+      if (!baseShow) {
+        const metaParams = new URLSearchParams({
+          show_id: showId,
+          curr_ptr: '0',
+          info_level: '0',
+          page_source: pageSource
+        }).toString();
+        try {
+          const { data: metaData } = await fetchViaWorkerProxy(`${BASE_URL}/v2/content_api/show.get_details?${metaParams}`, headers, 'GET');
+          if (metaData && metaData.result && Array.isArray(metaData.result) && metaData.result[0]) {
+            baseShow = metaData.result[0];
+            showMetadataCache.set(showId, {
+              baseShow,
+              expiresAt: Date.now() + 3600000
+            });
+          }
+        } catch (e) {}
+      }
+
+      await resolveStoriesBeyond3000(showId, allStories, req, startPtr, batchSize, baseShow, false);
+
+      const filteredResponse = {
+        status: 1,
+        message: "Result for show details page",
+        result: [
+          {
+            show_title: baseShow?.show_title || baseShow?.title || "Show Details",
+            image_url: baseShow?.image_url || baseShow?.cover_url || baseShow?.gift_url || "",
+            show_category_rank: baseShow?.show_category_rank !== undefined ? baseShow.show_category_rank : (baseShow?.rank !== undefined ? baseShow.rank : null),
+            show_id: baseShow?.show_id || showId,
+            episodes_count: typeof baseShow?.episodes_count === 'number' ? baseShow.episodes_count : parseInt(baseShow?.episodes_count || '0', 10),
+            stories: allStories,
+            next_ptr: startPtr + allStories.length,
+            stats: {
+              avg_rating: baseShow?.stats?.avg_rating !== undefined ? baseShow.stats.avg_rating : null,
+              total_plays_display: formatPlaysDisplay(baseShow?.stats?.total_plays_display || baseShow?.stats?.total_plays || baseShow?.plays || "")
+            }
+          }
+        ]
+      };
+
+      return res.status(200).json(filteredResponse);
+    }
+
     const ptrList = [];
     for (let i = 0; i < batchSize; i++) {
       ptrList.push(startPtr + i);
@@ -761,8 +815,6 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
     const results = await Promise.all(fetchPromises);
     results.sort((a, b) => a.ptr - b.ptr);
 
-    let baseShow = null;
-    const allStories = [];
     const seenStoryIds = new Set();
 
     for (const item of results) {
@@ -771,6 +823,10 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
 
       if (!baseShow && json.result && Array.isArray(json.result) && json.result[0]) {
         baseShow = json.result[0];
+        showMetadataCache.set(showId, {
+          baseShow,
+          expiresAt: Date.now() + 3600000
+        });
       }
 
       if (json.result && Array.isArray(json.result) && json.result[0] && Array.isArray(json.result[0].stories)) {
@@ -790,6 +846,7 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
 
             const androidVideoUrl = (videoInfoObj && videoInfoObj.android && videoInfoObj.android.video_url) || (story.android && story.android.video_url) || "";
             const webVideoUrl = (videoInfoObj && videoInfoObj.web && videoInfoObj.web.video_url) || (story.web && story.web.video_url) || "";
+            const hlsVideoUrl = story.hls_url || (videoInfoObj && videoInfoObj.hls_url) || "";
             const realMediaUrlEnc = story.media_url_enc || story.media_url || "";
             const videoDashUrl = story.video_url || androidVideoUrl || realMediaUrlEnc || "";
 
@@ -798,10 +855,11 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               show_id: story.show_id || (baseShow && baseShow.show_id) || showId,
               image_url: story.image_url || story.cover_url || (baseShow && baseShow.image_url) || "",
               duration: typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0'),
+              seq_number: story.seq_number,
               story_id: story.story_id || ""
             };
 
-            const finalVideoUrl = webVideoUrl || (story.video_url && !story.video_url.includes('.mpd') && story.video_url.includes('.m3u8') ? story.video_url : "");
+            const finalVideoUrl = webVideoUrl || (story.video_url && !story.video_url.includes('.mpd') ? story.video_url : "") || (androidVideoUrl && !androidVideoUrl.includes('.mpd') ? androidVideoUrl : "") || (hlsVideoUrl && !hlsVideoUrl.includes('mock') ? hlsVideoUrl : "");
 
             if (finalVideoUrl) {
               storyObj.audio_url = videoDashUrl;
@@ -825,7 +883,7 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       });
     }
 
-    await resolveStoriesBeyond3000(showId, allStories, req, startPtr, batchSize, baseShow);
+    await resolveStoriesBeyond3000(showId, allStories, req, startPtr, batchSize, baseShow, false);
 
     const filteredResponse = {
       status: 1,
@@ -857,10 +915,20 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
   }
 });
 
-async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, batchSize = 20, baseShow = null) {
+async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, batchSize = 20, baseShow = null, isBackground = false) {
   if (!showId) return allStories;
 
   const isBatchBeyond3000 = (startPtr >= 3000);
+
+  if (isBatchBeyond3000) {
+    for (let i = allStories.length - 1; i >= 0; i--) {
+      const num = allStories[i].seq_number || 0;
+      if (num < 3000 && num > 0) {
+        allStories.splice(i, 1);
+      }
+    }
+  }
+
   const hasItemsBeyond3000 = allStories.some((s, i) => {
     const num = s.seq_number || (startPtr + i + 1);
     return num > 3000;
@@ -932,7 +1000,7 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
         'Content-Type': 'application/json',
         'X-API-KEY': PHP_API_KEY
       },
-      timeout: 8000,
+      timeout: 3000,
       validateStatus: () => true
     });
 
@@ -959,6 +1027,13 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
   }
 
   if (missingStoryIds.length === 0) {
+    return allStories;
+  }
+
+  if (!isBackground) {
+    setImmediate(() => {
+      resolveStoriesBeyond3000(showId, allStories, req, startPtr, batchSize, baseShow, true).catch(() => {});
+    });
     return allStories;
   }
 
@@ -996,19 +1071,8 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
     missingStoryIds = missingStoryIds.filter(id => !map.has(id));
   }
 
-  try {
-    const { data: initSaved } = await fetchViaWorkerProxy(savedStoriesUrl, pocketHeaders, 'GET');
-    if (initSaved && initSaved.result && Array.isArray(initSaved.result.stories)) {
-      matchAndApplySaved(initSaved.result.stories);
-    }
-  } catch (err) {
-    console.error("[RESOLVE >3000] Initial get_saved_stories error:", err.message);
-  }
-
   if (missingStoryIds.length > 0) {
-    for (let attempt = 1; attempt <= 5; attempt++) {
-      console.log(`[RESOLVE >3000] Attempt ${attempt}/5: Subscribing ${missingStoryIds.length} missing stories for show ${showId}`);
-
+    for (let attempt = 1; attempt <= 2; attempt++) {
       const subscribeCalls = missingStoryIds.map(stId => {
         const payload = {
           action: "subscribe_story",
@@ -1023,41 +1087,32 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
       });
 
       await Promise.all(subscribeCalls);
-
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 100));
 
       try {
         const { data: retrySaved } = await fetchViaWorkerProxy(savedStoriesUrl, pocketHeaders, 'GET');
         if (retrySaved && retrySaved.result && Array.isArray(retrySaved.result.stories)) {
           matchAndApplySaved(retrySaved.result.stories);
         }
-      } catch (err) {
-        console.error(`[RESOLVE >3000] Attempt ${attempt} saved stories error:`, err.message);
-      }
+      } catch (err) {}
 
-      if (missingStoryIds.length === 0) {
-        console.log(`[RESOLVE >3000] All missing story URLs resolved on attempt ${attempt}`);
-        break;
-      }
+      if (missingStoryIds.length === 0) break;
     }
   }
 
   if (toSaveToDb.length > 0) {
     try {
-      console.log(`[AUTO-CACHE] Saving ${toSaveToDb.length} resolved episodes to DB`);
-      await axios.post(`${PHP_BACKEND_URL}/episodes.php`, {
+      axios.post(`${PHP_BACKEND_URL}/episodes.php`, {
         episodes: toSaveToDb
       }, {
         headers: {
           'Content-Type': 'application/json',
           'X-API-KEY': PHP_API_KEY
         },
-        timeout: 10000,
+        timeout: 5000,
         validateStatus: () => true
-      });
-    } catch (saveErr) {
-      console.error("[AUTO-CACHE] DB bulk save error:", saveErr.message);
-    }
+      }).catch(() => {});
+    } catch (saveErr) {}
   }
 
   return allStories;
@@ -1087,7 +1142,7 @@ app.all(['/api/resolve_episodes', '/resolve_episodes'], async (req, res) => {
       seq_number: startNum + idx
     }));
 
-    await resolveStoriesBeyond3000(showId, dummyStories, req, startNum - 1, dummyStories.length);
+    await resolveStoriesBeyond3000(showId, dummyStories, req, startNum - 1, dummyStories.length, null, true);
 
     return res.status(200).json({
       success: true,
