@@ -93,6 +93,10 @@
 
         if (deviceId) setHeader('deviceid', deviceId);
         if (userObj.userId || userObj.uid) setHeader('userid', userObj.userId || userObj.uid);
+        if (userObj.email) {
+          setHeader('x-app-user-email', userObj.email);
+          setHeader('useremail', userObj.email);
+        }
         setHeader('nonce', nonce);
         if (sig) setHeader('signature', sig);
         setHeader('timestamp', ts);
