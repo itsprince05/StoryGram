@@ -140,7 +140,34 @@
       padding: 0;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
       font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Inter", "Segoe UI", sans-serif !important;
+    }
+
+    ::-webkit-scrollbar,
+    *::-webkit-scrollbar,
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar,
+    div::-webkit-scrollbar {
+      display: none !important;
+      width: 0px !important;
+      height: 0px !important;
+      background: transparent !important;
+      -webkit-appearance: none !important;
+      opacity: 0 !important;
+    }
+
+    ::-webkit-scrollbar-thumb,
+    *::-webkit-scrollbar-thumb {
+      display: none !important;
+      background: transparent !important;
+    }
+
+    ::-webkit-scrollbar-track,
+    *::-webkit-scrollbar-track {
+      display: none !important;
+      background: transparent !important;
     }
 
     html,
@@ -152,6 +179,8 @@
       overflow-x: hidden;
       margin: 0;
       padding: 0;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
     }
 
     .main-container {
