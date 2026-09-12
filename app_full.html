@@ -1263,7 +1263,9 @@
     }
 
     @keyframes epSpin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .ep-left {
@@ -2928,7 +2930,7 @@
 
       <div id="tab-search" class="tab-content">
         <form class="search-box" id="search-form" onsubmit="handleSearchSubmit(event)" action="javascript:void(0);">
-          <input type="search" id="search-input" class="search-input" placeholder="Search shows, characters, stories..."
+          <input type="search" id="search-input" class="search-input" placeholder="Search shows and stories..."
             enterkeyhint="search" inputmode="search" autocomplete="off" autocorrect="off" autocapitalize="off"
             spellcheck="false">
           <button type="submit" class="search-btn-icon-btn" aria-label="Search">
@@ -5251,10 +5253,10 @@
           }
         });
 
-        hlsVideoPlayer.on(Hls.Events.ERROR, function(event, data) {
+        hlsVideoPlayer.on(Hls.Events.ERROR, function (event, data) {
           console.warn("HLS Video Error:", data);
           if (data.fatal) {
-            switch(data.type) {
+            switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
                 hlsVideoPlayer.startLoad();
                 break;
@@ -5265,7 +5267,7 @@
                 try { hlsVideoPlayer.destroy(); } catch (e) { }
                 hlsVideoPlayer = null;
                 videoElement.src = videoUrl;
-                if (shouldPlay) videoElement.play().catch(() => {});
+                if (shouldPlay) videoElement.play().catch(() => { });
                 break;
             }
           }
@@ -6420,10 +6422,10 @@
     });
   </script>
   <script>
-    (function(){
-      var s=document.createElement('style');
-      s.setAttribute('id','no-scrollbar');
-      s.textContent='*{scrollbar-width:none!important;-ms-overflow-style:none!important;scrollbar-color:transparent transparent!important}::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;background:transparent!important;-webkit-appearance:none!important;appearance:none!important}*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;background:transparent!important;-webkit-appearance:none!important;appearance:none!important}::-webkit-scrollbar-thumb{display:none!important;background:transparent!important}*::-webkit-scrollbar-thumb{display:none!important;background:transparent!important}::-webkit-scrollbar-track{display:none!important;background:transparent!important}*::-webkit-scrollbar-track{display:none!important;background:transparent!important}::-webkit-scrollbar-corner{display:none!important;background:transparent!important}*::-webkit-scrollbar-corner{display:none!important;background:transparent!important}';
+    (function () {
+      var s = document.createElement('style');
+      s.setAttribute('id', 'no-scrollbar');
+      s.textContent = '*{scrollbar-width:none!important;-ms-overflow-style:none!important;scrollbar-color:transparent transparent!important}::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;background:transparent!important;-webkit-appearance:none!important;appearance:none!important}*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;background:transparent!important;-webkit-appearance:none!important;appearance:none!important}::-webkit-scrollbar-thumb{display:none!important;background:transparent!important}*::-webkit-scrollbar-thumb{display:none!important;background:transparent!important}::-webkit-scrollbar-track{display:none!important;background:transparent!important}*::-webkit-scrollbar-track{display:none!important;background:transparent!important}::-webkit-scrollbar-corner{display:none!important;background:transparent!important}*::-webkit-scrollbar-corner{display:none!important;background:transparent!important}';
       document.head.appendChild(s);
     })();
   </script>
