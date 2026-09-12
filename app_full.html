@@ -1161,6 +1161,32 @@
       color: var(--primary);
     }
 
+    .episode-item.resolving-ep {
+      opacity: 0.75;
+      cursor: wait;
+    }
+
+    .ep-right-loader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      flex-shrink: 0;
+    }
+
+    .ep-mini-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: epSpin 0.75s linear infinite;
+    }
+
+    @keyframes epSpin {
+      to { transform: rotate(360deg); }
+    }
+
     .ep-left {
       display: flex;
       align-items: center;
@@ -3985,6 +4011,7 @@
       const showImg = document.getElementById('show-page-img')?.src || "";
 
       const fragment = document.createDocumentFragment();
+      const missingEpList = [];
 
       stories.forEach((story, idx) => {
         const epDiv = document.createElement('div');
@@ -3998,15 +4025,44 @@
         const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
         const audioUrl = story.audio_url || story.media_url_enc || story.media_url || "";
         const videoUrl = story.video_url || "";
+        const hasMedia = Boolean(audioUrl || videoUrl);
+        const isBeyond3000 = (epNumber > 3000 || (startEpisodeNum + idx) > 3000);
+        const isResolving = isBeyond3000 && !hasMedia;
+
         const epShowId = story.show_id || currentShowId || (currentShowObj && currentShowObj.show_id) || "";
-        epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo, epShowId);
+
+        if (isResolving) {
+          epDiv.classList.add('resolving');
+          epDiv.style.pointerEvents = 'none';
+          epDiv.style.opacity = '0.75';
+          missingEpList.push({
+            story_id: story.story_id,
+            epNumber: epNumber,
+            title: story.story_title || `Episode ${epNumber}`,
+            hasVideo: hasVideo,
+            durationText: durationText,
+            epShowId: epShowId
+          });
+        } else {
+          epDiv.onclick = () => handleEpisodeClick(story.story_id, story.story_title || `Episode ${epNumber}`, audioUrl, videoUrl, showTitle, showImg, hasVideo, epShowId);
+        }
 
         const iconHtml = (isCurrent && isAudioBuffering)
           ? '<span class="btn-spinner"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></span>'
           : (isThisPlaying ? '<i data-lucide="pause"></i>' : `<i data-lucide="${hasVideo ? 'video' : 'headphones'}"></i>`);
 
+        const rightLoaderHtml = isResolving
+          ? `<div class="ep-right-loader" id="ep-loader-${story.story_id}" title="Resolving episode link..." style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;margin-left:auto;flex-shrink:0;">
+              <span class="btn-spinner" style="width:18px;height:18px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--primary,#ff3366);">
+                  <path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/>
+                </svg>
+              </span>
+            </div>`
+          : '';
+
         epDiv.innerHTML = `
-          <div class="ep-left">
+          <div class="ep-left" style="flex:1;min-width:0;">
             <div class="ep-play-btn" data-has-video="${hasVideo ? 'true' : 'false'}" title="${hasVideo ? 'Play Video Episode' : 'Play Audio Episode'}">
               ${iconHtml}
             </div>
@@ -4015,6 +4071,7 @@
               <div class="ep-duration">#${epNumber} • ${durationText}</div>
             </div>
           </div>
+          ${rightLoaderHtml}
         `;
         fragment.appendChild(epDiv);
       });
@@ -4026,6 +4083,60 @@
       }
 
       refreshIcons();
+
+      if (missingEpList.length > 0) {
+        resolveMissingEpisodes(currentShowId, missingEpList, showTitle, showImg);
+      }
+    }
+
+    async function resolveMissingEpisodes(showId, missingList, showTitle, showImg) {
+      if (!showId || !missingList || missingList.length === 0) return;
+      try {
+        const storyIds = missingList.map(m => m.story_id);
+        const startNum = missingList[0].epNumber;
+        const res = await fetch('/api/resolve_episodes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            show_id: showId,
+            story_ids: storyIds,
+            start_num: startNum
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && Array.isArray(data.stories)) {
+            data.stories.forEach(resolved => {
+              const encUrl = resolved.media_url_enc || resolved.audio_url || "";
+              if (encUrl) {
+                const epObj = loadedEpisodesList.find(s => s.story_id === resolved.story_id);
+                if (epObj) {
+                  epObj.media_url_enc = encUrl;
+                  epObj.audio_url = encUrl;
+                }
+                const missingItem = missingList.find(m => m.story_id === resolved.story_id);
+                const epDiv = document.getElementById('ep-item-' + resolved.story_id);
+                if (epDiv) {
+                  const loaderEl = epDiv.querySelector('.ep-right-loader');
+                  if (loaderEl) loaderEl.remove();
+                  epDiv.classList.remove('resolving');
+                  epDiv.style.pointerEvents = 'auto';
+                  epDiv.style.opacity = '1';
+
+                  const epTitle = (missingItem && missingItem.title) || (epObj && epObj.story_title) || "Episode";
+                  const epHasVid = (missingItem && missingItem.hasVideo) || (epObj && Boolean(epObj.video_url));
+                  const epShow = (missingItem && missingItem.epShowId) || showId;
+
+                  epDiv.onclick = () => handleEpisodeClick(resolved.story_id, epTitle, encUrl, "", showTitle, showImg, epHasVid, epShow);
+                }
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.error("resolveMissingEpisodes error:", err);
+      }
     }
 
     async function fetchShowEpisodes(showId, currPtr = 0, mode = 'replace', startEpisodeNum = 1) {
