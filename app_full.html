@@ -184,13 +184,55 @@
       font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
     }
 
+    /* Globally hide scrollbars for WebKit, Blink, Chrome, Safari, Android WebView */
+    ::-webkit-scrollbar,
     *::-webkit-scrollbar,
     html::-webkit-scrollbar,
     body::-webkit-scrollbar,
-    div::-webkit-scrollbar {
+    div::-webkit-scrollbar,
+    section::-webkit-scrollbar,
+    main::-webkit-scrollbar,
+    span::-webkit-scrollbar,
+    ul::-webkit-scrollbar,
+    ol::-webkit-scrollbar,
+    nav::-webkit-scrollbar {
       display: none !important;
-      width: 0 !important;
-      height: 0 !important;
+      width: 0px !important;
+      height: 0px !important;
+      background: transparent !important;
+      -webkit-appearance: none !important;
+      opacity: 0 !important;
+    }
+
+    ::-webkit-scrollbar-thumb,
+    *::-webkit-scrollbar-thumb,
+    html::-webkit-scrollbar-thumb,
+    body::-webkit-scrollbar-thumb,
+    div::-webkit-scrollbar-thumb {
+      display: none !important;
+      width: 0px !important;
+      height: 0px !important;
+      background: transparent !important;
+      -webkit-appearance: none !important;
+      opacity: 0 !important;
+    }
+
+    ::-webkit-scrollbar-track,
+    *::-webkit-scrollbar-track,
+    html::-webkit-scrollbar-track,
+    body::-webkit-scrollbar-track,
+    div::-webkit-scrollbar-track {
+      display: none !important;
+      width: 0px !important;
+      height: 0px !important;
+      background: transparent !important;
+      -webkit-appearance: none !important;
+      opacity: 0 !important;
+    }
+
+    ::-webkit-scrollbar-corner,
+    *::-webkit-scrollbar-corner {
+      display: none !important;
       background: transparent !important;
     }
 
