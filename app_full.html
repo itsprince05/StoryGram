@@ -3649,14 +3649,14 @@
       }
 
       const epHeaderRow = document.getElementById('show-page-episodes-header-row');
-      if (epHeaderRow) epHeaderRow.style.display = 'none';
+      if (epHeaderRow) epHeaderRow.style.display = 'flex';
 
       const epContainer = document.getElementById('show-page-episodes-container');
       if (epContainer) {
         epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>';
       }
 
-      fetchShowEpisodes(currentShowId, startPtr, 'replace', startNum);
+      fetchShowEpisodes(currentShowId, startPtr, 'replace', startNum, 0);
     }
 
     function renderBannerSlider(shows) {
@@ -4053,7 +4053,9 @@
 
         const hasVideo = Boolean(story.video_url);
         const durationText = story.duration ? Math.ceil(story.duration / 60) + ' min' : 'Audio';
-        const epNumber = (startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx;
+        const epNumber = (typeof story.seq_number === 'number' && story.seq_number > 0)
+          ? story.seq_number
+          : ((startEpisodeNum !== undefined ? startEpisodeNum : 1) + idx);
         const audioUrl = story.audio_url || story.media_url_enc || story.media_url || "";
         const videoUrl = story.video_url || "";
         const hasMedia = Boolean(audioUrl || videoUrl);
@@ -4170,7 +4172,7 @@
       }
     }
 
-    async function fetchShowEpisodes(showId, currPtr = 0, mode = 'replace', startEpisodeNum = 1) {
+    async function fetchShowEpisodes(showId, currPtr = 0, mode = 'replace', startEpisodeNum = 1, retryCount = 0) {
       currentBatchStartPtr = currPtr;
       if (mode === 'replace') {
         currentTopPtr = currPtr;
@@ -4239,38 +4241,68 @@
             document.getElementById('show-page-ep-header-title').innerText = `${totalCount} Episodes`;
 
             const epHeaderRow = document.getElementById('show-page-episodes-header-row');
+            if (epHeaderRow) epHeaderRow.style.display = 'flex';
 
             if (showData.stories && showData.stories.length > 0) {
-              if (epHeaderRow) epHeaderRow.style.display = 'flex';
               renderEpisodesList(showData.stories, mode, startEpisodeNum);
               currentNextPtr = showData.next_ptr || (currPtr + showData.stories.length);
               updateEpisodeCounterBadge();
+              return;
             } else {
-              if (epHeaderRow) epHeaderRow.style.display = 'none';
+              if (retryCount < 3) {
+                throw new Error("No stories received, retrying");
+              }
               if (mode === 'replace') {
                 document.getElementById('show-page-episodes-container').innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted);"><i data-lucide="list-ordered" style="width: 24px; height: 24px; margin-bottom: 8px;"></i><p>No episodes found for this show.</p></div>';
                 refreshIcons();
               }
+              return;
             }
-            return;
           }
         }
         throw new Error("Failed to load show details");
       } catch (err) {
-        const epHeaderRow = document.getElementById('show-page-episodes-header-row');
-        if (epHeaderRow && mode === 'replace') epHeaderRow.style.display = 'none';
-        if (mode === 'replace') {
+        if (currentShowId !== showId) return;
+
+        if (retryCount < 3) {
           const epContainer = document.getElementById('show-page-episodes-container');
-          if (epContainer && !epContainer.querySelector('.spinner')) {
+          if (epContainer && (!epContainer.querySelector('.spinner') || epContainer.querySelector('.episodes-error-state'))) {
             epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>';
           }
-        }
-        setTimeout(() => {
-          if (currentShowId === showId) {
-            fetchShowEpisodes(showId, currPtr, mode, startEpisodeNum);
+          setTimeout(() => {
+            if (currentShowId === showId && currentBatchStartPtr === currPtr) {
+              fetchShowEpisodes(showId, currPtr, mode, startEpisodeNum, retryCount + 1);
+            }
+          }, 800);
+        } else {
+          if (mode === 'replace') {
+            const epContainer = document.getElementById('show-page-episodes-container');
+            if (epContainer) {
+              epContainer.innerHTML = `
+                <div class="episodes-error-state" style="text-align:center; padding: 45px 20px; color: var(--text-muted);">
+                  <div style="width: 46px; height: 46px; border-radius: 50%; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; color: #f87171;">
+                    <i data-lucide="alert-circle" style="width: 24px; height: 24px;"></i>
+                  </div>
+                  <p style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 4px;">Failed to load episodes</p>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Unable to fetch episode list. Please check your connection and retry.</p>
+                  <button onclick="retryFetchShowEpisodes('${escapeAttr(showId)}', ${currPtr}, '${escapeAttr(mode)}', ${startEpisodeNum})" style="background: var(--primary, #e11d48); color: #fff; border: none; border-radius: var(--radius-md, 8px); padding: 8px 22px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 4px 12px rgba(225, 29, 72, 0.35);">
+                    <i data-lucide="rotate-cw" style="width: 15px; height: 15px;"></i> Retry
+                  </button>
+                </div>
+              `;
+              refreshIcons();
+            }
           }
-        }, 3000);
+        }
       }
+    }
+
+    function retryFetchShowEpisodes(showId, currPtr, mode, startEpisodeNum) {
+      const epContainer = document.getElementById('show-page-episodes-container');
+      if (epContainer) {
+        epContainer.innerHTML = '<div class="loader" style="min-height: 180px;"><div class="spinner"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div></div>';
+      }
+      fetchShowEpisodes(showId, currPtr, mode, startEpisodeNum, 0);
     }
 
     async function fetchDatabaseLibrary() {
