@@ -748,51 +748,6 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
 
     const allStories = [];
 
-    if (startPtr >= 3000) {
-      if (!baseShow) {
-        const metaParams = new URLSearchParams({
-          show_id: showId,
-          curr_ptr: '0',
-          info_level: '0',
-          page_source: pageSource
-        }).toString();
-        try {
-          const { data: metaData } = await fetchViaWorkerProxy(`${BASE_URL}/v2/content_api/show.get_details?${metaParams}`, headers, 'GET');
-          if (metaData && metaData.result && Array.isArray(metaData.result) && metaData.result[0]) {
-            baseShow = metaData.result[0];
-            showMetadataCache.set(showId, {
-              baseShow,
-              expiresAt: Date.now() + 3600000
-            });
-          }
-        } catch (e) {}
-      }
-
-      await resolveStoriesBeyond3000(showId, allStories, req, startPtr, batchSize, baseShow, false);
-
-      const filteredResponse = {
-        status: 1,
-        message: "Result for show details page",
-        result: [
-          {
-            show_title: baseShow?.show_title || baseShow?.title || "Show Details",
-            image_url: baseShow?.image_url || baseShow?.cover_url || baseShow?.gift_url || "",
-            show_category_rank: baseShow?.show_category_rank !== undefined ? baseShow.show_category_rank : (baseShow?.rank !== undefined ? baseShow.rank : null),
-            show_id: baseShow?.show_id || showId,
-            episodes_count: typeof baseShow?.episodes_count === 'number' ? baseShow.episodes_count : parseInt(baseShow?.episodes_count || '0', 10),
-            stories: allStories,
-            next_ptr: startPtr + allStories.length,
-            stats: {
-              avg_rating: baseShow?.stats?.avg_rating !== undefined ? baseShow.stats.avg_rating : null,
-              total_plays_display: formatPlaysDisplay(baseShow?.stats?.total_plays_display || baseShow?.stats?.total_plays || baseShow?.plays || "")
-            }
-          }
-        ]
-      };
-
-      return res.status(200).json(filteredResponse);
-    }
-
     const ptrList = [];
     for (let i = 0; i < batchSize; i++) {
       ptrList.push(startPtr + i);
@@ -832,6 +787,9 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       if (json.result && Array.isArray(json.result) && json.result[0] && Array.isArray(json.result[0].stories)) {
         for (const story of json.result[0].stories) {
           if (story && story.story_id) {
+            if (startPtr >= 20 && story.seq_number === 1) {
+              continue;
+            }
             if (seenStoryIds.has(story.story_id)) continue;
             seenStoryIds.add(story.story_id);
 
@@ -850,12 +808,16 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
             const realMediaUrlEnc = story.media_url_enc || story.media_url || "";
             const videoDashUrl = story.video_url || androidVideoUrl || realMediaUrlEnc || "";
 
+            const epSeqNum = (typeof story.seq_number === 'number' && story.seq_number > 0)
+              ? story.seq_number
+              : (startPtr + allStories.length + 1);
+
             const storyObj = {
               story_title: story.story_title || story.title || "",
               show_id: story.show_id || (baseShow && baseShow.show_id) || showId,
               image_url: story.image_url || story.cover_url || (baseShow && baseShow.image_url) || "",
               duration: typeof story.duration === 'number' ? story.duration : parseFloat(story.duration || '0'),
-              seq_number: story.seq_number,
+              seq_number: epSeqNum,
               story_id: story.story_id || ""
             };
 
@@ -916,73 +878,11 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
 });
 
 async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, batchSize = 20, baseShow = null, isBackground = false) {
-  if (!showId) return allStories;
+  if (!showId || !Array.isArray(allStories) || allStories.length === 0) return allStories;
 
-  const isBatchBeyond3000 = (startPtr >= 3000);
-
-  if (isBatchBeyond3000) {
-    for (let i = allStories.length - 1; i >= 0; i--) {
-      const num = allStories[i].seq_number || 0;
-      if (num < 3000 && num > 0) {
-        allStories.splice(i, 1);
-      }
-    }
-  }
-
-  const hasItemsBeyond3000 = allStories.some((s, i) => {
-    const num = s.seq_number || (startPtr + i + 1);
-    return num > 3000;
-  });
-
-  if (!isBatchBeyond3000 && !hasItemsBeyond3000) {
-    return allStories;
-  }
-
-  const pocketHeaders = buildPocketHeaders(req);
-  pocketHeaders['platform'] = 'android';
-  pocketHeaders['version-name'] = '9.1.3';
-  pocketHeaders['platform-version'] = '29';
-  pocketHeaders['app-version'] = '2013';
-  pocketHeaders['device-id'] = 'mobile-web';
-  pocketHeaders['device_id'] = 'mobile-web';
-  pocketHeaders['User-Agent'] = 'com.radio.pocketfm';
-
-  const savedStoriesUrl = `${BASE_URL}/v2/feed_api/get_saved_stories?show_ids=${encodeURIComponent(showId)}`;
-
-  if (allStories.length === 0 && isBatchBeyond3000) {
-    try {
-      const { data: savedData } = await fetchViaWorkerProxy(savedStoriesUrl, pocketHeaders, 'GET');
-      if (savedData && savedData.result && Array.isArray(savedData.result.stories)) {
-        const savedList = savedData.result.stories;
-        savedList.sort((a, b) => (a.seq_number || 0) - (b.seq_number || 0));
-
-        const matched = savedList.filter(s => {
-          const num = s.seq_number || 0;
-          return num > startPtr && num <= (startPtr + batchSize);
-        });
-
-        const targetList = matched.length > 0 ? matched : savedList.slice(startPtr, startPtr + batchSize);
-        for (const st of targetList) {
-          allStories.push({
-            story_title: st.story_title || st.title || `Episode ${st.seq_number || ''}`,
-            show_id: st.show_id || showId,
-            image_url: st.image_url || (baseShow && baseShow.image_url) || "",
-            duration: typeof st.duration === 'number' ? st.duration : parseFloat(st.duration || '0'),
-            seq_number: st.seq_number,
-            story_id: st.story_id || "",
-            media_url_enc: st.media_url_enc || st.media_url || st.hls_url || ""
-          });
-        }
-      }
-    } catch (e) {
-      console.error("[RESOLVE >3000] Error fetching fallback saved stories:", e.message);
-    }
-  }
-
-  const storiesToResolve = allStories.filter((s, idx) => {
-    const epNum = s.seq_number || (startPtr + idx + 1);
+  const storiesToResolve = allStories.filter(s => {
     const hasUrl = Boolean(s.media_url_enc || s.audio_url || s.video_url);
-    return epNum > 3000 && !hasUrl && Boolean(s.story_id);
+    return !hasUrl && Boolean(s.story_id);
   });
 
   if (storiesToResolve.length === 0) {
@@ -1023,7 +923,7 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
       missingStoryIds = missingStoryIds.filter(id => !dbMap.has(id));
     }
   } catch (dbErr) {
-    console.error("[RESOLVE >3000] DB check error:", dbErr.message);
+    console.error("[RESOLVE] DB check error:", dbErr.message);
   }
 
   if (missingStoryIds.length === 0) {
@@ -1037,6 +937,17 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
     return allStories;
   }
 
+  const pocketHeaders = buildPocketHeaders(req);
+  pocketHeaders['platform'] = 'android';
+  pocketHeaders['version-name'] = '9.1.3';
+  pocketHeaders['platform-version'] = '29';
+  pocketHeaders['app-version'] = '2013';
+  pocketHeaders['device-id'] = 'mobile-web';
+  pocketHeaders['device_id'] = 'mobile-web';
+  pocketHeaders['User-Agent'] = 'com.radio.pocketfm';
+
+  const savedStoriesUrl = `${BASE_URL}/v2/feed_api/get_saved_stories?show_ids=${encodeURIComponent(showId)}`;
+
   function matchAndApplySaved(storiesArray) {
     if (!Array.isArray(storiesArray)) return;
     const map = new Map();
@@ -1044,32 +955,35 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
       if (st && st.story_id) {
         const url = st.media_url_enc || st.media_url || st.hls_url || "";
         if (url) {
-          map.set(st.story_id, {
-            url,
-            seq_number: st.seq_number
-          });
+          map.set(st.story_id, url);
         }
       }
     }
 
     for (const story of storiesToResolve) {
       if (map.has(story.story_id)) {
-        const found = map.get(story.story_id);
-        story.media_url_enc = found.url;
-        story.audio_url = found.url;
-        if (found.seq_number && !story.seq_number) story.seq_number = found.seq_number;
+        const url = map.get(story.story_id);
+        story.media_url_enc = url;
+        story.audio_url = url;
 
         const epNum = story.seq_number || (startPtr + allStories.indexOf(story) + 1);
         toSaveToDb.push({
           story_id: story.story_id,
           number: epNum,
-          url: found.url
+          url: url
         });
       }
     }
 
     missingStoryIds = missingStoryIds.filter(id => !map.has(id));
   }
+
+  try {
+    const { data: savedData } = await fetchViaWorkerProxy(savedStoriesUrl, pocketHeaders, 'GET');
+    if (savedData && savedData.result && Array.isArray(savedData.result.stories)) {
+      matchAndApplySaved(savedData.result.stories);
+    }
+  } catch (err) {}
 
   if (missingStoryIds.length > 0) {
     for (let attempt = 1; attempt <= 2; attempt++) {
