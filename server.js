@@ -395,13 +395,16 @@ app.use(async (req, res, next) => {
 });
 
 function buildPocketHeaders(req) {
-  let token = req.headers['authorization'] || req.headers['auth'] || req.headers['x-auth-token'] || cachedToken || process.env.DEFAULT_BEARER_TOKEN || '';
+  let token = (req && req.headers && (req.headers['authorization'] || req.headers['auth'] || req.headers['x-auth-token'])) || cachedToken || process.env.DEFAULT_BEARER_TOKEN || '';
 
   if (token && !token.toLowerCase().startsWith('bearer ')) {
     token = `Bearer ${token.trim()}`;
   }
 
-  const language = req.headers['language'] || req.headers['selected_language'] || req.query.language || req.query.selected_language || 'hindi';
+  const language = (req && req.headers && (req.headers['language'] || req.headers['selected_language'])) ||
+    (req && req.query && (req.query.language || req.query.selected_language)) ||
+    (req && req.body && (req.body.language || req.body.selected_language)) ||
+    'hindi';
 
   const headers = {
     'Host': 'api.pocketfm.com',
@@ -415,7 +418,9 @@ function buildPocketHeaders(req) {
     'language': language,
     'authorization': token,
     'accept-encoding': 'gzip',
-    'User-Agent': 'com.radio.pocketfm'
+    'User-Agent': 'com.radio.pocketfm',
+    'device-id': 'mobile-web',
+    'device_id': 'mobile-web'
   };
 
   if (cachedCookies) {
