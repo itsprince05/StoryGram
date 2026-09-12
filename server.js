@@ -1097,6 +1097,18 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
       ? `<img src="${userPhoto}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
       : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
 
+    const statusType = (phpResponse.data && phpResponse.data.status) || 'pending';
+    let statusText = (phpResponse.data && phpResponse.data.message) || 'No Access';
+    let statusColor = '#f87171';
+    let statusBg = 'rgba(239, 68, 68, 0.12)';
+    let statusBorder = 'rgba(239, 68, 68, 0.3)';
+
+    if (statusType === 'expired') {
+      statusColor = '#fb923c';
+      statusBg = 'rgba(249, 115, 22, 0.12)';
+      statusBorder = 'rgba(249, 115, 22, 0.3)';
+    }
+
     const noAccessHtml = `
 <style>
   .account-page-wrap { width: 100%; max-width: 480px; padding: 10px; margin-top: 56px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; }
@@ -1105,8 +1117,8 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
   .account-user-info { min-width: 0; flex: 1; }
   .account-user-name { font-size: 15px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .account-user-email { font-size: 12px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-  .restricted-status-card { width: 100%; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 14px; padding: 10px; text-align: center; box-sizing: border-box; }
-  .restricted-status-badge { font-size: 16px; font-weight: 800; color: #f87171; margin: 0; }
+  .restricted-status-card { width: 100%; background: ${statusBg}; border: 1px solid ${statusBorder}; border-radius: 14px; padding: 10px; text-align: center; box-sizing: border-box; }
+  .restricted-status-badge { font-size: 16px; font-weight: 800; color: ${statusColor}; margin: 0; }
 </style>
 <div class="account-page-wrap">
   <div class="account-profile-card">
@@ -1117,7 +1129,7 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
     </div>
   </div>
   <div class="restricted-status-card">
-    <div class="restricted-status-badge">No Access</div>
+    <div class="restricted-status-badge">${statusText}</div>
   </div>
 </div>`;
 
