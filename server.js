@@ -820,6 +820,8 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       });
     }
 
+    await resolveStoriesBeyond3000(showId, allStories, req, startPtr, batchSize, baseShow);
+
     const filteredResponse = {
       status: 1,
       message: "Result for show details page",
@@ -847,6 +849,247 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
       message: 'Failed to process show details batch',
       error: error.message
     });
+  }
+});
+
+async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, batchSize = 20, baseShow = null) {
+  if (!showId) return allStories;
+
+  const isBatchBeyond3000 = (startPtr >= 3000);
+  const hasItemsBeyond3000 = allStories.some((s, i) => {
+    const num = s.seq_number || (startPtr + i + 1);
+    return num > 3000;
+  });
+
+  if (!isBatchBeyond3000 && !hasItemsBeyond3000) {
+    return allStories;
+  }
+
+  const pocketHeaders = buildPocketHeaders(req);
+  pocketHeaders['platform'] = 'android';
+  pocketHeaders['version-name'] = '9.1.3';
+  pocketHeaders['platform-version'] = '29';
+  pocketHeaders['app-version'] = '2013';
+  pocketHeaders['device-id'] = 'mobile-web';
+  pocketHeaders['device_id'] = 'mobile-web';
+  pocketHeaders['User-Agent'] = 'com.radio.pocketfm';
+
+  const savedStoriesUrl = `${BASE_URL}/v2/feed_api/get_saved_stories?show_ids=${encodeURIComponent(showId)}`;
+
+  if (allStories.length === 0 && isBatchBeyond3000) {
+    try {
+      const { data: savedData } = await fetchViaWorkerProxy(savedStoriesUrl, pocketHeaders, 'GET');
+      if (savedData && savedData.result && Array.isArray(savedData.result.stories)) {
+        const savedList = savedData.result.stories;
+        savedList.sort((a, b) => (a.seq_number || 0) - (b.seq_number || 0));
+
+        const matched = savedList.filter(s => {
+          const num = s.seq_number || 0;
+          return num > startPtr && num <= (startPtr + batchSize);
+        });
+
+        const targetList = matched.length > 0 ? matched : savedList.slice(startPtr, startPtr + batchSize);
+        for (const st of targetList) {
+          allStories.push({
+            story_title: st.story_title || st.title || `Episode ${st.seq_number || ''}`,
+            show_id: st.show_id || showId,
+            image_url: st.image_url || (baseShow && baseShow.image_url) || "",
+            duration: typeof st.duration === 'number' ? st.duration : parseFloat(st.duration || '0'),
+            seq_number: st.seq_number,
+            story_id: st.story_id || "",
+            media_url_enc: st.media_url_enc || st.media_url || st.hls_url || ""
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[RESOLVE >3000] Error fetching fallback saved stories:", e.message);
+    }
+  }
+
+  const storiesToResolve = allStories.filter((s, idx) => {
+    const epNum = s.seq_number || (startPtr + idx + 1);
+    const hasUrl = Boolean(s.media_url_enc || s.audio_url || s.video_url);
+    return epNum > 3000 && !hasUrl && Boolean(s.story_id);
+  });
+
+  if (storiesToResolve.length === 0) {
+    return allStories;
+  }
+
+  let missingStoryIds = storiesToResolve.map(s => s.story_id);
+  const toSaveToDb = [];
+
+  try {
+    const dbRes = await axios.post(`${PHP_BACKEND_URL}/episodes.php`, {
+      story_ids: missingStoryIds
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': PHP_API_KEY
+      },
+      timeout: 8000,
+      validateStatus: () => true
+    });
+
+    if (dbRes.data && dbRes.data.success && Array.isArray(dbRes.data.data)) {
+      const dbMap = new Map();
+      for (const item of dbRes.data.data) {
+        if (item && item.story_id && item.url) {
+          dbMap.set(item.story_id, item.url);
+        }
+      }
+
+      for (const story of storiesToResolve) {
+        if (dbMap.has(story.story_id)) {
+          const dbUrl = dbMap.get(story.story_id);
+          story.media_url_enc = dbUrl;
+          story.audio_url = dbUrl;
+        }
+      }
+
+      missingStoryIds = missingStoryIds.filter(id => !dbMap.has(id));
+    }
+  } catch (dbErr) {
+    console.error("[RESOLVE >3000] DB check error:", dbErr.message);
+  }
+
+  if (missingStoryIds.length === 0) {
+    return allStories;
+  }
+
+  function matchAndApplySaved(storiesArray) {
+    if (!Array.isArray(storiesArray)) return;
+    const map = new Map();
+    for (const st of storiesArray) {
+      if (st && st.story_id) {
+        const url = st.media_url_enc || st.media_url || st.hls_url || "";
+        if (url) {
+          map.set(st.story_id, {
+            url,
+            seq_number: st.seq_number
+          });
+        }
+      }
+    }
+
+    for (const story of storiesToResolve) {
+      if (map.has(story.story_id)) {
+        const found = map.get(story.story_id);
+        story.media_url_enc = found.url;
+        story.audio_url = found.url;
+        if (found.seq_number && !story.seq_number) story.seq_number = found.seq_number;
+
+        const epNum = story.seq_number || (startPtr + allStories.indexOf(story) + 1);
+        toSaveToDb.push({
+          story_id: story.story_id,
+          number: epNum,
+          url: found.url
+        });
+      }
+    }
+
+    missingStoryIds = missingStoryIds.filter(id => !map.has(id));
+  }
+
+  try {
+    const { data: initSaved } = await fetchViaWorkerProxy(savedStoriesUrl, pocketHeaders, 'GET');
+    if (initSaved && initSaved.result && Array.isArray(initSaved.result.stories)) {
+      matchAndApplySaved(initSaved.result.stories);
+    }
+  } catch (err) {
+    console.error("[RESOLVE >3000] Initial get_saved_stories error:", err.message);
+  }
+
+  if (missingStoryIds.length > 0) {
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      console.log(`[RESOLVE >3000] Attempt ${attempt}/5: Subscribing ${missingStoryIds.length} missing stories for show ${showId}`);
+
+      const subscribeCalls = missingStoryIds.map(stId => {
+        const payload = {
+          action: "subscribe_story",
+          entity_id: showId,
+          entity_type: "show",
+          progress_action: "",
+          source: "player",
+          story_id: stId
+        };
+        const updateUrl = `${BASE_URL}/v2/user_api/user_action.update`;
+        return fetchViaWorkerProxy(updateUrl, pocketHeaders, 'POST', payload).catch(() => null);
+      });
+
+      await Promise.all(subscribeCalls);
+
+      await new Promise(r => setTimeout(r, 200));
+
+      try {
+        const { data: retrySaved } = await fetchViaWorkerProxy(savedStoriesUrl, pocketHeaders, 'GET');
+        if (retrySaved && retrySaved.result && Array.isArray(retrySaved.result.stories)) {
+          matchAndApplySaved(retrySaved.result.stories);
+        }
+      } catch (err) {
+        console.error(`[RESOLVE >3000] Attempt ${attempt} saved stories error:`, err.message);
+      }
+
+      if (missingStoryIds.length === 0) {
+        console.log(`[RESOLVE >3000] All missing story URLs resolved on attempt ${attempt}`);
+        break;
+      }
+    }
+  }
+
+  if (toSaveToDb.length > 0) {
+    try {
+      console.log(`[AUTO-CACHE] Saving ${toSaveToDb.length} resolved episodes to DB`);
+      await axios.post(`${PHP_BACKEND_URL}/episodes.php`, {
+        episodes: toSaveToDb
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': PHP_API_KEY
+        },
+        timeout: 10000,
+        validateStatus: () => true
+      });
+    } catch (saveErr) {
+      console.error("[AUTO-CACHE] DB bulk save error:", saveErr.message);
+    }
+  }
+
+  return allStories;
+}
+
+app.all(['/api/resolve_episodes', '/resolve_episodes'], async (req, res) => {
+  try {
+    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
+    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
+    const email = req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || req.query.email || '';
+
+    const verifyRes = await checkUserVerification(userId, deviceId, email);
+    if (!verifyRes.success) {
+      return res.status(200).json(verifyRes);
+    }
+
+    const showId = req.body?.show_id || req.headers['show_id'] || req.query.show_id;
+    const storyIds = req.body?.story_ids || (req.body?.story_id ? [req.body.story_id] : []) || [];
+    const startNum = parseInt(req.body?.start_num || '3001', 10);
+
+    if (!showId || !Array.isArray(storyIds) || storyIds.length === 0) {
+      return res.status(400).json({ success: false, error: "show_id and story_ids array required" });
+    }
+
+    const dummyStories = storyIds.map((id, idx) => ({
+      story_id: id,
+      seq_number: startNum + idx
+    }));
+
+    await resolveStoriesBeyond3000(showId, dummyStories, req, startNum - 1, dummyStories.length);
+
+    return res.status(200).json({
+      success: true,
+      stories: dummyStories
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
