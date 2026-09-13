@@ -1,7 +1,7 @@
 {
-  "name": "pocketfm-api-proxy",
+  "name": "novelarc-novel-server",
   "version": "1.0.0",
-  "description": "Ultra-fast Node.js Proxy & Wrapper for Pocket FM APIs with dynamic Auth forwarding",
+  "description": "Ultra-fast Node.js Proxy & Web App Server for NovelArc Web Novels",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -16,7 +16,12 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": ["pocketfm", "api-proxy", "render"],
+  "keywords": [
+    "novelarc",
+    "pocketnovel",
+    "novel-proxy",
+    "web-reader"
+  ],
   "author": "",
   "license": "ISC"
 }
