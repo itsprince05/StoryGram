@@ -2346,7 +2346,37 @@
     }
 
     .toast {
-      display: none !important;
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: rgba(18, 24, 38, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      padding: 10px 22px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: nowrap;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      z-index: 99999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+      max-width: 90%;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
     }
 
 
@@ -3205,7 +3235,6 @@
 
 
   <div id="toast" class="toast">
-    <i data-lucide="check-circle-2" style="color: #4ade80;"></i>
     <span id="toast-message">Notification</span>
   </div>
 
@@ -3468,7 +3497,17 @@
       }
     }
 
+    let toastTimeout = null;
     function showToast(msg, isError = false) {
+      const toastEl = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      if (!toastEl || !toastMsg) return;
+      toastMsg.innerText = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toastEl.classList.remove('show');
+      }, 2000);
     }
 
     const TAB_HEADER_CONFIG = {
@@ -3539,9 +3578,7 @@
       }
 
       if (pushHistory && tabName !== 'home') {
-        try {
-          history.pushState({ tab: tabName }, '');
-        } catch (e) { }
+        ensureHistoryBuffer();
       }
 
       if (tabName === 'search') {
@@ -3591,7 +3628,7 @@
       if (modal && !modal.classList.contains('show')) {
         modal.classList.add('show');
         if (pushHistory) {
-          try { history.pushState({ modal: 'language' }, ''); } catch (e) { }
+          ensureHistoryBuffer();
         }
       }
       refreshIcons();
@@ -3658,7 +3695,7 @@
       if (modal && !modal.classList.contains('show')) {
         modal.classList.add('show');
         if (pushHistory) {
-          try { history.pushState({ modal: 'episodes-range' }, ''); } catch (e) { }
+          ensureHistoryBuffer();
         }
       }
       refreshIcons();
@@ -3977,9 +4014,7 @@
       updateFavoriteButtonState();
       switchTab('show-detail', false, false);
       if (pushHistory) {
-        try {
-          history.pushState({ view: 'show-detail', showId }, '');
-        } catch (e) { }
+        ensureHistoryBuffer();
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
       refreshIcons();
@@ -4000,8 +4035,7 @@
     }
 
     function goBack() {
-      switchTab(previousTab || 'home', true, false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      handleUnifiedBackPress();
     }
 
     function toggleFavoriteCurrentShow() {
@@ -4790,7 +4824,7 @@
       if (modal && !modal.classList.contains('show')) {
         modal.classList.add('show');
         if (pushHistory) {
-          try { history.pushState({ modal: 'speed' }, ''); } catch (e) { }
+          ensureHistoryBuffer();
         }
       }
       refreshIcons();
@@ -4850,7 +4884,7 @@
       if (modal && !modal.classList.contains('show')) {
         modal.classList.add('show');
         if (pushHistory) {
-          try { history.pushState({ modal: 'sleep-timer' }, ''); } catch (e) { }
+          ensureHistoryBuffer();
         }
       }
       refreshIcons();
@@ -4959,7 +4993,7 @@
       if (backdrop && !backdrop.classList.contains('show')) {
         backdrop.classList.add('show');
         if (pushHistory) {
-          try { history.pushState({ modal: 'fullscreen-player' }, ''); } catch (e) { }
+          ensureHistoryBuffer();
         }
       }
       refreshIcons();
@@ -4976,55 +5010,202 @@
       }
     }
 
-    try {
-      history.replaceState({ tab: 'home' }, '');
-    } catch (e) { }
+    // --- UNIFIED BACK NAVIGATION HIERARCHY MANAGER ---
+    let lastHomeBackPressTime = 0;
 
-    window.addEventListener('popstate', (event) => {
+    function ensureHistoryBuffer() {
+      try {
+        history.pushState({ appLayer: 'active_view', t: Date.now() }, '');
+      } catch (e) { }
+    }
+
+    function isAnyModalOpen() {
+      const speedModal = document.getElementById('speed-modal');
+      const timerModal = document.getElementById('sleep-timer-modal');
+      const langModal = document.getElementById('language-modal');
+      const epRangeModal = document.getElementById('episodes-range-modal');
+      if (speedModal && speedModal.classList.contains('show')) return true;
+      if (timerModal && timerModal.classList.contains('show')) return true;
+      if (langModal && langModal.classList.contains('show')) return true;
+      if (epRangeModal && epRangeModal.classList.contains('show')) return true;
+
+      const otherModals = document.querySelectorAll('.modal-backdrop.show, .modal-sheet.show');
+      for (let m of otherModals) {
+        if (m.id !== 'player-modal-backdrop') return true;
+      }
+      return false;
+    }
+
+    function isPlayerOpen() {
+      const playerBackdrop = document.getElementById('player-modal-backdrop');
+      return !!(playerBackdrop && playerBackdrop.classList.contains('show'));
+    }
+
+    function isAnyLayerOpen() {
+      if (isAnyModalOpen()) return true;
+      if (isPlayerOpen()) return true;
+      const showDetailTab = document.getElementById('tab-show-detail');
+      if (currentTabName === 'show-detail' || (showDetailTab && showDetailTab.classList.contains('active'))) return true;
+      if (currentTabName && currentTabName !== 'home') return true;
+      return false;
+    }
+
+    function handleUnifiedBackPress() {
+      // 1. If sleep or speed or any bottom sheet / modal is open, hide it first
       const speedModal = document.getElementById('speed-modal');
       const timerModal = document.getElementById('sleep-timer-modal');
       const langModal = document.getElementById('language-modal');
       const epRangeModal = document.getElementById('episodes-range-modal');
 
-      let closedAnyPopup = false;
+      let closedAnyModal = false;
       if (speedModal && speedModal.classList.contains('show')) {
-        speedModal.classList.remove('show');
-        closedAnyPopup = true;
+        closeSpeedModal();
+        closedAnyModal = true;
       }
       if (timerModal && timerModal.classList.contains('show')) {
-        timerModal.classList.remove('show');
-        closedAnyPopup = true;
+        closeSleepTimerModal();
+        closedAnyModal = true;
       }
       if (langModal && langModal.classList.contains('show')) {
-        langModal.classList.remove('show');
-        closedAnyPopup = true;
+        closeLanguageModal();
+        closedAnyModal = true;
       }
       if (epRangeModal && epRangeModal.classList.contains('show')) {
-        epRangeModal.classList.remove('show');
-        closedAnyPopup = true;
+        closeEpisodeRangeModal();
+        closedAnyModal = true;
       }
 
-      if (closedAnyPopup) return;
+      const otherModals = document.querySelectorAll('.modal-backdrop.show');
+      for (let m of otherModals) {
+        if (m.id !== 'player-modal-backdrop' && m.classList.contains('show')) {
+          m.classList.remove('show');
+          closedAnyModal = true;
+        }
+      }
 
+      if (closedAnyModal) {
+        return true;
+      }
+
+      // 2. If full player is open, hide / minimize full player
       const playerBackdrop = document.getElementById('player-modal-backdrop');
       if (playerBackdrop && playerBackdrop.classList.contains('show')) {
-        playerBackdrop.classList.remove('show');
-        return;
+        closeFullscreenPlayer();
+        return true;
       }
 
+      // 3. If on show detail page, return to home
       const showDetailTab = document.getElementById('tab-show-detail');
       if (currentTabName === 'show-detail' || (showDetailTab && showDetailTab.classList.contains('active'))) {
-        switchTab(previousTab || 'home', true, false);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-
-      if (currentTabName !== 'home') {
         switchTab('home', true, false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
+        return true;
       }
 
+      // 4. If on search, library, account, or any other non-home tab, return to home
+      if (currentTabName && currentTabName !== 'home') {
+        switchTab('home', true, false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return true;
+      }
+
+      // 5. Already on home with nothing open
+      return false;
+    }
+
+    function tryNativeExit() {
+      try {
+        if (window.AndroidBridge) {
+          if (typeof window.AndroidBridge.exitApp === 'function') {
+            window.AndroidBridge.exitApp();
+            return true;
+          }
+          if (typeof window.AndroidBridge.closeApp === 'function') {
+            window.AndroidBridge.closeApp();
+            return true;
+          }
+          if (typeof window.AndroidBridge.finish === 'function') {
+            window.AndroidBridge.finish();
+            return true;
+          }
+          if (typeof window.AndroidBridge.minimizeApp === 'function') {
+            window.AndroidBridge.minimizeApp();
+            return true;
+          }
+        }
+      } catch (e) { }
+      return false;
+    }
+
+    function handleHomeExit() {
+      const now = Date.now();
+      if (now - lastHomeBackPressTime < 2000) {
+        const exited = tryNativeExit();
+        if (!exited) {
+          try { window.close(); } catch (e) { }
+        }
+      } else {
+        lastHomeBackPressTime = now;
+        showToast('Press back again to exit');
+        ensureHistoryBuffer();
+      }
+    }
+
+    // Expose handlers for Android Native Java/Kotlin bridges
+    window.handleUnifiedBackPress = handleUnifiedBackPress;
+    window.handleAppBackButton = function () {
+      const handled = handleUnifiedBackPress();
+      if (!handled) {
+        handleHomeExit();
+      }
+      return handled;
+    };
+    window.onBackPressed = window.handleAppBackButton;
+    window.handleBackPress = window.handleAppBackButton;
+    window.handleBackButton = window.handleAppBackButton;
+    window.onBack = window.handleAppBackButton;
+    window.onHardwareBackPressed = window.handleAppBackButton;
+
+    // Hardware Back Key (Escape / Back KeyCode 4 / 27)
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Back' || e.keyCode === 27 || e.keyCode === 4 || e.key === 'BrowserBack') {
+        const handled = handleUnifiedBackPress();
+        if (handled) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isAnyLayerOpen()) {
+            ensureHistoryBuffer();
+          }
+        } else {
+          e.preventDefault();
+          handleHomeExit();
+        }
+      }
+    });
+
+    try {
+      history.replaceState({ appLayer: 'home_root' }, '');
+    } catch (e) { }
+
+    window.addEventListener('popstate', (event) => {
+      const handled = handleUnifiedBackPress();
+      if (handled) {
+        if (isAnyLayerOpen()) {
+          ensureHistoryBuffer();
+        }
+      } else {
+        const now = Date.now();
+        if (now - lastHomeBackPressTime < 2000) {
+          const exited = tryNativeExit();
+          if (!exited) {
+            try { window.close(); } catch (e) { }
+          }
+        } else {
+          lastHomeBackPressTime = now;
+          showToast('Press back again to exit');
+          ensureHistoryBuffer();
+        }
+      }
     });
 
     async function stopAndUnloadAudio() {
@@ -5603,6 +5784,79 @@
       }
       updateEpisodeListIcons();
       refreshIcons();
+      updateMediaSession();
+    }
+
+    function updateMediaSession() {
+      if (!('mediaSession' in navigator)) return;
+      if (!currentPlayingStory) {
+        try {
+          navigator.mediaSession.playbackState = 'none';
+        } catch (e) { }
+        return;
+      }
+
+      try {
+        const thumb = currentPlayingStory.thumbUrl || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=512';
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: currentPlayingStory.title || "Episode",
+          artist: currentPlayingStory.showTitle || "Story Gram",
+          album: currentPlayingStory.showTitle || "Story Gram",
+          artwork: [
+            { src: thumb, sizes: '96x96', type: 'image/jpeg' },
+            { src: thumb, sizes: '128x128', type: 'image/jpeg' },
+            { src: thumb, sizes: '192x192', type: 'image/jpeg' },
+            { src: thumb, sizes: '256x256', type: 'image/jpeg' },
+            { src: thumb, sizes: '384x384', type: 'image/jpeg' },
+            { src: thumb, sizes: '512x512', type: 'image/jpeg' }
+          ]
+        });
+
+        navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+
+        navigator.mediaSession.setActionHandler('play', () => {
+          const active = getActiveMediaElement();
+          if (active && active.paused) {
+            active.play().then(() => {
+              isPlaying = true;
+              updatePlayPauseButton();
+            }).catch(() => { });
+          }
+        });
+
+        navigator.mediaSession.setActionHandler('pause', () => {
+          const active = getActiveMediaElement();
+          if (active && !active.paused) {
+            active.pause();
+            isPlaying = false;
+            updatePlayPauseButton();
+          }
+        });
+
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+          playPrevEpisode();
+        });
+
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+          playNextEpisode();
+        });
+
+        navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+          skipAudio(-(details.seekOffset || 15));
+        });
+
+        navigator.mediaSession.setActionHandler('seekforward', (details) => {
+          skipAudio(details.seekOffset || 15);
+        });
+
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          const active = getActiveMediaElement();
+          if (active && details.seekTime !== undefined) {
+            active.currentTime = details.seekTime;
+            updateProgress();
+          }
+        });
+      } catch (e) { }
     }
 
     async function closePlayerBar() {
