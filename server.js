@@ -7,8 +7,16 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const BASE_URL = 'https://api.pocketfm.com';
-const WORKER_PROXY_URL = 'https://curl-proxy.bruceliu-dev.workers.dev/';
+const BASE_URL = process.env.POCKETFM_BASE_URL || process.env.BASE_URL;
+const POCKETFM_WEB_URL = process.env.POCKETFM_WEB_URL;
+const WORKER_PROXY_URL = process.env.WORKER_PROXY_URL;
+const WORKER_ORIGIN = process.env.WORKER_ORIGIN;
+const WORKER_REFERER = process.env.WORKER_REFERER;
+const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL;
+const PHP_API_KEY = process.env.PHP_API_KEY;
+const APP_HMAC_SECRET = process.env.APP_HMAC_SECRET;
+const APP_USER_AGENT = process.env.APP_USER_AGENT;
+const WEB_USER_AGENT = process.env.WEB_USER_AGENT;
 const showMetadataCache = new Map();
 
 function decryptPocketFmBlob(clientTs, deviceId, cipherBase64) {
@@ -66,8 +74,6 @@ let cachedToken = '';
 let lastFetchDate = '';
 let isRefreshing = false;
 
-const PHP_BACKEND_URL = process.env.PHP_BACKEND_URL || 'https://princeapps.com/StoryGram';
-const PHP_API_KEY = process.env.PHP_API_KEY || 'StoryGramSecretKey_9874981488';
 const userAccessCache = new Map();
 
 async function checkUserVerification(userId, deviceId, email) {
@@ -158,7 +164,6 @@ async function checkUserVerification(userId, deviceId, email) {
 
 const NGINX_404_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>404 Not Found</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#fff;color:#222;padding:40px 20px;max-width:600px;margin:0 auto;line-height:1.6;}h1{font-size:24px;font-weight:600;color:#111;margin-bottom:8px;border-bottom:1px solid #eaeaea;padding-bottom:12px;}p{font-size:14px;color:#555;margin-bottom:20px;}hr{border:none;border-top:1px solid #eaeaea;margin:20px 0;}address{font-size:12px;color:#888;font-style:normal;}</style></head><body><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p><hr><address>nginx / 1.24.0</address></body></html>`;
 
-const APP_HMAC_SECRET = 'StoryGram_Sec_Hmac_98741488_Key_v1';
 const rateLimitMap = new Map();
 const usedNonces = new Map();
 
@@ -256,6 +261,30 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(rateLimiterMiddleware);
 
+// Strict Block: Prevent serving source code, scripts, configs, envs, or sensitive documents
+app.use((req, res, next) => {
+  const p = (req.path || '').toLowerCase();
+  if (
+    p.includes('server.js') ||
+    p.includes('.env') ||
+    p.includes('package.json') ||
+    p.includes('package-lock.json') ||
+    p.includes('app_full.html') ||
+    p.includes('loader.html') ||
+    p.includes('.git') ||
+    p.includes('.md') ||
+    p.endsWith('.js') ||
+    p.endsWith('.json') ||
+    p.endsWith('.md') ||
+    p.endsWith('.yml') ||
+    p.endsWith('.yaml') ||
+    p.endsWith('.lock')
+  ) {
+    return res.status(404).send(NGINX_404_HTML);
+  }
+  next();
+});
+
 app.use((req, res, next) => {
   if (req.path === '/' || req.path === '/index.html' || req.path === '/health' || req.path === '/ping' || req.path === '/favicon.ico') {
     return next();
@@ -281,12 +310,12 @@ app.use((req, res, next) => {
 
 async function fetchDailyCookiesFromWebsite() {
   const targetUrls = [
-    'https://pocketfm.com/',
-    'https://www.pocketfm.com/'
+    POCKETFM_WEB_URL,
+    POCKETFM_WEB_URL.endsWith('/') ? POCKETFM_WEB_URL.replace('://', '://www.') : `${POCKETFM_WEB_URL}/`
   ];
 
   const webHeaders = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+    'User-Agent': WEB_USER_AGENT,
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
     'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8'
   };
@@ -318,9 +347,9 @@ async function fetchDailyCookiesFromWebsite() {
           headers: {
             'Accept': '*/*',
             'Content-Type': 'application/json',
-            'Origin': 'https://curlonline.com',
-            'Referer': 'https://curlonline.com/',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36'
+            'Origin': WORKER_ORIGIN,
+            'Referer': WORKER_REFERER,
+            'User-Agent': WEB_USER_AGENT
           },
           timeout: 30000,
           validateStatus: () => true
@@ -408,7 +437,7 @@ function buildPocketHeaders(req) {
     'hindi';
 
   const headers = {
-    'Host': 'api.pocketfm.com',
+    'Host': BASE_URL ? new URL(BASE_URL).host : 'api.pocketfm.com',
     'app-name': 'pocket_fm',
     'platform': 'android',
     'content-type': 'application/json;charset=utf-8',
@@ -419,7 +448,7 @@ function buildPocketHeaders(req) {
     'language': language,
     'authorization': token,
     'accept-encoding': 'gzip',
-    'User-Agent': 'com.radio.pocketfm',
+    'User-Agent': APP_USER_AGENT,
     'device-id': 'mobile-web',
     'device_id': 'mobile-web'
   };
@@ -447,15 +476,15 @@ async function fetchViaWorkerProxy(targetUrl, headers, method = 'GET', body = nu
       'Accept': '*/*',
       'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8',
       'Content-Type': 'application/json',
-      'Origin': 'https://curlonline.com',
-      'Referer': 'https://curlonline.com/',
+      'Origin': WORKER_ORIGIN,
+      'Referer': WORKER_REFERER,
       'sec-ch-ua': '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"',
       'sec-ch-ua-mobile': '?0',
       'sec-ch-ua-platform': '"Windows"',
       'sec-fetch-dest': 'empty',
       'sec-fetch-mode': 'cors',
       'sec-fetch-site': 'cross-site',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0'
+      'User-Agent': WEB_USER_AGENT
     },
     timeout: 30000,
     validateStatus: () => true
@@ -944,7 +973,7 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
   pocketHeaders['app-version'] = '2013';
   pocketHeaders['device-id'] = 'mobile-web';
   pocketHeaders['device_id'] = 'mobile-web';
-  pocketHeaders['User-Agent'] = 'com.radio.pocketfm';
+  pocketHeaders['User-Agent'] = APP_USER_AGENT;
 
   const savedStoriesUrl = `${BASE_URL}/v2/feed_api/get_saved_stories?show_ids=${encodeURIComponent(showId)}`;
 
@@ -1091,7 +1120,7 @@ app.all(['/license', '/api/license', '/api/get_license'], async (req, res) => {
     headers['device-id'] = 'mobile-web';
     headers['device_id'] = 'mobile-web';
     headers['client-ts'] = '1770000000';
-    headers['User-Agent'] = 'com.radio.pocketfm';
+    headers['User-Agent'] = APP_USER_AGENT;
 
     const targetUrl = `${BASE_URL}/v2/content_api/show.play_details?show_id=${encodeURIComponent(showId)}`;
     const { statusCode, data } = await fetchViaWorkerProxy(targetUrl, headers, 'GET');
