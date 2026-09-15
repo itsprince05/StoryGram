@@ -3449,6 +3449,7 @@
       el.addEventListener('loadstart', () => {
         if (getActiveMediaElement() === el) {
           isAudioBuffering = true;
+          isPlaying = false;
           updatePlayPauseButton();
         }
       });
@@ -3456,6 +3457,7 @@
       el.addEventListener('waiting', () => {
         if (getActiveMediaElement() === el) {
           isAudioBuffering = true;
+          isPlaying = false;
           updatePlayPauseButton();
         }
       });
@@ -3463,20 +3465,15 @@
       el.addEventListener('seeking', () => {
         if (getActiveMediaElement() === el) {
           isAudioBuffering = true;
+          isPlaying = false;
           updatePlayPauseButton();
         }
       });
 
-      el.addEventListener('canplay', () => {
-        if (getActiveMediaElement() === el) {
-          isAudioBuffering = false;
-          updatePlayPauseButton();
-        }
-      });
-
-      el.addEventListener('canplaythrough', () => {
-        if (getActiveMediaElement() === el) {
-          isAudioBuffering = false;
+      el.addEventListener('stalled', () => {
+        if (getActiveMediaElement() === el && !isUserPaused) {
+          isAudioBuffering = true;
+          isPlaying = false;
           updatePlayPauseButton();
         }
       });
@@ -3493,10 +3490,9 @@
       el.addEventListener('play', () => {
         if (getActiveMediaElement() === el) {
           isUserPaused = false;
-          if (el.readyState < 3) {
+          if (el.readyState < 4) {
             isAudioBuffering = true;
           }
-          isPlaying = true;
           updatePlayPauseButton();
         }
       });
@@ -4110,15 +4106,25 @@
       let isSaved = false;
       if (favoriteShowsMap[currentShowId]) {
         delete favoriteShowsMap[currentShowId];
+        dbFavoriteShows = dbFavoriteShows.filter(s => s.show_id !== currentShowId);
         isSaved = false;
       } else {
-        favoriteShowsMap[currentShowId] = {
+        const item = {
           show_id: currentShowId,
           title: title,
           image_url: img,
           rating: rating,
-          plays: plays
+          plays: plays,
+          savedAt: Date.now()
         };
+        delete favoriteShowsMap[currentShowId];
+        favoriteShowsMap = { [currentShowId]: item, ...favoriteShowsMap };
+        dbFavoriteShows = [{
+          show_id: currentShowId,
+          show_name: title,
+          show_url: img,
+          created: Math.floor(Date.now() / 1000)
+        }, ...dbFavoriteShows.filter(s => s.show_id !== currentShowId)];
         isSaved = true;
       }
 
@@ -4752,20 +4758,40 @@
           return;
         }
 
-        const favMap = { ...favoriteShowsMap };
-        if (dbFavoriteShows && dbFavoriteShows.length > 0) {
+        const favList = [];
+        const seenFavIds = new Set();
+
+        const localFavItems = Object.values(favoriteShowsMap || {}).sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+        localFavItems.forEach(item => {
+          if (item && item.show_id && !seenFavIds.has(item.show_id)) {
+            seenFavIds.add(item.show_id);
+            favList.push({
+              show_id: item.show_id,
+              title: item.title || item.show_name || "Show",
+              image_url: item.image_url || item.show_url || "",
+              rating: item.rating || null,
+              plays: item.plays || null
+            });
+          }
+        });
+
+        if (dbFavoriteShows && Array.isArray(dbFavoriteShows)) {
           dbFavoriteShows.forEach(show => {
-            if (show.show_id && !favMap[show.show_id]) {
-              favMap[show.show_id] = {
+            if (show && show.show_id && !seenFavIds.has(show.show_id)) {
+              seenFavIds.add(show.show_id);
+              favList.push({
                 show_id: show.show_id,
                 title: show.show_name || show.title || "Show",
-                image_url: show.show_url || show.image_url || ""
-              };
+                image_url: show.show_url || show.image_url || "",
+                rating: show.rating || null,
+                plays: show.plays || null
+              });
             }
           });
         }
-        const fullFavKeys = Object.keys(favMap).slice(0, 90);
-        if (fullFavKeys.length === 0) {
+
+        const fullFavList = favList.slice(0, 90);
+        if (fullFavList.length === 0) {
           container.innerHTML = `
             <div style="text-align:center; padding: 60px 20px; color: var(--text-muted); font-size: 13px;">
               <i data-lucide="heart" style="width: 38px; height: 38px; margin-bottom: 12px; color: var(--primary); opacity: 0.85;"></i>
@@ -4777,16 +4803,15 @@
           return;
         }
 
-        const visibleFavKeys = fullFavKeys.slice(0, favoriteDisplayLimit);
-        const hasMore = visibleFavKeys.length < fullFavKeys.length;
+        const visibleFavList = fullFavList.slice(0, favoriteDisplayLimit);
+        const hasMore = visibleFavList.length < fullFavList.length;
 
         container.innerHTML = `
           <div style="margin-bottom: 10px; padding: 0 4px;">
-            <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Favorite Shows (${fullFavKeys.length})</span>
+            <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Favorite Shows (${fullFavList.length})</span>
           </div>
           <div class="grid-container" id="lib-favorite-grid">
-            ${visibleFavKeys.map(key => {
-          const show = favMap[key];
+            ${visibleFavList.map(show => {
           const showTitle = show.title || show.show_name || "Show";
           const showImg = show.image_url || show.show_url || "";
           const rating = show.rating || null;
@@ -5797,6 +5822,7 @@
         const act = getActiveMediaElement();
         if (act && act.paused) {
           isAudioBuffering = true;
+          isPlaying = false;
           updatePlayPauseButton();
           act.play().then(() => {
             isAudioBuffering = false;
@@ -5810,6 +5836,21 @@
         }
       } else {
         isUserPaused = false;
+        isAudioBuffering = true;
+        isPlaying = false;
+        const effectiveShowId = showId || currentShowId || (currentShowObj && currentShowObj.show_id) || "";
+        currentPlayingStory = {
+          storyId,
+          title: title || "Now Playing",
+          audioUrl: audioUrl || "",
+          videoUrl: videoUrl || "",
+          mediaUrl: audioUrl || "",
+          showTitle: showTitle || "Story Gram",
+          thumbUrl: thumbUrl || "",
+          hasVideo: Boolean(hasVideo || videoUrl),
+          showId: effectiveShowId
+        };
+        updatePlayPauseButton();
         playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, showId);
       }
     }
