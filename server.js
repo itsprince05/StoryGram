@@ -168,11 +168,34 @@ const NGINX_404_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta n
 const rateLimitMap = new Map();
 const usedNonces = new Map();
 
+function extractFirstHeader(val) {
+  if (!val) return '';
+  if (Array.isArray(val)) return String(val[0] || '').trim();
+  const s = String(val).trim();
+  if (s.includes(',')) {
+    return s.split(',')[0].trim();
+  }
+  return s;
+}
+
+function getReqDeviceId(req) {
+  return extractFirstHeader(req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '');
+}
+
+function getReqUserId(req) {
+  return extractFirstHeader(req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '');
+}
+
+function getReqEmail(req) {
+  return extractFirstHeader(req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || req.query.email || '');
+}
+
 function verifyDynamicSignature(req) {
-  const ts = req.headers['timestamp'] || req.headers['x-app-timestamp'];
-  const nonce = req.headers['nonce'] || req.headers['x-app-nonce'];
-  const sig = (req.headers['signature'] || req.headers['x-app-signature'] || '').trim().toLowerCase();
-  const deviceId = (req.headers['deviceid'] || req.headers['x-app-device-id'] || '').trim();
+  const ts = extractFirstHeader(req.headers['timestamp'] || req.headers['x-app-timestamp']);
+  const nonce = extractFirstHeader(req.headers['nonce'] || req.headers['x-app-nonce']);
+  const sig = extractFirstHeader(req.headers['signature'] || req.headers['x-app-signature']).toLowerCase();
+  const rawDeviceId = (req.headers['deviceid'] || req.headers['x-app-device-id'] || '').trim();
+  const deviceId = extractFirstHeader(rawDeviceId);
 
   if (!ts || !nonce || !sig) {
     console.log(`[AUTH-REJECT] Missing headers: path=${req.path}, hasTs=${Boolean(ts)}, hasNonce=${Boolean(nonce)}, hasSig=${Boolean(sig)}`);
@@ -199,14 +222,20 @@ function verifyDynamicSignature(req) {
   }
 
   const cleanPath = req.path || '/';
-  const candidatePayloads = [
-    `${ts}:${nonce}:${cleanPath}:${deviceId}`,
-    `${ts}:${nonce}:${cleanPath}`,
-    `${ts}:${nonce}:/:${deviceId}`,
-    `${ts}:${nonce}:/`,
-    `${ts}:${nonce}::${deviceId}`,
-    `${ts}:${nonce}`
-  ];
+  const deviceVariants = [deviceId];
+  if (rawDeviceId && rawDeviceId !== deviceId) {
+    deviceVariants.push(rawDeviceId);
+  }
+
+  const candidatePayloads = [];
+  for (const d of deviceVariants) {
+    candidatePayloads.push(`${ts}:${nonce}:${cleanPath}:${d}`);
+    candidatePayloads.push(`${ts}:${nonce}:/:${d}`);
+    candidatePayloads.push(`${ts}:${nonce}::${d}`);
+  }
+  candidatePayloads.push(`${ts}:${nonce}:${cleanPath}`);
+  candidatePayloads.push(`${ts}:${nonce}:/`);
+  candidatePayloads.push(`${ts}:${nonce}`);
 
   for (const payload of candidatePayloads) {
     const expectedSig = crypto.createHmac('sha256', APP_HMAC_SECRET).update(payload).digest('hex').toLowerCase();
@@ -567,9 +596,9 @@ app.get(['/refresh-cookies', '/api/refresh-cookies'], async (req, res) => {
 
 app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
-    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
-    const email = req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || req.query.email || '';
+    const deviceId = getReqDeviceId(req);
+    const userId = getReqUserId(req);
+    const email = getReqEmail(req);
     const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
@@ -668,9 +697,9 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
 
 app.all(['/search', '/api/search'], async (req, res) => {
   try {
-    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
-    const email = req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || req.query.email || '';
+    const deviceId = getReqDeviceId(req);
+    const userId = getReqUserId(req);
+    const email = getReqEmail(req);
 
     const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
@@ -737,9 +766,9 @@ app.all(['/search', '/api/search'], async (req, res) => {
 
 app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (req, res) => {
   try {
-    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
-    const email = req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || req.query.email || '';
+    const deviceId = getReqDeviceId(req);
+    const userId = getReqUserId(req);
+    const email = getReqEmail(req);
 
     const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
@@ -1062,9 +1091,9 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
 
 app.all(['/api/resolve_episodes', '/resolve_episodes'], async (req, res) => {
   try {
-    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
-    const email = req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || req.query.email || '';
+    const deviceId = getReqDeviceId(req);
+    const userId = getReqUserId(req);
+    const email = getReqEmail(req);
 
     const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
@@ -1097,9 +1126,9 @@ app.all(['/api/resolve_episodes', '/resolve_episodes'], async (req, res) => {
 
 app.all(['/license', '/api/license', '/api/get_license'], async (req, res) => {
   try {
-    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
-    const email = req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || req.query.email || '';
+    const deviceId = getReqDeviceId(req);
+    const userId = getReqUserId(req);
+    const email = getReqEmail(req);
 
     const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
@@ -1231,9 +1260,9 @@ app.all(['/unlock', '/api/unlock', '/api/subscribe', '/api/user_action'], async 
 
 app.all(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_stories'], async (req, res) => {
   try {
-    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
-    const email = req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || req.query.email || '';
+    const deviceId = getReqDeviceId(req);
+    const userId = getReqUserId(req);
+    const email = getReqEmail(req);
 
     const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
@@ -1282,9 +1311,9 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
     (req.body && (req.body.action === 'update_language' || req.body.format === 'json' || req.body.action === 'verify'));
 
   try {
-    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || '';
-    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.google_id || '';
-    const email = req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || '';
+    const deviceId = getReqDeviceId(req);
+    const userId = getReqUserId(req);
+    const email = getReqEmail(req);
     const name = req.body?.name || 'User';
     const photoUrl = req.body?.photoUrl || req.body?.photo_url || '';
     const language = req.body?.language || req.body?.lang || '';
@@ -1444,9 +1473,9 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
 
 app.post(['/api/app/bundle', '/app/bundle'], async (req, res) => {
   try {
-    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || '';
-    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || '';
-    const email = req.headers['x-app-user-email'] || req.body?.email || '';
+    const deviceId = getReqDeviceId(req);
+    const userId = getReqUserId(req);
+    const email = getReqEmail(req);
     const manufacturer = req.headers['x-app-manufacturer'] || req.headers['manufacturer'] || req.body?.manufacturer || req.body?.device_manufacturer || '';
     const brand = req.headers['x-app-brand'] || req.headers['brand'] || req.body?.brand || req.body?.device_brand || '';
     const model = req.headers['x-app-model'] || req.headers['model'] || req.body?.model || req.body?.device_model || '';
@@ -1502,9 +1531,9 @@ app.post(['/api/admin/users', '/admin/users'], async (req, res) => {
 
 app.all(['/api/library', '/library'], async (req, res) => {
   try {
-    const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
-    const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.uid || req.query.userId || '';
-    const email = req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || req.query.email || '';
+    const deviceId = getReqDeviceId(req);
+    const userId = getReqUserId(req);
+    const email = getReqEmail(req);
 
     const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
