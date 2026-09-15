@@ -3092,8 +3092,7 @@
         <div class="fs-body">
           <div class="fs-poster-wrap">
             <img id="fs-poster-img" class="fs-poster-img" src="" alt="Show Poster">
-            <video id="fs-video-element" class="fs-video-player" playsinline webkit-playsinline preload="auto"
-              disablePictureInPicture></video>
+            <video id="fs-video-element" class="fs-video-player" playsinline="true" webkit-playsinline="true" x5-playsinline="true" x5-video-player-type="h5" x5-video-player-fullscreen="true" preload="auto"></video>
           </div>
 
           <div class="fs-info-wrap">
@@ -3338,6 +3337,7 @@
     let preferredMediaMode = 'audio';
     let currentMediaMode = 'audio';
     let currentLoadedVideoUrl = '';
+    let isUserPaused = false;
 
     function getActiveMediaElement() {
       return (currentMediaMode === 'video' && videoElement) ? videoElement : audioElement;
@@ -3451,12 +3451,14 @@
         if (getActiveMediaElement() === el) {
           isAudioBuffering = false;
           isPlaying = true;
+          isUserPaused = false;
           updatePlayPauseButton();
         }
       });
 
       el.addEventListener('play', () => {
         if (getActiveMediaElement() === el) {
+          isUserPaused = false;
           if (el.readyState < 3) {
             isAudioBuffering = true;
           }
@@ -3467,6 +3469,17 @@
 
       el.addEventListener('pause', () => {
         if (getActiveMediaElement() === el) {
+          if (!isUserPaused && currentPlayingStory) {
+            setTimeout(() => {
+              if (!isUserPaused && currentPlayingStory) {
+                const act = getActiveMediaElement();
+                if (act && act.paused) {
+                  act.play().catch(() => {});
+                }
+              }
+            }, 50);
+            return;
+          }
           isAudioBuffering = false;
           isPlaying = false;
           updatePlayPauseButton();
@@ -5409,7 +5422,9 @@
         hlsVideoPlayer = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
-          maxBufferLength: 30
+          maxBufferLength: 60,
+          maxMaxBufferLength: 600,
+          backBufferLength: 60
         });
         hlsVideoPlayer.loadSource(videoUrl);
         hlsVideoPlayer.attachMedia(videoElement);
@@ -5421,6 +5436,7 @@
           videoElement.playbackRate = currentPlaybackSpeed;
           if (shouldPlay) {
             try {
+              isUserPaused = false;
               await videoElement.play();
               isAudioBuffering = false;
               isPlaying = true;
@@ -5639,6 +5655,7 @@
         return;
       }
 
+      isUserPaused = false;
       isAudioBuffering = true;
       isPlaying = false;
 
@@ -5721,6 +5738,7 @@
     function togglePlayPause() {
       const active = getActiveMediaElement();
       if (active.paused) {
+        isUserPaused = false;
         isAudioBuffering = true;
         updatePlayPauseButton();
         active.play().then(() => {
@@ -5733,6 +5751,7 @@
           updatePlayPauseButton();
         });
       } else {
+        isUserPaused = true;
         active.pause();
         isAudioBuffering = false;
         isPlaying = false;
@@ -5815,6 +5834,7 @@
         navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
 
         navigator.mediaSession.setActionHandler('play', () => {
+          isUserPaused = false;
           const active = getActiveMediaElement();
           if (active && active.paused) {
             active.play().then(() => {
@@ -5825,6 +5845,7 @@
         });
 
         navigator.mediaSession.setActionHandler('pause', () => {
+          isUserPaused = true;
           const active = getActiveMediaElement();
           if (active && !active.paused) {
             active.pause();
@@ -5871,6 +5892,7 @@
       currentLoadedVideoUrl = '';
       isAudioBuffering = false;
       isPlaying = false;
+      isUserPaused = true;
       currentPlayingStory = null;
 
       closeFullscreenPlayer();
@@ -5978,6 +6000,16 @@
         const miniBufferBar = document.getElementById('player-buffer-bar');
         if (miniBufferBar) {
           miniBufferBar.style.width = bufferPercent + '%';
+        }
+
+        if ('mediaSession' in navigator && typeof navigator.mediaSession.setPositionState === 'function') {
+          try {
+            navigator.mediaSession.setPositionState({
+              duration: duration,
+              playbackRate: active.playbackRate || 1.0,
+              position: Math.min(active.currentTime, duration)
+            });
+          } catch (e) { }
         }
       }
     }
@@ -6253,7 +6285,16 @@
           }
         }
 
-        if (status === 'multiple' || status === 'device_mismatch') {
+        if (status === 'update_required' || status === 'update_app' || data.message === 'Update App') {
+          if (rBadge) {
+            rBadge.innerText = 'Update App';
+            rBadge.style.color = '#ff3366';
+          }
+          if (rCard) {
+            rCard.style.background = 'rgba(255, 51, 102, 0.12)';
+            rCard.style.borderColor = 'rgba(255, 51, 102, 0.3)';
+          }
+        } else if (status === 'multiple' || status === 'device_mismatch') {
           if (rBadge) {
             rBadge.innerText = 'Device Not Matched';
             rBadge.style.color = '#f87171';
@@ -6379,12 +6420,22 @@
           return null;
         }
 
+        let appVer = '';
+        try {
+          if (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
+            const av = window.AndroidBridge.getAppVersion();
+            if (av && String(av).trim()) appVer = String(av).trim();
+          }
+        } catch (e) { }
+
         const payload = {
           userId: userId,
           email: email,
           name: name,
           photoUrl: photoUrl,
-          deviceId: deviceId
+          deviceId: deviceId,
+          version: appVer,
+          app_version: appVer
         };
 
         let data = null;
@@ -6393,7 +6444,8 @@
           const res = await fetch('/api/user', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'x-app-version': appVer
             },
             body: JSON.stringify(payload)
           });
@@ -6631,6 +6683,42 @@
     window.getDeviceId = getDeviceId;
     window.triggerAppLogin = triggerAppLogin;
     window.setAppState = setAppState;
+
+    document.addEventListener('visibilitychange', () => {
+      if (!isUserPaused && currentPlayingStory) {
+        const act = getActiveMediaElement();
+        if (act && act.paused) {
+          act.play().catch(() => {});
+        }
+      }
+    });
+
+    window.addEventListener('pagehide', () => {
+      if (!isUserPaused && currentPlayingStory) {
+        const act = getActiveMediaElement();
+        if (act && act.paused) {
+          act.play().catch(() => {});
+        }
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      if (!isUserPaused && currentPlayingStory) {
+        const act = getActiveMediaElement();
+        if (act && act.paused) {
+          act.play().catch(() => {});
+        }
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      if (!isUserPaused && currentPlayingStory) {
+        const act = getActiveMediaElement();
+        if (act && act.paused) {
+          act.play().catch(() => {});
+        }
+      }
+    });
 
     window.addEventListener('DOMContentLoaded', () => {
       initShakaPlayer();
