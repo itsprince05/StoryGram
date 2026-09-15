@@ -569,6 +569,7 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
     const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
     const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
+    const email = req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || req.query.email || '';
     const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
