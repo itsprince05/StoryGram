@@ -920,10 +920,10 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
               story_id: story.story_id || ""
             };
 
-            const finalVideoUrl = webVideoUrl || (story.video_url && !story.video_url.includes('.mpd') ? story.video_url : "") || (androidVideoUrl && !androidVideoUrl.includes('.mpd') ? androidVideoUrl : "") || (hlsVideoUrl && !hlsVideoUrl.includes('mock') ? hlsVideoUrl : "");
+            const finalVideoUrl = webVideoUrl || story.video_url || androidVideoUrl || (hlsVideoUrl && !hlsVideoUrl.includes('mock') ? hlsVideoUrl : "");
 
             if (finalVideoUrl) {
-              storyObj.audio_url = videoDashUrl;
+              storyObj.audio_url = videoDashUrl || finalVideoUrl;
               storyObj.video_url = finalVideoUrl;
             } else if (realMediaUrlEnc) {
               storyObj.media_url_enc = realMediaUrlEnc;
