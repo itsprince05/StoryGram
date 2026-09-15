@@ -1435,8 +1435,7 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
   .account-user-email { font-size: 12px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .restricted-status-card { width: 100%; background: ${statusBg}; border: 1px solid ${statusBorder}; border-radius: 14px; padding: 10px; text-align: center; box-sizing: border-box; }
   .restricted-status-badge { font-size: 16px; font-weight: 800; color: ${statusColor}; margin: 0; }
-  .restricted-contact-card { width: 100%; background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 14px 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; box-sizing: border-box; }
-  .restricted-contact-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 38px; font-size: 13px; font-weight: 700; border-radius: 10px; text-decoration: none; color: #fff; background: linear-gradient(135deg, #ff3366, #e11d48); box-shadow: 0 4px 18px rgba(255, 51, 102, 0.35); box-sizing: border-box; }
+  .restricted-contact-row { width: 100%; background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 12px 14px; text-decoration: none; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; cursor: pointer; }
 </style>
 <div class="account-page-wrap">
   <div class="account-profile-card">
@@ -1449,13 +1448,16 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
   <div class="restricted-status-card">
     <div class="restricted-status-badge">${statusText}</div>
   </div>
-  <div class="restricted-contact-card">
-    <div style="font-size: 13.5px; font-weight: 700; color: #fff;">Contact Admin</div>
-    <a href="https://t.me/${encodeURIComponent(adminUsername || 'index_guide')}" target="_blank" rel="noopener noreferrer" class="restricted-contact-btn">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-      Click Here
-    </a>
-  </div>
+  <a href="https://t.me/${encodeURIComponent(adminUsername || 'index_guide')}" target="_blank" rel="noopener noreferrer" class="restricted-contact-row">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-user"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M6.376 18.91a6 6 0 0 1 11.249.003"/><circle cx="12" cy="11" r="4"/></svg>
+      <span style="font-size: 13.5px; font-weight: 700; color: #fff;">Contact Admin</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <span style="font-size: 13.5px; font-weight: 700; color: #38bdf8;">Click Here</span>
+      <svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" width="18" height="18" preserveAspectRatio="xMidYMid" style="display: block;"><defs><linearGradient id="tgGradNoAccess" x1="50%" x2="50%" y1="0%" y2="100%"><stop offset="0%" stop-color="#2AABEE"/><stop offset="100%" stop-color="#229ED9"/></linearGradient></defs><path fill="url(#tgGradNoAccess)" d="M128 0C94.06 0 61.48 13.494 37.5 37.49A128.038 128.038 0 0 0 0 128c0 33.934 13.5 66.514 37.5 90.51C61.48 242.506 94.06 256 128 256s66.52-13.494 90.5-37.49c24-23.996 37.5-56.576 37.5-90.51 0-33.934-13.5-66.514-37.5-90.51C194.52 13.494 161.94 0 128 0Z"/><path fill="#FFF" d="M57.94 126.648c37.32-16.256 62.2-26.974 74.64-32.152 35.56-14.786 42.94-17.354 47.76-17.441 1.06-.017 3.42.245 4.96 1.49 1.28 1.05 1.64 2.47 1.82 3.467.16.996.38 3.266.2 5.038-1.92 20.24-10.26 69.356-14.5 92.026-1.78 9.592-5.32 12.808-8.74 13.122-7.44.684-13.08-4.912-20.28-9.63-11.26-7.386-17.62-11.982-28.56-19.188-12.64-8.328-4.44-12.906 2.76-20.386 1.88-1.958 34.64-31.748 35.26-34.45.08-.338.16-1.598-.6-2.262-.74-.666-1.84-.438-2.64-.258-1.14.256-19.12 12.152-54 35.686-5.1 3.508-9.72 5.218-13.88 5.128-4.56-.098-13.36-2.584-19.9-4.708-8-2.606-14.38-3.984-13.82-8.41.28-2.304 3.46-4.662 9.52-7.072Z"/></svg>
+    </div>
+  </a>
 </div>`;
 
     return res.status(200).send(noAccessHtml);
