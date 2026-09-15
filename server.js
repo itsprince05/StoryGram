@@ -989,7 +989,7 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
 
   if (!isBackground) {
     setImmediate(() => {
-      resolveStoriesBeyond3000(showId, allStories, req, startPtr, batchSize, baseShow, true).catch(() => {});
+      resolveStoriesBeyond3000(showId, allStories, req, startPtr, batchSize, baseShow, true).catch(() => { });
     });
     return allStories;
   }
@@ -1040,7 +1040,7 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
     if (savedData && savedData.result && Array.isArray(savedData.result.stories)) {
       matchAndApplySaved(savedData.result.stories);
     }
-  } catch (err) {}
+  } catch (err) { }
 
   if (missingStoryIds.length > 0) {
     for (let attempt = 1; attempt <= 2; attempt++) {
@@ -1065,7 +1065,7 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
         if (retrySaved && retrySaved.result && Array.isArray(retrySaved.result.stories)) {
           matchAndApplySaved(retrySaved.result.stories);
         }
-      } catch (err) {}
+      } catch (err) { }
 
       if (missingStoryIds.length === 0) break;
     }
@@ -1082,8 +1082,8 @@ async function resolveStoriesBeyond3000(showId, allStories, req, startPtr = 0, b
         },
         timeout: 5000,
         validateStatus: () => true
-      }).catch(() => {});
-    } catch (saveErr) {}
+      }).catch(() => { });
+    } catch (saveErr) { }
   }
 
   return allStories;
