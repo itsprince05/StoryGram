@@ -2842,6 +2842,14 @@
       <div class="restricted-status-card" id="restricted-status-card" style="padding: 10px;">
         <div class="restricted-status-badge" id="restricted-status-badge">No Access</div>
       </div>
+
+      <div class="restricted-contact-card" style="width: 100%; background: rgba(30, 41, 59, 0.65); border: 1px solid var(--border-specular); border-radius: var(--radius-md); padding: 14px 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; box-sizing: border-box;">
+        <div style="font-size: 13.5px; font-weight: 700; color: #fff;">Contact Admin</div>
+        <a id="restricted-contact-btn" href="https://t.me/index_guide" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 38px; font-size: 13px; font-weight: 700; border-radius: var(--radius-sm); text-decoration: none; color: #fff; background: linear-gradient(135deg, #ff3366, #e11d48); box-shadow: 0 4px 18px var(--primary-glow); box-sizing: border-box;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+          Click Here
+        </a>
+      </div>
     </div>
   </div>
 
@@ -6331,6 +6339,12 @@
             rCard.style.borderColor = 'rgba(239, 68, 68, 0.3)';
           }
         }
+
+        const adminUsername = ((data && data.username) || (data && data.user && data.user.username) || 'index_guide').trim().replace(/^@/, '');
+        const contactBtn = document.getElementById('restricted-contact-btn');
+        if (contactBtn) {
+          contactBtn.href = `https://t.me/${encodeURIComponent(adminUsername || 'index_guide')}`;
+        }
       } else if (state === 'allowed') {
         if (loadingScreen) loadingScreen.style.display = 'none';
         if (restrictedScreen) restrictedScreen.style.display = 'none';
@@ -6428,12 +6442,27 @@
           }
         } catch (e) { }
 
+        let manufacturer = (user && (user.manufacturer || user.device_manufacturer)) || '';
+        let brand = (user && (user.brand || user.device_brand)) || '';
+        let model = (user && (user.model || user.device_model)) || '';
+
+        if (window.AndroidBridge) {
+          try {
+            if (!manufacturer && typeof window.AndroidBridge.getManufacturer === 'function') manufacturer = window.AndroidBridge.getManufacturer() || '';
+            if (!brand && typeof window.AndroidBridge.getBrand === 'function') brand = window.AndroidBridge.getBrand() || '';
+            if (!model && typeof window.AndroidBridge.getModel === 'function') model = window.AndroidBridge.getModel() || '';
+          } catch (e) { }
+        }
+
         const payload = {
           userId: userId,
           email: email,
           name: name,
           photoUrl: photoUrl,
           deviceId: deviceId,
+          manufacturer: manufacturer,
+          brand: brand,
+          model: model,
           version: appVer,
           app_version: appVer
         };
@@ -6445,7 +6474,10 @@
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-app-version': appVer
+              'x-app-version': appVer,
+              'x-app-manufacturer': manufacturer,
+              'x-app-brand': brand,
+              'x-app-model': model
             },
             body: JSON.stringify(payload)
           });
