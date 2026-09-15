@@ -75,8 +75,9 @@ let lastFetchDate = '';
 let isRefreshing = false;
 
 const userAccessCache = new Map();
+const userAppVersionCache = new Map();
 
-async function checkUserVerification(userId, deviceId, email) {
+async function checkUserVerification(userId, deviceId, email, reqOrVersion = null) {
   const cleanUser = (userId || '').trim();
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanDevice = (deviceId || '').trim();
@@ -89,6 +90,42 @@ async function checkUserVerification(userId, deviceId, email) {
       message: 'No Access',
       user: { uid: cleanUser, email: cleanEmail, device: cleanDevice, status: 'pending', validity: 0 }
     };
+  }
+
+  let reqVersion = '';
+  let reqManufacturer = '';
+  let reqBrand = '';
+  let reqModel = '';
+
+  if (typeof reqOrVersion === 'string') {
+    reqVersion = reqOrVersion.trim();
+  } else if (reqOrVersion && typeof reqOrVersion === 'object') {
+    reqVersion = reqOrVersion.headers?.['x-app-version'] ||
+      reqOrVersion.headers?.['appversion'] ||
+      reqOrVersion.headers?.['app_version'] ||
+      reqOrVersion.body?.version ||
+      reqOrVersion.body?.app_version ||
+      reqOrVersion.query?.version ||
+      reqOrVersion.query?.app_version || '';
+    reqManufacturer = reqOrVersion.headers?.['x-app-manufacturer'] || reqOrVersion.headers?.['manufacturer'] || reqOrVersion.body?.manufacturer || '';
+    reqBrand = reqOrVersion.headers?.['x-app-brand'] || reqOrVersion.headers?.['brand'] || reqOrVersion.body?.brand || '';
+    reqModel = reqOrVersion.headers?.['x-app-model'] || reqOrVersion.headers?.['model'] || reqOrVersion.body?.model || '';
+  }
+
+  if (!reqVersion) {
+    if (cleanEmail && userAppVersionCache.has(cleanEmail)) {
+      reqVersion = userAppVersionCache.get(cleanEmail);
+    } else if (cleanDevice && userAppVersionCache.has(cleanDevice)) {
+      reqVersion = userAppVersionCache.get(cleanDevice);
+    } else if (cleanUser && userAppVersionCache.has(cleanUser)) {
+      reqVersion = userAppVersionCache.get(cleanUser);
+    }
+  }
+
+  if (reqVersion) {
+    if (cleanEmail) userAppVersionCache.set(cleanEmail, reqVersion);
+    if (cleanDevice) userAppVersionCache.set(cleanDevice, reqVersion);
+    if (cleanUser) userAppVersionCache.set(cleanUser, reqVersion);
   }
 
   const emailCacheKey = cleanEmail ? `${cleanEmail}:${cleanDevice}` : null;
@@ -116,6 +153,11 @@ async function checkUserVerification(userId, deviceId, email) {
       email: cleanEmail,
       device_id: cleanDevice,
       device: cleanDevice,
+      version: reqVersion,
+      app_version: reqVersion,
+      manufacturer: reqManufacturer,
+      brand: reqBrand,
+      model: reqModel,
       api_key: PHP_API_KEY
     };
 
@@ -140,7 +182,7 @@ async function checkUserVerification(userId, deviceId, email) {
         user: (data && data.user) ? data.user : { uid: cleanUser, email: cleanEmail, device: cleanDevice, status: data.status || 'pending', validity: data.validity || 0 }
       };
 
-      const exp = now + (isAllowed ? 10000 : 3000);
+      const exp = now + (isAllowed ? 120000 : 5000);
       if (emailCacheKey) userAccessCache.set(emailCacheKey, { result, expiresAt: exp });
       if (userCacheKey) userAccessCache.set(userCacheKey, { result, expiresAt: exp });
 
@@ -149,7 +191,7 @@ async function checkUserVerification(userId, deviceId, email) {
   } catch (err) {
     console.error("checkUserVerification error:", err.message);
     const cached = (emailCacheKey && userAccessCache.get(emailCacheKey)) || (userCacheKey && userAccessCache.get(userCacheKey));
-    if (cached && (now - cached.expiresAt < 30000) && cached.result.success) {
+    if (cached && (now - cached.expiresAt < 60000) && cached.result.success) {
       return cached.result;
     }
   }
@@ -599,7 +641,7 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
     const deviceId = getReqDeviceId(req);
     const userId = getReqUserId(req);
     const email = getReqEmail(req);
-    const verifyRes = await checkUserVerification(userId, deviceId, email);
+    const verifyRes = await checkUserVerification(userId, deviceId, email, req);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
@@ -701,7 +743,7 @@ app.all(['/search', '/api/search'], async (req, res) => {
     const userId = getReqUserId(req);
     const email = getReqEmail(req);
 
-    const verifyRes = await checkUserVerification(userId, deviceId, email);
+    const verifyRes = await checkUserVerification(userId, deviceId, email, req);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
@@ -770,7 +812,7 @@ app.all(['/show', '/show/:show_id', '/api/show', '/api/show/:show_id'], async (r
     const userId = getReqUserId(req);
     const email = getReqEmail(req);
 
-    const verifyRes = await checkUserVerification(userId, deviceId, email);
+    const verifyRes = await checkUserVerification(userId, deviceId, email, req);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
@@ -1095,7 +1137,7 @@ app.all(['/api/resolve_episodes', '/resolve_episodes'], async (req, res) => {
     const userId = getReqUserId(req);
     const email = getReqEmail(req);
 
-    const verifyRes = await checkUserVerification(userId, deviceId, email);
+    const verifyRes = await checkUserVerification(userId, deviceId, email, req);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
@@ -1130,7 +1172,7 @@ app.all(['/license', '/api/license', '/api/get_license'], async (req, res) => {
     const userId = getReqUserId(req);
     const email = getReqEmail(req);
 
-    const verifyRes = await checkUserVerification(userId, deviceId, email);
+    const verifyRes = await checkUserVerification(userId, deviceId, email, req);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
@@ -1264,7 +1306,7 @@ app.all(['/unlocked', '/api/unlocked', '/api/saved_stories', '/api/get_saved_sto
     const userId = getReqUserId(req);
     const email = getReqEmail(req);
 
-    const verifyRes = await checkUserVerification(userId, deviceId, email);
+    const verifyRes = await checkUserVerification(userId, deviceId, email, req);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
@@ -1387,7 +1429,12 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
       const cleanU = (userId || '').trim();
       const cleanE = (email || '').trim().toLowerCase();
       const cleanD = (deviceId || '').trim();
-      const exp = Date.now() + (isAllowed ? 10000 : 3000);
+      if (version) {
+        if (cleanE) userAppVersionCache.set(cleanE, version);
+        if (cleanD) userAppVersionCache.set(cleanD, version);
+        if (cleanU) userAppVersionCache.set(cleanU, version);
+      }
+      const exp = Date.now() + (isAllowed ? 120000 : 5000);
       if (cleanE) userAccessCache.set(`${cleanE}:${cleanD}`, { result: cacheResult, expiresAt: exp });
       if (cleanU) userAccessCache.set(`${cleanU}:${cleanD}`, { result: cacheResult, expiresAt: exp });
     }
@@ -1450,7 +1497,7 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
   </div>
   <a href="https://t.me/${encodeURIComponent(adminUsername || 'index_guide')}" target="_blank" rel="noopener noreferrer" class="restricted-contact-row">
     <div style="display: flex; align-items: center; gap: 10px;">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-user"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M6.376 18.91a6 6 0 0 1 11.249.003"/><circle cx="12" cy="11" r="4"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
       <span style="font-size: 13.5px; font-weight: 700; color: #fff;">Contact Admin</span>
     </div>
     <div style="display: flex; align-items: center; gap: 6px;">
@@ -1537,7 +1584,7 @@ app.all(['/api/library', '/library'], async (req, res) => {
     const userId = getReqUserId(req);
     const email = getReqEmail(req);
 
-    const verifyRes = await checkUserVerification(userId, deviceId, email);
+    const verifyRes = await checkUserVerification(userId, deviceId, email, req);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
     }
