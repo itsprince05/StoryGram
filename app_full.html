@@ -5302,19 +5302,23 @@
     }
 
     async function startAudioStream(audioUrl, startTime = 0, shouldPlay = true) {
+      if (!audioUrl) return;
       stopAndUnloadVideo();
 
-      let streamUrl = audioUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-      if (streamUrl.includes('d13yevwzck7i9p.cloudfront.net')) {
+      let streamUrl = audioUrl;
+      const isDrmEncrypted = streamUrl.includes('drm-aac') || (audioUrl && audioUrl.includes('drm-aac'));
+      if (isDrmEncrypted && streamUrl.includes('d13yevwzck7i9p.cloudfront.net')) {
         streamUrl = streamUrl.replace('https://d13yevwzck7i9p.cloudfront.net', 'https://stream.render-stream.workers.dev');
       }
 
       isAudioBuffering = true;
       updatePlayPauseButton();
 
-      if (shakaPlayer && (streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash') || streamUrl.includes('drm-aac') || streamUrl.includes('workers.dev'))) {
+      if (shakaPlayer && (isDrmEncrypted || streamUrl.includes('.mpd') || streamUrl.includes('manifest') || streamUrl.includes('dash') || streamUrl.includes('drm-aac') || streamUrl.includes('workers.dev'))) {
         try {
           await shakaPlayer.unload();
+          await shakaPlayer.detach();
+          await shakaPlayer.attach(audioElement);
 
           const isDrmEncrypted = streamUrl.includes('drm-aac') || (audioUrl && audioUrl.includes('drm-aac'));
 
@@ -5446,7 +5450,13 @@
 
       await stopAndUnloadAudio();
 
-      currentLoadedVideoUrl = videoUrl;
+      let streamUrl = videoUrl;
+      const isDrmEncrypted = streamUrl.includes('drm-aac') || (videoUrl && videoUrl.includes('drm-aac'));
+      if (isDrmEncrypted && streamUrl.includes('d13yevwzck7i9p.cloudfront.net')) {
+        streamUrl = streamUrl.replace('https://d13yevwzck7i9p.cloudfront.net', 'https://stream.render-stream.workers.dev');
+      }
+
+      currentLoadedVideoUrl = streamUrl;
       isAudioBuffering = true;
       isPlaying = false;
       updatePlayPauseButton();
@@ -5456,6 +5466,9 @@
       if (videoElement) {
         videoElement.style.display = 'block';
         videoElement.muted = false;
+        videoElement.setAttribute('playsinline', 'true');
+        videoElement.setAttribute('webkit-playsinline', 'true');
+        videoElement.setAttribute('x5-playsinline', 'true');
       }
 
       if (hlsVideoPlayer) {
@@ -5467,7 +5480,90 @@
         hlsVideoPlayer = null;
       }
 
-      if (window.Hls && Hls.isSupported() && (videoUrl.includes('.m3u8') || videoUrl.includes('hls') || videoUrl.includes('HLS') || videoUrl.includes('master') || videoUrl.includes('Default'))) {
+      const isDrmOrDash = streamUrl.includes('.mpd') || streamUrl.includes('dash') || streamUrl.includes('drm-aac') || streamUrl.includes('manifest') || streamUrl.includes('workers.dev');
+
+      if (shakaPlayer && isDrmOrDash) {
+        try {
+          await shakaPlayer.unload();
+          await shakaPlayer.detach();
+          await shakaPlayer.attach(videoElement);
+
+          const isDrmEncrypted = streamUrl.includes('drm-aac') || (videoUrl && videoUrl.includes('drm-aac'));
+
+          if (isDrmEncrypted) {
+            let targetShowId = currentShowId || (currentPlayingStory && currentPlayingStory.showId) || "";
+            if (!targetShowId) {
+              const match = streamUrl.match(/drm-aac\/([a-zA-Z0-9_-]+)/) || streamUrl.match(/value=([a-zA-Z0-9_-]+)/) || streamUrl.match(/show[_-]?id=([a-zA-Z0-9_-]+)/i);
+              if (match) targetShowId = match[1];
+            }
+
+            if (targetShowId) {
+              try {
+                const licRes = await fetch('/license', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'show_id': targetShowId
+                  },
+                  body: JSON.stringify({
+                    show_id: targetShowId
+                  })
+                });
+                if (licRes.ok) {
+                  const licData = await licRes.json();
+                  if (licData && (licData.access_denied || licData.status === 'blocked' || licData.status === 'expired' || licData.status === 'multiple' || licData.status === 'pending')) {
+                    handleAccessDenied(licData);
+                    return;
+                  }
+                  if (licData.success && licData.license_url) {
+                    shakaPlayer.configure({
+                      drm: {
+                        servers: {
+                          'com.widevine.alpha': licData.license_url
+                        },
+                        advanced: {
+                          'com.widevine.alpha': {
+                            videoRobustness: '',
+                            audioRobustness: ''
+                          }
+                        }
+                      }
+                    });
+                  }
+                }
+              } catch (licErr) {
+                console.warn("Video DRM license fetch warning:", licErr);
+              }
+            }
+          } else {
+            shakaPlayer.configure({
+              drm: {
+                servers: {},
+                advanced: {}
+              }
+            });
+          }
+
+          await shakaPlayer.load(streamUrl, startTime);
+
+          videoElement.playbackRate = currentPlaybackSpeed;
+          if (startTime > 0) {
+            videoElement.currentTime = startTime;
+          }
+          if (shouldPlay) {
+            await videoElement.play();
+            isAudioBuffering = false;
+            isPlaying = true;
+          } else {
+            isAudioBuffering = false;
+            isPlaying = false;
+          }
+          updatePlayPauseButton();
+        } catch (err) {
+          console.error("Shaka video error, fallback to HLS/Direct:", err);
+          playVideoFallback(streamUrl, startTime, shouldPlay);
+        }
+      } else if (window.Hls && Hls.isSupported() && (streamUrl.includes('.m3u8') || streamUrl.includes('hls') || streamUrl.includes('HLS') || streamUrl.includes('master') || streamUrl.includes('Default'))) {
         hlsVideoPlayer = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
@@ -5475,7 +5571,7 @@
           maxMaxBufferLength: 600,
           backBufferLength: 60
         });
-        hlsVideoPlayer.loadSource(videoUrl);
+        hlsVideoPlayer.loadSource(streamUrl);
         hlsVideoPlayer.attachMedia(videoElement);
 
         hlsVideoPlayer.on(Hls.Events.MANIFEST_PARSED, async () => {
@@ -5512,14 +5608,13 @@
               default:
                 try { hlsVideoPlayer.destroy(); } catch (e) { }
                 hlsVideoPlayer = null;
-                videoElement.src = videoUrl;
-                if (shouldPlay) videoElement.play().catch(() => { });
+                playVideoFallback(streamUrl, startTime, shouldPlay);
                 break;
             }
           }
         });
       } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-        videoElement.src = videoUrl;
+        videoElement.src = streamUrl;
         videoElement.playbackRate = currentPlaybackSpeed;
         if (startTime > 0) {
           videoElement.currentTime = startTime;
@@ -5537,23 +5632,32 @@
           }
         }
       } else {
-        videoElement.src = videoUrl;
-        videoElement.playbackRate = currentPlaybackSpeed;
-        if (startTime > 0) {
-          videoElement.currentTime = startTime;
-        }
-        if (shouldPlay) {
-          try {
-            await videoElement.play();
-            isAudioBuffering = false;
-            isPlaying = true;
-            updatePlayPauseButton();
-          } catch (e) {
-            isAudioBuffering = false;
-            isPlaying = false;
-            updatePlayPauseButton();
-          }
-        }
+        playVideoFallback(streamUrl, startTime, shouldPlay);
+      }
+    }
+
+    function playVideoFallback(streamUrl, startTime = 0, shouldPlay = true) {
+      if (!videoElement) return;
+      videoElement.src = streamUrl;
+      videoElement.playbackRate = currentPlaybackSpeed;
+      if (startTime > 0) {
+        videoElement.currentTime = startTime;
+      }
+      if (shouldPlay) {
+        videoElement.play().then(() => {
+          isAudioBuffering = false;
+          isPlaying = true;
+          updatePlayPauseButton();
+        }).catch(err => {
+          console.warn("Direct video play failed:", err);
+          isAudioBuffering = false;
+          isPlaying = false;
+          updatePlayPauseButton();
+        });
+      } else {
+        isAudioBuffering = false;
+        isPlaying = false;
+        updatePlayPauseButton();
       }
     }
 
@@ -5689,7 +5793,23 @@
     function handleEpisodeClick(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, showId) {
       if (currentPlayingStory && currentPlayingStory.storyId === storyId) {
         openFullscreenPlayer();
+        isUserPaused = false;
+        const act = getActiveMediaElement();
+        if (act && act.paused) {
+          isAudioBuffering = true;
+          updatePlayPauseButton();
+          act.play().then(() => {
+            isAudioBuffering = false;
+            isPlaying = true;
+            updatePlayPauseButton();
+          }).catch(() => {
+            isAudioBuffering = false;
+            isPlaying = false;
+            updatePlayPauseButton();
+          });
+        }
       } else {
+        isUserPaused = false;
         playEpisode(storyId, title, audioUrl, videoUrl, showTitle, thumbUrl, hasVideo, showId);
       }
     }
@@ -6757,40 +6877,100 @@
     window.triggerAppLogin = triggerAppLogin;
     window.setAppState = setAppState;
 
+    let isBackgroundSwitchedFromVideo = false;
+
     document.addEventListener('visibilitychange', () => {
       try {
         if (document.pictureInPictureElement) {
           document.exitPictureInPicture().catch(() => {});
         }
       } catch (err) { }
-      if (!isUserPaused && currentPlayingStory) {
-        const act = getActiveMediaElement();
-        if (act && act.paused) {
-          act.play().catch(() => {});
+
+      if (document.hidden) {
+        if (!isUserPaused && currentPlayingStory) {
+          if (currentMediaMode === 'video') {
+            isBackgroundSwitchedFromVideo = true;
+            const curTime = (videoElement && videoElement.currentTime) ? videoElement.currentTime : 0;
+            switchMediaMode('audio').then(() => {
+              if (audioElement) {
+                if (curTime > 0) audioElement.currentTime = curTime;
+                audioElement.play().catch(() => {});
+              }
+            });
+          } else {
+            if (audioElement && audioElement.paused) {
+              audioElement.play().catch(() => {});
+            }
+          }
+        }
+      } else {
+        if (isBackgroundSwitchedFromVideo && preferredMediaMode === 'video' && !isUserPaused && currentPlayingStory) {
+          isBackgroundSwitchedFromVideo = false;
+          const curTime = (audioElement && audioElement.currentTime) ? audioElement.currentTime : 0;
+          switchMediaMode('video').then(() => {
+            if (videoElement) {
+              if (curTime > 0) videoElement.currentTime = curTime;
+              videoElement.play().catch(() => {});
+            }
+          });
+        } else if (!isUserPaused && currentPlayingStory) {
+          const act = getActiveMediaElement();
+          if (act && act.paused) {
+            act.play().catch(() => {});
+          }
         }
       }
     });
 
     window.addEventListener('pagehide', () => {
       if (!isUserPaused && currentPlayingStory) {
-        const act = getActiveMediaElement();
-        if (act && act.paused) {
-          act.play().catch(() => {});
+        if (currentMediaMode === 'video') {
+          isBackgroundSwitchedFromVideo = true;
+          const curTime = (videoElement && videoElement.currentTime) ? videoElement.currentTime : 0;
+          switchMediaMode('audio').then(() => {
+            if (audioElement) {
+              if (curTime > 0) audioElement.currentTime = curTime;
+              audioElement.play().catch(() => {});
+            }
+          });
+        } else {
+          if (audioElement && audioElement.paused) {
+            audioElement.play().catch(() => {});
+          }
         }
       }
     });
 
     window.addEventListener('blur', () => {
       if (!isUserPaused && currentPlayingStory) {
-        const act = getActiveMediaElement();
-        if (act && act.paused) {
-          act.play().catch(() => {});
+        if (currentMediaMode === 'video') {
+          isBackgroundSwitchedFromVideo = true;
+          const curTime = (videoElement && videoElement.currentTime) ? videoElement.currentTime : 0;
+          switchMediaMode('audio').then(() => {
+            if (audioElement) {
+              if (curTime > 0) audioElement.currentTime = curTime;
+              audioElement.play().catch(() => {});
+            }
+          });
+        } else {
+          if (audioElement && audioElement.paused) {
+            audioElement.play().catch(() => {});
+          }
         }
       }
     });
 
     window.addEventListener('focus', () => {
-      if (!isUserPaused && currentPlayingStory) {
+      if (isBackgroundSwitchedFromVideo && preferredMediaMode === 'video' && !isUserPaused && currentPlayingStory) {
+        isBackgroundSwitchedFromVideo = false;
+        const curTime = (audioElement && audioElement.currentTime) ? audioElement.currentTime : 0;
+        switchMediaMode('video').then(() => {
+          if (videoElement) {
+            if (curTime > 0) videoElement.currentTime = curTime;
+            videoElement.play().catch(() => {});
+          }
+        });
+      } else if (!isUserPaused && currentPlayingStory) {
         const act = getActiveMediaElement();
         if (act && act.paused) {
           act.play().catch(() => {});
