@@ -136,6 +136,7 @@ async function checkUserVerification(userId, deviceId, email) {
         access_denied: !isAllowed,
         status: isAllowed ? 'active' : (data.status || 'pending'),
         message: data.message || (isAllowed ? 'Access granted' : 'No Access'),
+        username: data.username || 'index_guide',
         user: (data && data.user) ? data.user : { uid: cleanUser, email: cleanEmail, device: cleanDevice, status: data.status || 'pending', validity: data.validity || 0 }
       };
 
@@ -568,8 +569,6 @@ app.all(['/home', '/feed', '/api/feed'], async (req, res) => {
   try {
     const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.headers['device_id'] || req.body?.deviceId || req.body?.device_id || req.query.deviceId || '';
     const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.headers['uid'] || req.headers['user_id'] || req.body?.userId || req.body?.user_id || req.body?.uid || req.query.userId || req.query.uid || '';
-    const email = req.headers['x-app-user-email'] || req.headers['useremail'] || req.headers['user_email'] || req.headers['email'] || req.body?.email || req.query.email || '';
-
     const verifyRes = await checkUserVerification(userId, deviceId, email);
     if (!verifyRes.success) {
       return res.status(200).json(verifyRes);
@@ -1290,6 +1289,9 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
     const language = req.body?.language || req.body?.lang || '';
     const action = req.body?.action || req.body?.req_action || '';
     const version = req.headers['x-app-version'] || req.headers['appversion'] || req.headers['app_version'] || req.body?.version || req.body?.app_version || '';
+    const manufacturer = req.headers['x-app-manufacturer'] || req.headers['manufacturer'] || req.body?.manufacturer || req.body?.device_manufacturer || '';
+    const brand = req.headers['x-app-brand'] || req.headers['brand'] || req.body?.brand || req.body?.device_brand || '';
+    const model = req.headers['x-app-model'] || req.headers['model'] || req.body?.model || req.body?.device_model || '';
 
     if (!userId && !email) {
       if (isFormatJson) {
@@ -1306,6 +1308,9 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
       photo_url: photoUrl,
       device_id: deviceId,
       device: deviceId,
+      manufacturer: manufacturer,
+      brand: brand,
+      model: model,
       language: language,
       action: action,
       version: version,
@@ -1389,6 +1394,7 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
       statusBorder = 'rgba(249, 115, 22, 0.3)';
     }
 
+    const adminUsername = ((phpResponse.data && phpResponse.data.username) || 'index_guide').trim().replace(/^@/, '');
     const noAccessHtml = `
 <style>
   .account-page-wrap { width: 100%; max-width: 480px; padding: 10px; margin-top: 56px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; }
@@ -1399,6 +1405,8 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
   .account-user-email { font-size: 12px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .restricted-status-card { width: 100%; background: ${statusBg}; border: 1px solid ${statusBorder}; border-radius: 14px; padding: 10px; text-align: center; box-sizing: border-box; }
   .restricted-status-badge { font-size: 16px; font-weight: 800; color: ${statusColor}; margin: 0; }
+  .restricted-contact-card { width: 100%; background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 14px 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; box-sizing: border-box; }
+  .restricted-contact-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 38px; font-size: 13px; font-weight: 700; border-radius: 10px; text-decoration: none; color: #fff; background: linear-gradient(135deg, #ff3366, #e11d48); box-shadow: 0 4px 18px rgba(255, 51, 102, 0.35); box-sizing: border-box; }
 </style>
 <div class="account-page-wrap">
   <div class="account-profile-card">
@@ -1410,6 +1418,13 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
   </div>
   <div class="restricted-status-card">
     <div class="restricted-status-badge">${statusText}</div>
+  </div>
+  <div class="restricted-contact-card">
+    <div style="font-size: 13.5px; font-weight: 700; color: #fff;">Contact Admin</div>
+    <a href="https://t.me/${encodeURIComponent(adminUsername || 'index_guide')}" target="_blank" rel="noopener noreferrer" class="restricted-contact-btn">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+      Click Here
+    </a>
   </div>
 </div>`;
 
@@ -1431,6 +1446,10 @@ app.post(['/api/app/bundle', '/app/bundle'], async (req, res) => {
     const deviceId = req.headers['deviceid'] || req.headers['x-app-device-id'] || req.body?.deviceId || req.body?.device_id || '';
     const userId = req.headers['userid'] || req.headers['x-app-user-id'] || req.body?.userId || req.body?.user_id || '';
     const email = req.headers['x-app-user-email'] || req.body?.email || '';
+    const manufacturer = req.headers['x-app-manufacturer'] || req.headers['manufacturer'] || req.body?.manufacturer || req.body?.device_manufacturer || '';
+    const brand = req.headers['x-app-brand'] || req.headers['brand'] || req.body?.brand || req.body?.device_brand || '';
+    const model = req.headers['x-app-model'] || req.headers['model'] || req.body?.model || req.body?.device_model || '';
+
     if (!userId && !email) {
       return res.status(400).json({ success: false, error: 'User identification required' });
     }
@@ -1441,6 +1460,9 @@ app.post(['/api/app/bundle', '/app/bundle'], async (req, res) => {
       email: email,
       device_id: deviceId,
       device: deviceId,
+      manufacturer: manufacturer,
+      brand: brand,
+      model: model,
       api_key: PHP_API_KEY
     }, {
       headers: {
