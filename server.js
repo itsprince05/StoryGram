@@ -261,7 +261,6 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(rateLimiterMiddleware);
 
-// Strict Block: Prevent serving source code, scripts, configs, envs, or sensitive documents
 app.use((req, res, next) => {
   const p = (req.path || '').toLowerCase();
   if (
@@ -1290,6 +1289,7 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
     const photoUrl = req.body?.photoUrl || req.body?.photo_url || '';
     const language = req.body?.language || req.body?.lang || '';
     const action = req.body?.action || req.body?.req_action || '';
+    const version = req.headers['x-app-version'] || req.headers['appversion'] || req.headers['app_version'] || req.body?.version || req.body?.app_version || '';
 
     if (!userId && !email) {
       if (isFormatJson) {
@@ -1308,6 +1308,8 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
       device: deviceId,
       language: language,
       action: action,
+      version: version,
+      app_version: version,
       api_key: PHP_API_KEY,
       ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
     };
@@ -1377,7 +1379,11 @@ app.post(['/api/user/verify', '/user/verify', '/api/user', '/user'], async (req,
     let statusBg = 'rgba(239, 68, 68, 0.12)';
     let statusBorder = 'rgba(239, 68, 68, 0.3)';
 
-    if (statusType === 'expired') {
+    if (statusType === 'update_required' || statusText === 'Update App') {
+      statusColor = '#ff3366';
+      statusBg = 'rgba(255, 51, 102, 0.12)';
+      statusBorder = 'rgba(255, 51, 102, 0.3)';
+    } else if (statusType === 'expired') {
       statusColor = '#fb923c';
       statusBg = 'rgba(249, 115, 22, 0.12)';
       statusBorder = 'rgba(249, 115, 22, 0.3)';
