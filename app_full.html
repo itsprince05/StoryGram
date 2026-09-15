@@ -3100,7 +3100,7 @@
         <div class="fs-body">
           <div class="fs-poster-wrap">
             <img id="fs-poster-img" class="fs-poster-img" src="" alt="Show Poster">
-            <video id="fs-video-element" class="fs-video-player" playsinline="true" webkit-playsinline="true" x5-playsinline="true" x5-video-player-type="h5" x5-video-player-fullscreen="true" preload="auto"></video>
+            <video id="fs-video-element" class="fs-video-player" playsinline="true" webkit-playsinline="true" x5-playsinline="true" x5-video-player-type="h5" x5-video-player-fullscreen="true" preload="auto" disablepictureinpicture="true" controlslist="nopictureinpicture nodownload nofullscreen"></video>
           </div>
 
           <div class="fs-info-wrap">
@@ -3340,6 +3340,18 @@
 
     const audioElement = document.getElementById('audio-element');
     const videoElement = document.getElementById('fs-video-element');
+    if (videoElement) {
+      videoElement.disablePictureInPicture = true;
+      videoElement.setAttribute('disablepictureinpicture', 'true');
+      videoElement.setAttribute('controlslist', 'nopictureinpicture nodownload nofullscreen');
+      videoElement.addEventListener('enterpictureinpicture', () => {
+        try {
+          if (document.pictureInPictureElement) {
+            document.exitPictureInPicture().catch(() => {});
+          }
+        } catch (err) { }
+      });
+    }
     let shakaPlayer = null;
     let hlsVideoPlayer = null;
     let preferredMediaMode = 'audio';
@@ -3878,14 +3890,23 @@
       try {
         let u = {};
         try { u = JSON.parse(localStorage.getItem('storygram_user') || '{}'); } catch (e) { }
+        const uId = (u && (u.userId || u.user_id || u.uid)) || '';
+        const uEmail = (u && u.email) || '';
+        const dId = getDeviceId();
         const response = await fetch('/home', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'language': currentLanguage
+            'language': currentLanguage,
+            'deviceId': dId,
+            'userId': uId,
+            'x-app-user-email': uEmail
           },
           body: JSON.stringify({
-            language: currentLanguage
+            language: currentLanguage,
+            deviceId: dId,
+            userId: uId,
+            email: uEmail
           })
         });
         if (response.ok) {
@@ -6717,6 +6738,11 @@
     window.setAppState = setAppState;
 
     document.addEventListener('visibilitychange', () => {
+      try {
+        if (document.pictureInPictureElement) {
+          document.exitPictureInPicture().catch(() => {});
+        }
+      } catch (err) { }
       if (!isUserPaused && currentPlayingStory) {
         const act = getActiveMediaElement();
         if (act && act.paused) {
