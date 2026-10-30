@@ -1,6 +1,23 @@
-node_modules
+# Environment variables & secrets
 .env
+*.env
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environments
+env/
+venv/
+.venv/
+ENV/
+
+# System & Temporary Files
 .DS_Store
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+Thumbs.db
+*.log
+.system_generated/
+scratch/
