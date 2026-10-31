@@ -1,4 +1,3 @@
-"""Entry point (uvicorn server:app): health, content gate, and the routers of app_api.py / admin.py."""
 from contextlib import asynccontextmanager
 
 import httpx
@@ -9,7 +8,7 @@ from fastapi.responses import JSONResponse
 import admin
 import app_api
 import core
-import main as content_api   # the content API; runs in-process, never mounted on a public path
+import main as content_api
 from config import settings
 
 _client: httpx.AsyncClient | None = None
@@ -27,7 +26,6 @@ def _http() -> httpx.AsyncClient:
 async def lifespan(_: FastAPI):
     core.init_pool()
     core.ensure_seed()
-    # the content API is not mounted, so its own startup / shutdown runs here
     async with content_api.app.router.lifespan_context(content_api.app):
         yield
     if _client is not None:
@@ -53,7 +51,6 @@ async def unhandled(_, exc: Exception):
 @app.get("/")
 @app.get("/health")
 async def health():
-    # Render health check; also proves the database is reachable
     try:
         with core.conn() as c:
             core.one(c, "select 1 as ok")
@@ -62,10 +59,7 @@ async def health():
         return JSONResponse({"ok": False, "db": False, "error": str(exc)[:200]}, status_code=503)
 
 
-# ------------------------------------------------------------------ content gate
-
 def _pick(d: dict, header: str, request: Request, *keys: str, default: str = "") -> str:
-    # body value, else request header, else default
     return core.first(d, *keys) or core.clean(request.headers.get(header)) or default
 
 
