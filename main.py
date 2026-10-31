@@ -1,4 +1,5 @@
 import os
+import asyncio
 import time
 import json
 from typing import Optional, List, Dict, Any
@@ -297,14 +298,12 @@ async def home_feed(request: Request):
                 if show_title or show_id:
                     entities.append({
                         "value": {
-                            "show_title": show_title,
-                            "image_url": img_url,
-                            "show_category_rank": rank,
                             "show_id": show_id,
-                            "stats": {
-                                "avg_rating": stats.get("avg_rating") or stats.get("rating"),
-                                "total_plays_display": format_plays_display(stats.get("total_plays_display") or stats.get("total_plays") or "")
-                            }
+                            "show_title": show_title,
+                            "show_category_rank": rank,
+                            "avg_rating": stats.get("avg_rating") or stats.get("rating"),
+                            "total_plays_display": format_plays_display(stats.get("total_plays_display") or stats.get("total_plays") or ""),
+                            "image_url": img_url
                         }
                     })
 
@@ -381,23 +380,80 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             "result": {}
         })
     start_ptr = int(h.get("curr-ptr") or h.get("curr_ptr") or request.query_params.get("curr_ptr") or 0)
-    batch_size = min(max(int(h.get("limit") or request.query_params.get("limit") or 20), 1), 50)
 
+    # Fixed batch size: exactly 10 episodes fetched concurrently in parallel
     from urllib.parse import urlencode
-    params = urlencode({"show_id": sid, "curr_ptr": str(start_ptr), "info_level": str(start_ptr), "page_source": "show_detail"})
-    url = f"{UPSTREAM_API_URL}/v2/content_api/show.get_details?{params}"
-    status_code, data = await fetch_from_upstream(url, headers, "GET")
 
-    if not isinstance(data, dict):
-        return Response(content=str(data), status_code=status_code)
+    async def fetch_single_pointer(ptr: int):
+        params = urlencode({"show_id": sid, "curr_ptr": str(ptr), "info_level": str(ptr), "page_source": "show_detail"})
+        target_url = f"{UPSTREAM_API_URL}/v2/content_api/show.get_details?{params}"
+        code, res = await fetch_from_upstream(target_url, headers, "GET")
+        return ptr, code, res
 
-    return JSONResponse(status_code=status_code, content=data)
+    tasks = [fetch_single_pointer(p) for p in range(start_ptr, start_ptr + 10)]
+    results = await asyncio.gather(*tasks)
+
+    # Sort results in sequential pointer order
+    results.sort(key=lambda x: x[0])
+
+    base_data = None
+    status_code = 200
+    for ptr, code, res in results:
+        if isinstance(res, dict) and res.get("result"):
+            base_data = json.loads(json.dumps(res))
+            status_code = code
+            break
+
+    if not base_data:
+        first_code, first_res = results[0][1], results[0][2]
+        if isinstance(first_res, dict):
+            return JSONResponse(status_code=first_code, content=first_res)
+        return Response(content=str(first_res), status_code=first_code)
+
+    # Determine episode list container key
+    target = base_data["result"] if isinstance(base_data.get("result"), dict) else base_data
+    candidates = ["episodes", "messages", "stories", "items", "episode_list", "track_list"]
+    ep_key = None
+    for cand in candidates:
+        if cand in target and isinstance(target[cand], list):
+            ep_key = cand
+            break
+
+    if not ep_key:
+        for k, v in target.items():
+            if isinstance(v, list):
+                ep_key = k
+                break
+
+    if ep_key:
+        all_episodes = []
+        seen_ids = set()
+        for ptr, code, res in results:
+            if not isinstance(res, dict):
+                continue
+            curr_target = res.get("result") if isinstance(res.get("result"), dict) else res
+            ep_list = curr_target.get(ep_key) or []
+            if isinstance(ep_list, list):
+                for ep in ep_list:
+                    if isinstance(ep, dict):
+                        ep_id = ep.get("episode_id") or ep.get("id") or ep.get("story_id") or ep.get("message_id")
+                        if ep_id:
+                            if ep_id not in seen_ids:
+                                seen_ids.add(ep_id)
+                                all_episodes.append(ep)
+                        else:
+                            all_episodes.append(ep)
+                    elif ep:
+                        all_episodes.append(ep)
+        target[ep_key] = all_episodes
+
+    return JSONResponse(status_code=status_code, content=base_data)
 
 
 # Widevine DRM License & Proxy
-show_license_cache: Dict[str, str] = {}
+show_license_cache: Dict[str, Dict[str, str]] = {}
 
-async def get_or_resolve_upstream_license_url(show_id: str, request: Request) -> Optional[str]:
+async def get_or_resolve_upstream_license_url(show_id: str, request: Request) -> Optional[Dict[str, str]]:
     if show_id in show_license_cache:
         return show_license_cache[show_id]
 
@@ -429,8 +485,13 @@ async def get_or_resolve_upstream_license_url(show_id: str, request: Request) ->
         license_url = data.get("license_url") or (data.get("result", {}) if isinstance(data.get("result"), dict) else {}).get("license_url")
 
     if license_url:
-        show_license_cache[show_id] = license_url
-    return license_url
+        result = {
+            "license_url": license_url,
+            "blob": blob
+        }
+        show_license_cache[show_id] = result
+        return result
+    return None
 
 @app.api_route("/license", methods=["GET", "POST"])
 @app.api_route("/license/{show_id}", methods=["GET", "POST"])
@@ -445,23 +506,19 @@ async def handle_widevine_license(request: Request, show_id: Optional[str] = Non
     h = request.headers
     sid = show_id or h.get("show-id") or h.get("show_id") or request.query_params.get("show_id") or ""
 
-    # GET Request: Return our own server's license endpoint for the show
+    # GET Request: Return the actual scraped license data (blob)
     if request.method == "GET":
         if not sid:
-            return JSONResponse(status_code=400, content={"success": False, "error": "Missing show-id (pass 'show-id' in headers)"})
+            return JSONResponse(status_code=400, content={"status": 0, "message": "Missing show-id (pass 'show-id' in headers)", "blob": ""})
         
-        # Pre-warm the cache by resolving upstream in background
-        await get_or_resolve_upstream_license_url(sid, request)
-
-        base_url = str(request.base_url).rstrip("/")
-        # If running on Render behind HTTPS proxy, ensure https
-        if "onrender.com" in base_url and base_url.startswith("http://"):
-            base_url = base_url.replace("http://", "https://")
+        info = await get_or_resolve_upstream_license_url(sid, request)
+        if not info or not info.get("blob"):
+            return JSONResponse(status_code=404, content={"status": 0, "message": "No DRM license blob found for show", "blob": ""})
 
         return {
-            "success": True,
-            "show_id": sid,
-            "license_url": f"{base_url}/license/{sid}"
+            "status": 1,
+            "message": "success",
+            "blob": info["blob"]
         }
 
     # POST Request: ExoPlayer DRM binary challenge
@@ -469,7 +526,8 @@ async def handle_widevine_license(request: Request, show_id: Optional[str] = Non
     if not target_license_url:
         if not sid:
             return JSONResponse(status_code=400, content={"success": False, "error": "Missing show_id or license_url"})
-        target_license_url = await get_or_resolve_upstream_license_url(sid, request)
+        info = await get_or_resolve_upstream_license_url(sid, request)
+        target_license_url = info.get("license_url") if info else None
 
     if not target_license_url:
         return Response(content="Could not scrape upstream license for show", status_code=404)
