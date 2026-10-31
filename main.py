@@ -411,11 +411,8 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         return Response(content=str(first_res), status_code=first_code)
 
     # Locate the primary show dictionary inside base_data
-    # Upstream format: base_data["result"] is often a list: [ { show_data, "stories": [...] } ]
-    # Or base_data["result"] is a dict: { show_data, "stories": [...] }
-    is_result_list = isinstance(base_data.get("result"), list)
     primary_show = None
-    if is_result_list and len(base_data["result"]) > 0 and isinstance(base_data["result"][0], dict):
+    if isinstance(base_data.get("result"), list) and len(base_data["result"]) > 0 and isinstance(base_data["result"][0], dict):
         primary_show = base_data["result"][0]
     elif isinstance(base_data.get("result"), dict):
         primary_show = base_data["result"]
@@ -436,12 +433,10 @@ async def show_details(request: Request, show_id: Optional[str] = None):
                     ep_key = k
                     break
 
-    # If episode key found, aggregate all episodes from all 10 responses into primary_show
-    if primary_show is not None and ep_key:
-        all_episodes = []
-        seen_ids = set()
-        max_next_ptr = start_ptr + 10
-
+    # Aggregate all episodes from all 10 responses into clean list
+    all_episodes = []
+    seen_ids = set()
+    if ep_key:
         for ptr, code, res in results:
             if not isinstance(res, dict):
                 continue
@@ -457,10 +452,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             if not curr_show:
                 continue
 
-            if "next_ptr" in curr_show and isinstance(curr_show["next_ptr"], int):
-                if curr_show["next_ptr"] > max_next_ptr:
-                    max_next_ptr = curr_show["next_ptr"]
-
             ep_list = curr_show.get(ep_key) or []
             if isinstance(ep_list, list):
                 for ep in ep_list:
@@ -475,17 +466,64 @@ async def show_details(request: Request, show_id: Optional[str] = None):
                     elif ep:
                         all_episodes.append(ep)
 
-        primary_show[ep_key] = all_episodes
-        if "next_ptr" in primary_show:
-            primary_show["next_ptr"] = max(start_ptr + len(all_episodes), max_next_ptr)
+    # Format episodes list with strictly necessary fields (support audio, video, or mixed)
+    formatted_stories = []
+    for ep in all_episodes:
+        if not isinstance(ep, dict):
+            continue
 
-        # Ensure base_data["result"] has ONLY this single unified show object
-        if is_result_list:
-            base_data["result"] = [primary_show]
-        elif isinstance(base_data.get("result"), dict):
-            base_data["result"] = primary_show
+        item = {
+            "story_title": ep.get("story_title") or ep.get("title") or "",
+            "show_id": ep.get("show_id") or sid,
+            "duration": ep.get("duration", 0),
+            "seq_number": ep.get("seq_number") or ep.get("sequence_number") or ep.get("episode_number") or 1,
+        }
 
-    return JSONResponse(status_code=status_code, content=base_data)
+        # video_url if video episode
+        if ep.get("video_url"):
+            item["video_url"] = ep.get("video_url")
+
+        item["story_id"] = ep.get("story_id") or ep.get("id") or ep.get("episode_id") or ""
+        item["media_url_enc"] = ep.get("media_url_enc") or ep.get("media_url") or ""
+        item["natural_sequence_number"] = ep.get("natural_sequence_number") or ep.get("seq_number") or 1
+
+        # video_info if video episode
+        raw_video_info = ep.get("video_info")
+        if isinstance(raw_video_info, dict):
+            v_info_cleaned = {}
+            for platform in ["android", "ios", "web"]:
+                p_data = raw_video_info.get(platform)
+                if isinstance(p_data, dict) and p_data.get("video_url"):
+                    v_info_cleaned[platform] = {
+                        "video_url": p_data.get("video_url")
+                    }
+            if v_info_cleaned:
+                item["video_info"] = v_info_cleaned
+
+        formatted_stories.append(item)
+
+    # Build clean show object with only essential fields
+    raw_stats = primary_show.get("stats") if (primary_show and isinstance(primary_show.get("stats"), dict)) else {}
+    show_stats = {
+        "total_plays": raw_stats.get("total_plays", 0),
+        "avg_rating": raw_stats.get("avg_rating", 0)
+    }
+
+    clean_show = {
+        "show_title": primary_show.get("show_title") or primary_show.get("title") or "" if primary_show else "",
+        "image_url": primary_show.get("image_url") or primary_show.get("cover_url") or "" if primary_show else "",
+        "show_category_rank": primary_show.get("show_category_rank", 0) if primary_show else 0,
+        "show_id": primary_show.get("show_id") or sid if primary_show else sid,
+        "episodes_count": primary_show.get("episodes_count") or primary_show.get("total_episodes") or len(formatted_stories) if primary_show else len(formatted_stories),
+        "stories": formatted_stories,
+        "stats": show_stats
+    }
+
+    return JSONResponse(status_code=status_code, content={
+        "status": 1,
+        "message": base_data.get("message") or "Result for show details page",
+        "result": [clean_show]
+    })
 
 
 # Widevine DRM License & Proxy
