@@ -21,8 +21,6 @@ from config import (
     UPSTREAM_HOST,
     UPSTREAM_APP_NAME,
     APP_USER_AGENT,
-    WEB_USER_AGENT,
-    DEFAULT_BEARER_TOKEN,
     DATABASE_URL,
 )
 
@@ -142,7 +140,7 @@ async def fetch_daily_cookies_from_website():
         UPSTREAM_WEB_URL.replace("://", "://www.") if "://" in UPSTREAM_WEB_URL else UPSTREAM_WEB_URL
     ]
     headers = {
-        "User-Agent": WEB_USER_AGENT,
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9,hi;q=0.8"
     }
@@ -192,9 +190,9 @@ async def ensure_daily_session(force: bool = False):
 
 def build_upstream_headers(request: Request) -> Dict[str, str]:
     h = request.headers
-    token = h.get("authorization") or h.get("auth") or h.get("x-auth-token") or cached_token or DEFAULT_BEARER_TOKEN or ""
-    if token and not token.lower().startswith("bearer "):
-        token = f"Bearer {token.strip()}"
+    raw_token = h.get("authorization") or h.get("auth-token") or h.get("auth") or h.get("x-auth-token") or cached_token or ""
+    if raw_token.lower().startswith("bearer "):
+        raw_token = raw_token[7:].strip()
 
     lang = h.get("language") or h.get("selected_language") or request.query_params.get("language") or "hindi"
 
@@ -211,10 +209,12 @@ def build_upstream_headers(request: Request) -> Dict[str, str]:
         "accept-encoding": "gzip",
         "User-Agent": APP_USER_AGENT,
         "device-id": "mobile-web",
-        "device_id": "mobile-web"
+        "device_id": "mobile-web",
+        "client-ts": "1770000000"
     }
-    if token:
-        headers["authorization"] = token
+    if raw_token:
+        headers["authorization"] = f"Bearer {raw_token}"
+        headers["auth-token"] = raw_token
     if cached_cookies:
         headers["Cookie"] = cached_cookies
     return headers
@@ -265,7 +265,7 @@ async def home_feed(request: Request):
     if not headers.get("authorization"):
         return JSONResponse(status_code=401, content={
             "status": 0,
-            "message": "Missing Upstream Authorization token. Pass header 'authorization: Bearer <token>' (or 'auth') or set DEFAULT_BEARER_TOKEN in .env",
+            "message": "Missing Upstream Authorization token. Pass header 'authorization: Bearer <token>' (or 'auth')",
             "result": []
         })
     h = request.headers
@@ -328,7 +328,7 @@ async def search_shows(request: Request):
     if not headers.get("authorization"):
         return JSONResponse(status_code=401, content={
             "status": 0,
-            "message": "Missing Upstream Authorization token. Pass header 'authorization: Bearer <token>' (or 'auth') or set DEFAULT_BEARER_TOKEN in .env",
+            "message": "Missing Upstream Authorization token. Pass header 'authorization: Bearer <token>' (or 'auth')",
             "result": {"shows": []}
         })
     h = request.headers
@@ -376,7 +376,7 @@ async def show_details(request: Request, show_id: Optional[str] = None):
     if not headers.get("authorization"):
         return JSONResponse(status_code=401, content={
             "status": 0,
-            "message": "Missing Upstream Authorization token. Pass header 'authorization: Bearer <token>' (or 'auth') or set DEFAULT_BEARER_TOKEN in .env",
+            "message": "Missing Upstream Authorization token. Pass header 'authorization: Bearer <token>' (or 'auth')",
             "result": {}
         })
     start_ptr = int(h.get("curr-ptr") or h.get("curr_ptr") or request.query_params.get("curr_ptr") or 0)
@@ -410,33 +410,62 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             return JSONResponse(status_code=first_code, content=first_res)
         return Response(content=str(first_res), status_code=first_code)
 
-    # Determine episode list container key
-    target = base_data["result"] if isinstance(base_data.get("result"), dict) else base_data
-    candidates = ["episodes", "messages", "stories", "items", "episode_list", "track_list"]
+    # Locate the primary show dictionary inside base_data
+    # Upstream format: base_data["result"] is often a list: [ { show_data, "stories": [...] } ]
+    # Or base_data["result"] is a dict: { show_data, "stories": [...] }
+    is_result_list = isinstance(base_data.get("result"), list)
+    primary_show = None
+    if is_result_list and len(base_data["result"]) > 0 and isinstance(base_data["result"][0], dict):
+        primary_show = base_data["result"][0]
+    elif isinstance(base_data.get("result"), dict):
+        primary_show = base_data["result"]
+    elif isinstance(base_data, dict):
+        primary_show = base_data
+
+    # Identify the episodes list key inside the show dict
+    candidates = ["stories", "episodes", "messages", "items", "episode_list", "track_list"]
     ep_key = None
-    for cand in candidates:
-        if cand in target and isinstance(target[cand], list):
-            ep_key = cand
-            break
-
-    if not ep_key:
-        for k, v in target.items():
-            if isinstance(v, list):
-                ep_key = k
+    if primary_show is not None:
+        for cand in candidates:
+            if cand in primary_show and isinstance(primary_show[cand], list):
+                ep_key = cand
                 break
+        if not ep_key:
+            for k, v in primary_show.items():
+                if isinstance(v, list) and k not in ["show_source", "source_show_genre", "show_tropes_v2", "hash_tags"]:
+                    ep_key = k
+                    break
 
-    if ep_key:
+    # If episode key found, aggregate all episodes from all 10 responses into primary_show
+    if primary_show is not None and ep_key:
         all_episodes = []
         seen_ids = set()
+        max_next_ptr = start_ptr + 10
+
         for ptr, code, res in results:
             if not isinstance(res, dict):
                 continue
-            curr_target = res.get("result") if isinstance(res.get("result"), dict) else res
-            ep_list = curr_target.get(ep_key) or []
+
+            curr_show = None
+            if isinstance(res.get("result"), list) and len(res["result"]) > 0 and isinstance(res["result"][0], dict):
+                curr_show = res["result"][0]
+            elif isinstance(res.get("result"), dict):
+                curr_show = res["result"]
+            elif isinstance(res, dict):
+                curr_show = res
+
+            if not curr_show:
+                continue
+
+            if "next_ptr" in curr_show and isinstance(curr_show["next_ptr"], int):
+                if curr_show["next_ptr"] > max_next_ptr:
+                    max_next_ptr = curr_show["next_ptr"]
+
+            ep_list = curr_show.get(ep_key) or []
             if isinstance(ep_list, list):
                 for ep in ep_list:
                     if isinstance(ep, dict):
-                        ep_id = ep.get("episode_id") or ep.get("id") or ep.get("story_id") or ep.get("message_id")
+                        ep_id = ep.get("story_id") or ep.get("episode_id") or ep.get("id") or ep.get("message_id")
                         if ep_id:
                             if ep_id not in seen_ids:
                                 seen_ids.add(ep_id)
@@ -445,7 +474,16 @@ async def show_details(request: Request, show_id: Optional[str] = None):
                             all_episodes.append(ep)
                     elif ep:
                         all_episodes.append(ep)
-        target[ep_key] = all_episodes
+
+        primary_show[ep_key] = all_episodes
+        if "next_ptr" in primary_show:
+            primary_show["next_ptr"] = max(start_ptr + len(all_episodes), max_next_ptr)
+
+        # Ensure base_data["result"] has ONLY this single unified show object
+        if is_result_list:
+            base_data["result"] = [primary_show]
+        elif isinstance(base_data.get("result"), dict):
+            base_data["result"] = primary_show
 
     return JSONResponse(status_code=status_code, content=base_data)
 
@@ -453,7 +491,7 @@ async def show_details(request: Request, show_id: Optional[str] = None):
 # Widevine DRM License & Proxy
 show_license_cache: Dict[str, Dict[str, str]] = {}
 
-async def get_or_resolve_upstream_license_url(show_id: str, request: Request) -> Optional[Dict[str, str]]:
+async def get_or_resolve_upstream_license_url(show_id: str, request: Request) -> Optional[Dict[str, Any]]:
     if show_id in show_license_cache:
         return show_license_cache[show_id]
 
@@ -465,6 +503,7 @@ async def get_or_resolve_upstream_license_url(show_id: str, request: Request) ->
     headers["device-id"] = "mobile-web"
     headers["device_id"] = "mobile-web"
     headers["client-ts"] = "1770000000"
+    headers["content-type"] = "application/json;charset=utf-8"
 
     from urllib.parse import quote
     target_url = f"{UPSTREAM_API_URL}/v2/content_api/show.play_details?show_id={quote(show_id)}"
@@ -474,6 +513,9 @@ async def get_or_resolve_upstream_license_url(show_id: str, request: Request) ->
         return None
 
     blob = data.get("blob") or (data.get("result", {}) if isinstance(data.get("result"), dict) else {}).get("blob") or ""
+    message = data.get("message") or "Blob Data"
+    ts = data.get("ts")
+
     license_url = None
     if blob:
         try:
@@ -487,7 +529,9 @@ async def get_or_resolve_upstream_license_url(show_id: str, request: Request) ->
     if blob or license_url:
         result = {
             "license_url": license_url or "",
-            "blob": blob or ""
+            "blob": blob or "",
+            "message": message,
+            "ts": ts
         }
         show_license_cache[show_id] = result
         return result
@@ -515,11 +559,14 @@ async def handle_widevine_license(request: Request, show_id: Optional[str] = Non
         if not info or not info.get("blob"):
             return JSONResponse(status_code=404, content={"status": 0, "message": "No DRM license blob found for show", "blob": ""})
 
-        return {
+        resp = {
             "status": 1,
-            "message": "success",
+            "message": info.get("message") or "Blob Data",
             "blob": info["blob"]
         }
+        if info.get("ts") is not None:
+            resp["ts"] = info["ts"]
+        return resp
 
     # POST Request: ExoPlayer DRM binary challenge
     target_license_url = h.get("license-url") or h.get("license_url") or request.query_params.get("url")
