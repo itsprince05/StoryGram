@@ -474,12 +474,17 @@ async def show_details(request: Request, show_id: Optional[str] = None):
 
         item = {
             "duration": ep.get("duration", 0),
-            "seq_number": ep.get("seq_number") or ep.get("sequence_number") or ep.get("episode_number") or 1,
         }
 
-        # video_url if video episode
+        # video_url and derived audio_url if video episode
         if ep.get("video_url"):
-            item["video_url"] = ep.get("video_url")
+            v_url = ep.get("video_url")
+            item["video_url"] = v_url
+            if "/" in v_url:
+                url_without_query = v_url.split("?")[0]
+                base_dir = url_without_query.rsplit("/", 1)[0]
+                query_part = f"?{v_url.split('?', 1)[1]}" if "?" in v_url else ""
+                item["audio_url"] = f"{base_dir}/audio.mp4{query_part}"
 
         item["story_title"] = ep.get("story_title") or ep.get("title") or ""
         item["story_id"] = ep.get("story_id") or ep.get("id") or ep.get("episode_id") or ""
