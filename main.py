@@ -473,8 +473,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             continue
 
         item = {
-            "story_title": ep.get("story_title") or ep.get("title") or "",
-            "show_id": ep.get("show_id") or sid,
             "duration": ep.get("duration", 0),
             "seq_number": ep.get("seq_number") or ep.get("sequence_number") or ep.get("episode_number") or 1,
         }
@@ -483,6 +481,7 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         if ep.get("video_url"):
             item["video_url"] = ep.get("video_url")
 
+        item["story_title"] = ep.get("story_title") or ep.get("title") or ""
         item["story_id"] = ep.get("story_id") or ep.get("id") or ep.get("episode_id") or ""
         item["media_url_enc"] = ep.get("media_url_enc") or ep.get("media_url") or ""
         item["natural_sequence_number"] = ep.get("natural_sequence_number") or ep.get("seq_number") or 1
@@ -502,17 +501,17 @@ async def show_details(request: Request, show_id: Optional[str] = None):
 
         formatted_stories.append(item)
 
-    # Build clean show object with only essential fields
+    # Build clean show object with only essential fields in exact requested order
     raw_stats = primary_show.get("stats") if (primary_show and isinstance(primary_show.get("stats"), dict)) else {}
 
     clean_show = {
-        "show_title": primary_show.get("show_title") or primary_show.get("title") or "" if primary_show else "",
-        "image_url": primary_show.get("image_url") or primary_show.get("cover_url") or "" if primary_show else "",
         "show_category_rank": primary_show.get("show_category_rank", 0) if primary_show else 0,
         "total_plays": raw_stats.get("total_plays", 0),
         "avg_rating": raw_stats.get("avg_rating", 0),
-        "show_id": primary_show.get("show_id") or sid if primary_show else sid,
         "episodes_count": primary_show.get("episodes_count") or primary_show.get("total_episodes") or len(formatted_stories) if primary_show else len(formatted_stories),
+        "show_title": primary_show.get("show_title") or primary_show.get("title") or "" if primary_show else "",
+        "show_id": primary_show.get("show_id") or sid if primary_show else sid,
+        "image_url": primary_show.get("image_url") or primary_show.get("cover_url") or "" if primary_show else "",
         "stories": formatted_stories
     }
 
