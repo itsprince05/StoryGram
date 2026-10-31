@@ -1,4 +1,3 @@
-"""Shared core: database, tokens / transport security, access rules."""
 import base64
 import hashlib
 import hmac
@@ -15,8 +14,6 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 from config import settings
-
-# ------------------------------------------------------------------ database
 
 _pool: ConnectionPool | None = None
 
@@ -45,14 +42,12 @@ def now() -> int:
 
 @contextmanager
 def conn():
-    # autocommit: every statement is atomic
     with init_pool().connection() as c:
         yield c
 
 
 @contextmanager
 def tx():
-    # commit on success, rollback on error
     with init_pool().connection() as c:
         with c.transaction():
             yield c
@@ -67,7 +62,6 @@ def all_(c, sql: str, params=()):
 
 
 def ensure_seed() -> None:
-    # default app row + first owner admin (only when the admins table is empty)
     with conn() as c:
         c.execute("insert into app (version, status, username, created) values ('1','active','index_guide',%s) "
                   "on conflict (version) do nothing", (now(),))
@@ -77,9 +71,7 @@ def ensure_seed() -> None:
                       (settings.OWNER_NAME, settings.OWNER_USERNAME, h, now()))
 
 
-# ------------------------------------------------------------------ server API key and app session
-
-SESSION_COOKIE = "storyloot_session"   # cookie name the Android app already sends
+SESSION_COOKIE = "storyloot_session"
 
 
 def require_api_key(request: Request) -> None:
@@ -118,14 +110,11 @@ def read_session(request: Request) -> dict | None:
 
 
 def verify_firebase_token(id_token: str) -> dict:
-    # checks signature, expiry and audience (= FIREBASE_PROJECT_ID)
     from google.auth.transport import requests as g_requests
     from google.oauth2 import id_token as g_id_token
 
     return g_id_token.verify_firebase_token(id_token, g_requests.Request(), audience=settings.FIREBASE_PROJECT_ID)
 
-
-# ------------------------------------------------------------------ signed / encrypted transport (only when SIGN_KEY is set)
 
 _seen_nonces: dict[str, float] = {}
 
@@ -146,7 +135,6 @@ def _unb64(s: str) -> bytes:
 
 
 def decrypt_payload(packed: str) -> str | None:
-    # body format: iv.tag.cipher (base64)
     try:
         iv, tag, enc = packed.strip().split(".")
         return _aes().decrypt(_unb64(iv), _unb64(enc) + _unb64(tag), None).decode()
@@ -156,13 +144,12 @@ def decrypt_payload(packed: str) -> str | None:
 
 def encrypt_payload(plain: str) -> str:
     iv = os.urandom(12)
-    out = _aes().encrypt(iv, plain.encode(), None)   # ciphertext || tag
+    out = _aes().encrypt(iv, plain.encode(), None)
     b = lambda x: base64.b64encode(x).decode()
     return f"{b(iv)}.{b(out[-16:])}.{b(out[:-16])}"
 
 
 def check_signature(request: Request) -> None:
-    # HMAC-SHA256 over METHOD:path:timestamp:nonce, 5 minute window, nonce used once
     if not transport_enabled():
         return
     t = request.headers.get("x-sl-t", "")
@@ -185,7 +172,6 @@ def check_signature(request: Request) -> None:
 
 
 async def read_payload(request: Request) -> dict:
-    # JSON body (decrypted if the client encrypted it), else form data
     raw = (await request.body()).decode("utf-8", "ignore").strip()
     data = None
     if raw:
@@ -204,14 +190,11 @@ async def read_payload(request: Request) -> dict:
 
 
 def respond(request: Request, data: dict, status: int = 200) -> Response:
-    # encrypted reply when the request was encrypted
     if transport_enabled() and request.headers.get("x-sl-req-enc") == "1":
         return Response(encrypt_payload(json.dumps(data, ensure_ascii=False)), status_code=status,
                         media_type="text/plain", headers={"x-sl-encrypted": "1"})
     return JSONResponse(data, status_code=status)
 
-
-# ------------------------------------------------------------------ access rules
 
 def clean(v) -> str:
     return str(v).strip() if v is not None else ""
@@ -231,7 +214,6 @@ def client_ip(request) -> str:
 
 
 def device_info(request, d: dict) -> dict:
-    # body field first, else the x-* header the app sends
     h = request.headers
 
     def pick(*keys, header=None):
@@ -256,7 +238,6 @@ def find_buyer(c, uid: str, email: str):
 
 
 def record_entry(c, e: dict, status: str, t: int) -> None:
-    # log only when device or status changed since the last entry; never break login
     try:
         last = one(c, "select device, status from entries where uid = %s or email = %s order by id desc limit 1", (e["uid"], e["email"]))
         if not last or last["device"] != e["device"] or last["status"] != status:
@@ -278,7 +259,6 @@ def _user(b: dict | None, e: dict, status: str, language="hindi", validity=0) ->
 
 
 def has_access(c, uid: str, email: str, device: str) -> bool:
-    # read-only check for content requests: active buyer, not expired, same device
     b = find_buyer(c, uid, email)
     if not b or b["status"] != "active":
         return False
@@ -294,7 +274,6 @@ def app_row(c):
 
 
 def evaluate(c, d: dict, dev: dict, ip: str) -> tuple[dict, int]:
-    # login / status decision: (json, http status); success=True only for "active"
     t = now()
     uid = first(d, "uid", "userId", "user_id", "google_id")
     email = first(d, "email")
@@ -345,7 +324,7 @@ def evaluate(c, d: dict, dev: dict, ip: str) -> tuple[dict, int]:
     if registered and real_device and registered != device:
         return deny("multiple", "Device Not Matched", registered_device=registered, current_device=device)
 
-    if not registered and real_device:   # first device gets bound to the buyer
+    if not registered and real_device:
         try:
             c.execute("update buyers set device=%s, manufacturer=%s, brand=%s, model=%s, updated=%s where id=%s",
                       (device, dev["manufacturer"], dev["brand"], dev["model"], t, b["id"]))
