@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin - Story Gram</title>
+<style>
+  :root { --bg:#060913; --card:rgba(30,41,59,.65); --border:rgba(255,255,255,.1); --text:#f8fafc; --muted:#94a3b8;
+          --primary:#ff3366; --green:#22c55e; --yellow:#f59e0b; --red:#ef4444; --blue:#38bdf8; }
+  * { box-sizing:border-box; margin:0; padding:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  body { background:var(--bg); color:var(--text); min-height:100vh; padding:12px; }
+  .wrap { max-width:900px; margin:0 auto; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0 14px; }
+  h1 { font-size:18px; font-weight:800; } h2 { font-size:14px; margin:14px 0 8px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; }
+  .stat b { display:block; font-size:22px; } .stat span { font-size:11px; color:var(--muted); }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin:14px 0 10px; }
+  button, .btn { background:#182238; color:var(--text); border:1px solid var(--border); border-radius:999px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer; }
+  button.on, button.primary { background:var(--primary); border-color:transparent; }
+  button.danger { color:#f87171; } button.small { padding:5px 10px; font-size:11px; }
+  input, select { background:#182238; color:var(--text); border:1px solid var(--border); border-radius:10px; padding:9px 11px; font-size:13px; width:100%; }
+  .row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .row:last-child { border-bottom:0; } .grow { flex:1; min-width:0; }
+  .name { font-weight:700; font-size:13px; } .sub { font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .av { width:36px; height:36px; border-radius:50%; background:#334155; display:flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0; object-fit:cover; }
+  .badge { font-size:10px; font-weight:800; padding:3px 8px; border-radius:999px; border:1px solid var(--border); white-space:nowrap; }
+  .b-active { color:#4ade80; } .b-pending { color:var(--yellow); } .b-expired { color:var(--yellow); } .b-blocked,.b-multiple { color:#f87171; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; } .actions { display:flex; gap:6px; flex-wrap:wrap; }
+  #msg { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#0f172a; border:1px solid var(--border); padding:10px 16px; border-radius:12px; font-size:13px; display:none; z-index:9; }
+  #login { max-width:340px; margin:12vh auto; display:grid; gap:10px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="login" class="card hidden">
+    <h1>Story Gram Admin</h1>
+    <input id="u" placeholder="Username" autocomplete="username">
+    <input id="p" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="primary" onclick="login()">Login</button>
+  </div>
+
+  <div id="app" class="hidden">
+    <header><h1>Story Gram Admin <span id="who" class="sub"></span></h1><button class="small" onclick="logout()">Logout</button></header>
+    <div class="stats card" id="stats"></div>
+    <div class="tabs" id="tabs"></div>
+    <input id="q" placeholder="Search name / email..." oninput="render()" style="margin-bottom:8px">
+    <div class="card" id="list"></div>
+  </div>
+</div>
+<div id="msg"></div>
+
+<script>
+let D = null, TAB = 'entries';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(t){ const m=$('msg'); m.textContent=t; m.style.display='block'; clearTimeout(toast.t); toast.t=setTimeout(()=>m.style.display='none',3200); }
+function ago(ts){ const d=Math.max(0,Math.floor(Date.now()/1000)-ts); return d<3600?Math.floor(d/60)+'m ago':d<86400?Math.floor(d/3600)+'h ago':Math.floor(d/86400)+'d ago'; }
+function validityText(v){ v=+v||0; if(v<=0) return 'Lifetime'; const n=Math.floor(Date.now()/1000); if(n>=v) return 'Expired'; const days=Math.ceil((v-n)/86400); return days+' day'+(days>1?'s':'')+' left'; }
+
+async function api(action, data = {}) {
+  const body = new URLSearchParams({ api: action, ...data });
+  const r = await fetch('/admin/api', { method:'POST', body, headers:{'X-Requested-With':'XMLHttpRequest'}, credentials:'same-origin' });
+  const j = await r.json().catch(() => ({}));
+  if (j.logout || r.status === 401) { showLogin(); throw new Error('logout'); }
+  return j;
+}
+function showLogin(){ $('app').classList.add('hidden'); $('login').classList.remove('hidden'); }
+async function login(){
+  const r = await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('u').value,password:$('p').value})});
+  const j = await r.json(); if(!j.success) return toast(j.message||'Login failed');
+  $('p').value=''; boot();
+}
+async function logout(){ await fetch('/admin/logout',{method:'POST'}); showLogin(); }
+async function boot(){
+  try { D = await api('get_data'); } catch(e){ return; }
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden'); draw();
+}
+async function refresh(extra){ if(extra) Object.assign(D, extra); draw(); }
+function draw(){
+  const s=D.stats; $('who').textContent = '· '+D.me.name+' ('+D.me.role+')';
+  $('stats').innerHTML = [['Active',s.active,'var(--green)'],['Expired',s.expired,'var(--yellow)'],['Blocked',s.blocked,'var(--red)'],
+    ['Buyers',s.buyers],['Entries',s.entries],['Pending',s.entries_pending],['Multi-device',s.entries_multiple]]
+    .map(([l,n,c])=>`<div class="stat"><b style="color:${c||'inherit'}">${n}</b><span>${l}</span></div>`).join('');
+  const tabs=[['entries','Entries'],['buyers','Buyers'],['apps','App versions']]; if(D.admins) tabs.push(['admins','Admins']);
+  $('tabs').innerHTML = tabs.map(([k,l])=>`<button class="${TAB===k?'on':''}" onclick="TAB='${k}';draw()">${l}</button>`).join('');
+  render();
+}
+function avatar(u){ return u.photo ? `<img class="av" src="${esc(u.photo)}" referrerpolicy="no-referrer">` : `<div class="av">${esc((u.name||'U')[0].toUpperCase())}</div>`; }
+function render(){
+  const q=($('q').value||'').toLowerCase(), el=$('list'); $('q').classList.toggle('hidden', TAB==='apps'||TAB==='admins');
+  const match = u => !q || (u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q);
+  if(TAB==='entries'){
+    el.innerHTML = D.entries.filter(match).map(e=>`<div class="row">${avatar(e)}<div class="grow"><div class="name">${esc(e.name)}</div>
+      <div class="sub">${esc(e.email)} · ${esc([e.brand,e.model].filter(Boolean).join(' ')||e.device)} · ${esc(e.ip||'')} · ${ago(e.created)}</div></div>
+      <span class="badge b-${esc(e.status)}">${esc(e.status)}</span>
+      <div class="actions">${e.status==='multiple'?`<button class="small" onclick='act("approve_device",${JSON.stringify({email:e.email,uid:e.uid||"",name:e.name,photo:e.photo||"",device:e.device,manufacturer:e.manufacturer||"",brand:e.brand||"",model:e.model||""})})'>Approve device</button>`:''}
+      ${['pending','expired'].includes(e.status)?`<button class="small primary" onclick='approve(${JSON.stringify({email:e.email,uid:e.uid||"",name:e.name,photo:e.photo||"",device:e.device,manufacturer:e.manufacturer||"",brand:e.brand||"",model:e.model||""})})'>Approve</button>`:''}
+      ${e.status==='blocked'?`<button class="small" onclick='act("unblock_user",{email:${JSON.stringify(e.email)},uid:${JSON.stringify(e.uid||"")}})'>Unblock</button>`:''}</div></div>`).join('') || '<div class="sub">No entries</div>';
+  } else if(TAB==='buyers'){
+    el.innerHTML = D.buyers.filter(match).map(b=>`<div class="row">${avatar(b)}<div class="grow"><div class="name">${esc(b.name)}</div>
+      <div class="sub">${esc(b.email)} · ${esc([b.brand,b.model].filter(Boolean).join(' ')||b.device||'no device')} · ${esc(b.language)}</div></div>
+      <span class="badge ${b.status==='blocked'?'b-blocked':(+b.validity>0&&+b.validity<D.currentTime?'b-expired':'b-active')}">${b.status==='blocked'?'Blocked':validityText(b.validity)}</span>
+      <div class="actions"><button class="small primary" onclick='approve(${JSON.stringify({email:b.email,uid:b.uid||"",name:b.name,photo:b.photo||"",device:b.device||"",current_validity:b.validity})})'>Extend</button>
+      <button class="small" onclick='act("toggle_status",{buyer_id:${b.id},current_status:${JSON.stringify(b.status)}})'>${b.status==='active'?'Block':'Unblock'}</button>
+      ${D.me.role==='owner'?`<button class="small danger" onclick='del("delete_buyer",{buyer_id:${b.id}})'>Delete</button>`:''}</div></div>`).join('') || '<div class="sub">No buyers</div>';
+  } else if(TAB==='apps'){
+    el.innerHTML = `<div class="grid2" style="margin-bottom:10px"><input id="av" placeholder="Version code (e.g. 1)"><input id="au" placeholder="Admin Telegram username"></div>
+      <button class="primary" onclick="addApp()">Add / enable version</button><div style="height:10px"></div>` +
+      D.apps.map(a=>`<div class="row"><div class="grow"><div class="name">Version ${esc(a.version)}</div><div class="sub">@${esc(a.username)} · ${ago(a.created)}</div></div>
+      <span class="badge b-${a.status==='active'?'active':'blocked'}">${esc(a.status)}</span>
+      <div class="actions"><button class="small" onclick='act("toggle_app_status",{app_id:${a.id},current_status:${JSON.stringify(a.status)}})'>${a.status==='active'?'Disable':'Enable'}</button>
+      ${D.me.role==='owner'?`<button class="small danger" onclick='del("delete_app_version",{app_id:${a.id}})'>Delete</button>`:''}</div></div>`).join('');
+  } else if(TAB==='admins'){
+    el.innerHTML = `<div class="grid2" style="margin-bottom:8px"><input id="an" placeholder="Name"><input id="auu" placeholder="Username"></div>
+      <input id="ap" type="password" placeholder="Password" style="margin-bottom:8px"><button class="primary" onclick="addAdmin()">Add admin</button><div style="height:10px"></div>` +
+      D.admins.map(a=>`<div class="row"><div class="grow"><div class="name">${esc(a.name)}</div><div class="sub">@${esc(a.username)}</div></div>
+      <span class="badge b-${a.status==='active'?'active':'blocked'}">${esc(a.status)}</span>
+      <div class="actions"><button class="small" onclick='act("toggle_admin_status",{admin_id:${a.id},target_status:${JSON.stringify(a.status==='active'?'blocked':'active')}})'>${a.status==='active'?'Block':'Allow'}</button>
+      <button class="small danger" onclick='del("delete_admin",{admin_id:${a.id}})'>Delete</button></div></div>`).join('') || '<div class="sub">No other admins</div>';
+  }
+}
+async function act(action, data){
+  const j = await api(action, data); toast(j.message || j.error || 'Done');
+  if (j.success) { if (j.admins) D.admins=j.admins; if (j.apps) D.apps=j.apps; if (j.stats) D.stats=j.stats; D = await api('get_data'); draw(); }
+}
+function del(action, data){ if (confirm('Delete permanently?')) act(action, data); }
+function approve(u){
+  const d = prompt('Validity: 1_hour, 1_day, 1_week, 1_month, 3_months, 6_months', '1_month'); if(!d) return;
+  act('approve_buyer', {...u, duration:d});
+}
+function addApp(){ act('add_app_version',{version:$('av').value,username:$('au').value,status:'active'}); }
+function addAdmin(){ act('add_admin',{name:$('an').value,username:$('auu').value,password:$('ap').value}); }
+boot();
+</script>
+</body>
+</html>
