@@ -1,0 +1,370 @@
+"""Shared core: database, tokens / transport security, access rules."""
+import base64
+import hashlib
+import hmac
+import json
+import os
+import time
+from contextlib import contextmanager
+
+import bcrypt
+import jwt
+from fastapi import HTTPException, Request
+from fastapi.responses import JSONResponse, Response
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
+
+from config import settings
+
+# ------------------------------------------------------------------ database
+
+_pool: ConnectionPool | None = None
+
+
+def init_pool() -> ConnectionPool:
+    global _pool
+    if _pool is None:
+        if not settings.DATABASE_URL:
+            raise RuntimeError("DATABASE_URL is not set")
+        _pool = ConnectionPool(settings.DATABASE_URL, min_size=1, max_size=8, open=False,
+                               kwargs={"row_factory": dict_row, "prepare_threshold": None, "autocommit": True})
+        _pool.open(wait=True, timeout=30)
+    return _pool
+
+
+def close_pool() -> None:
+    global _pool
+    if _pool is not None:
+        _pool.close()
+        _pool = None
+
+
+def now() -> int:
+    return int(time.time())
+
+
+@contextmanager
+def conn():
+    # autocommit: every statement is atomic
+    with init_pool().connection() as c:
+        yield c
+
+
+@contextmanager
+def tx():
+    # commit on success, rollback on error
+    with init_pool().connection() as c:
+        with c.transaction():
+            yield c
+
+
+def one(c, sql: str, params=()):
+    return c.execute(sql, params).fetchone()
+
+
+def all_(c, sql: str, params=()):
+    return c.execute(sql, params).fetchall()
+
+
+def ensure_seed() -> None:
+    # default app row + first owner admin (only when the admins table is empty)
+    with conn() as c:
+        c.execute("insert into app (version, status, username, created) values ('1','active','index_guide',%s) "
+                  "on conflict (version) do nothing", (now(),))
+        if one(c, "select count(*) as n from admins")["n"] == 0 and settings.OWNER_PASSWORD:
+            h = bcrypt.hashpw(settings.OWNER_PASSWORD.encode(), bcrypt.gensalt()).decode()
+            c.execute("insert into admins (name, username, password, role, status, created) values (%s,%s,%s,'owner','active',%s)",
+                      (settings.OWNER_NAME, settings.OWNER_USERNAME, h, now()))
+
+
+# ------------------------------------------------------------------ server API key and app session
+
+SESSION_COOKIE = "storyloot_session"   # cookie name the Android app already sends
+
+
+def require_api_key(request: Request) -> None:
+    provided = ""
+    for k, v in request.headers.items():
+        if k.lower() in ("x-api-key", "x_api_key", "api-key"):
+            provided = v.strip()
+            break
+    if not provided:
+        provided = request.query_params.get("api_key", "").strip()
+    expected = settings.API_SECRET_KEY
+    if not expected or not hmac.compare_digest(provided.encode(), expected.encode()):
+        raise HTTPException(status_code=401, detail="Unauthorized API request")
+
+
+def issue_session(uid: str, email: str, name: str = "") -> str:
+    t = int(time.time())
+    return jwt.encode({"sub": uid or email, "uid": uid, "email": email, "name": name, "iat": t,
+                       "exp": t + settings.SESSION_DAYS * 86400, "typ": "app"}, settings.SESSION_SECRET, algorithm="HS256")
+
+
+def read_session(request: Request) -> dict | None:
+    token = None
+    auth = request.headers.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        token = auth[7:].strip()
+    if not token:
+        token = request.cookies.get(SESSION_COOKIE)
+    if not token or not settings.SESSION_SECRET:
+        return None
+    try:
+        data = jwt.decode(token, settings.SESSION_SECRET, algorithms=["HS256"])
+    except jwt.PyJWTError:
+        return None
+    return data if data.get("typ") == "app" else None
+
+
+def verify_firebase_token(id_token: str) -> dict:
+    # checks signature, expiry and audience (= FIREBASE_PROJECT_ID)
+    from google.auth.transport import requests as g_requests
+    from google.oauth2 import id_token as g_id_token
+
+    return g_id_token.verify_firebase_token(id_token, g_requests.Request(), audience=settings.FIREBASE_PROJECT_ID)
+
+
+# ------------------------------------------------------------------ signed / encrypted transport (only when SIGN_KEY is set)
+
+_seen_nonces: dict[str, float] = {}
+
+
+def transport_enabled() -> bool:
+    return bool(settings.SIGN_KEY)
+
+
+def _aes():
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    return AESGCM(hashlib.sha256(settings.SIGN_KEY.encode()).digest())
+
+
+def _unb64(s: str) -> bytes:
+    s = s.replace("-", "+").replace("_", "/").strip()
+    return base64.b64decode(s + "=" * (-len(s) % 4))
+
+
+def decrypt_payload(packed: str) -> str | None:
+    # body format: iv.tag.cipher (base64)
+    try:
+        iv, tag, enc = packed.strip().split(".")
+        return _aes().decrypt(_unb64(iv), _unb64(enc) + _unb64(tag), None).decode()
+    except Exception:
+        return None
+
+
+def encrypt_payload(plain: str) -> str:
+    iv = os.urandom(12)
+    out = _aes().encrypt(iv, plain.encode(), None)   # ciphertext || tag
+    b = lambda x: base64.b64encode(x).decode()
+    return f"{b(iv)}.{b(out[-16:])}.{b(out[:-16])}"
+
+
+def check_signature(request: Request) -> None:
+    # HMAC-SHA256 over METHOD:path:timestamp:nonce, 5 minute window, nonce used once
+    if not transport_enabled():
+        return
+    t = request.headers.get("x-sl-t", "")
+    nonce = request.headers.get("x-sl-n", "")
+    sig = request.headers.get("x-sl-s", "")
+    if not (t.isdigit() and nonce and sig):
+        raise HTTPException(status_code=401, detail="Missing signature")
+    if abs(time.time() * 1000 - int(t)) > 5 * 60 * 1000:
+        raise HTTPException(status_code=401, detail="Stale request")
+    path = "/" + "/".join(p for p in request.url.path.split("/") if p) if request.url.path.strip("/") else "/"
+    expect = hmac.new(settings.SIGN_KEY.encode(), f"{request.method.upper()}:{path}:{t}:{nonce}".encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expect, sig):
+        raise HTTPException(status_code=401, detail="Bad signature")
+    cutoff = time.time() - 600
+    for k in [k for k, v in _seen_nonces.items() if v < cutoff]:
+        _seen_nonces.pop(k, None)
+    if nonce in _seen_nonces:
+        raise HTTPException(status_code=401, detail="Replay")
+    _seen_nonces[nonce] = time.time()
+
+
+async def read_payload(request: Request) -> dict:
+    # JSON body (decrypted if the client encrypted it), else form data
+    raw = (await request.body()).decode("utf-8", "ignore").strip()
+    data = None
+    if raw:
+        if request.headers.get("x-sl-req-enc") == "1":
+            raw = decrypt_payload(raw) or ""
+        try:
+            data = json.loads(raw)
+        except ValueError:
+            data = None
+    if data is None:
+        try:
+            data = dict(await request.form())
+        except Exception:
+            data = {}
+    return data if isinstance(data, (dict, list)) else {}
+
+
+def respond(request: Request, data: dict, status: int = 200) -> Response:
+    # encrypted reply when the request was encrypted
+    if transport_enabled() and request.headers.get("x-sl-req-enc") == "1":
+        return Response(encrypt_payload(json.dumps(data, ensure_ascii=False)), status_code=status,
+                        media_type="text/plain", headers={"x-sl-encrypted": "1"})
+    return JSONResponse(data, status_code=status)
+
+
+# ------------------------------------------------------------------ access rules
+
+def clean(v) -> str:
+    return str(v).strip() if v is not None else ""
+
+
+def first(d: dict, *keys, default=""):
+    for k in keys:
+        if k in d and d[k] is not None and clean(d[k]) != "":
+            return clean(d[k])
+    return default
+
+
+def client_ip(request) -> str:
+    h = request.headers
+    raw = h.get("cf-connecting-ip") or h.get("x-forwarded-for") or h.get("client-ip") or (request.client.host if request.client else "")
+    return raw.split(",")[0].strip()
+
+
+def device_info(request, d: dict) -> dict:
+    # body field first, else the x-* header the app sends
+    h = request.headers
+
+    def pick(*keys, header=None):
+        return first(d, *keys) or (clean(h.get(header)) if header else "")
+    return {
+        "device": pick("device", "deviceId", "device_id", header="x-device-id"),
+        "manufacturer": pick("manufacturer", "device_manufacturer", header="x-app-manufacturer") or None,
+        "brand": pick("brand", "device_brand", header="x-app-brand") or None,
+        "model": pick("model", "device_model", header="x-app-model") or None,
+        "version": pick("version", "app_version", header="x-app-version"),
+    }
+
+
+def find_buyer(c, uid: str, email: str):
+    if email and uid:
+        return one(c, "select * from buyers where email = %s or uid = %s limit 1", (email, uid))
+    if email:
+        return one(c, "select * from buyers where email = %s limit 1", (email,))
+    if uid:
+        return one(c, "select * from buyers where uid = %s limit 1", (uid,))
+    return None
+
+
+def record_entry(c, e: dict, status: str, t: int) -> None:
+    # log only when device or status changed since the last entry; never break login
+    try:
+        last = one(c, "select device, status from entries where uid = %s or email = %s order by id desc limit 1", (e["uid"], e["email"]))
+        if not last or last["device"] != e["device"] or last["status"] != status:
+            c.execute("insert into entries (uid, name, email, photo, device, manufacturer, brand, model, ip, status, created) "
+                      "values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                      (e["uid"], e["name"], e["email"], e["photo"], e["device"], e["manufacturer"], e["brand"], e["model"],
+                       e["ip"], status, t))
+    except Exception as exc:
+        print("entries log failed:", exc)
+
+
+def _user(b: dict | None, e: dict, status: str, language="hindi", validity=0) -> dict:
+    out = {"uid": e["uid"], "name": e["name"], "email": e["email"], "photo": e["photo"], "device": e["device"],
+           "status": status, "validity": validity}
+    if b:
+        out.update({"id": b["id"], "uid": b["uid"] or e["uid"], "email": b["email"] or e["email"],
+                    "device": b["device"], "language": language})
+    return out
+
+
+def has_access(c, uid: str, email: str, device: str) -> bool:
+    # read-only check for content requests: active buyer, not expired, same device
+    b = find_buyer(c, uid, email)
+    if not b or b["status"] != "active":
+        return False
+    validity = int(b["validity"] or 0)
+    if validity > 0 and now() > validity:
+        return False
+    real_device = bool(device) and not device.startswith("UNKNOWN_DEVICE_")
+    return not (b["device"] and real_device and b["device"] != device)
+
+
+def app_row(c):
+    return one(c, "select * from app where status = 'active' order by id desc limit 1")
+
+
+def evaluate(c, d: dict, dev: dict, ip: str) -> tuple[dict, int]:
+    # login / status decision: (json, http status); success=True only for "active"
+    t = now()
+    uid = first(d, "uid", "userId", "user_id", "google_id")
+    email = first(d, "email")
+    name = first(d, "name", default="User")
+    photo = first(d, "photo", "photoUrl", "photo_url")
+    if not email and not uid:
+        return {"success": False, "status": "invalid_request", "error": "User ID or Email is required"}, 400
+
+    device = dev["device"] or ("UNKNOWN_DEVICE_" + hashlib.md5((uid or email).encode()).hexdigest()[:12])
+    e = {"uid": uid, "name": name, "email": email, "photo": photo, "device": device, "ip": ip,
+         "manufacturer": dev["manufacturer"], "brand": dev["brand"], "model": dev["model"]}
+
+    app = app_row(c)
+    username = "index_guide"
+    if app:
+        username = (clean(app["username"]).lstrip("@") or "index_guide")
+        db_version = clean(app["version"])
+        if db_version and dev["version"] and dev["version"] != db_version:
+            return {"success": False, "status": "update_required", "message": "Update App", "db_version": db_version,
+                    "app_version": dev["version"], "username": username,
+                    "user": {"uid": uid, "name": name, "email": email, "photo": photo, "device": device,
+                             "status": "blocked", "validity": 0}}, 200
+
+    b = find_buyer(c, uid, email)
+    if not b:
+        record_entry(c, e, "pending", t)
+        return {"success": False, "status": "pending", "message": "No Access", "username": username,
+                "user": _user(None, e, "pending")}, 200
+
+    e["uid"] = b["uid"] or uid
+    e["email"] = b["email"] or email
+    e["name"] = name if (name and name != "User") else (b["name"] or name)
+    e["photo"] = photo or b["photo"] or ""
+    language = (b["language"] or "hindi").lower().strip()
+    validity = int(b["validity"] or 0)
+    registered = b["device"]
+
+    def deny(status, message, **extra):
+        record_entry(c, e, status, t)
+        user_status = extra.pop("user_status", status)
+        return {"success": False, "status": status, "message": message, "username": username, **extra,
+                "user": _user(b, e, user_status, language, validity)}, 200
+
+    if b["status"] == "blocked":
+        return deny("blocked", "Access Blocked")
+
+    real_device = bool(device) and not device.startswith("UNKNOWN_DEVICE_")
+    if registered and real_device and registered != device:
+        return deny("multiple", "Device Not Matched", registered_device=registered, current_device=device)
+
+    if not registered and real_device:   # first device gets bound to the buyer
+        try:
+            c.execute("update buyers set device=%s, manufacturer=%s, brand=%s, model=%s, updated=%s where id=%s",
+                      (device, dev["manufacturer"], dev["brand"], dev["model"], t, b["id"]))
+            b = {**b, "device": device}
+        except Exception:
+            pass
+
+    if b["status"] == "expired" or (validity > 0 and t > validity):
+        return deny("expired", "Validity Expired", validity=validity)
+
+    if b["status"] != "active":
+        return deny("pending", "No Access", user_status=b["status"])
+
+    final_lang = first(d, "language").lower() or language
+    try:
+        c.execute("update buyers set uid=%s, name=%s, photo=%s, language=%s, updated=%s where id=%s",
+                  (uid or b["uid"], e["name"], e["photo"], final_lang, t, b["id"]))
+        language = final_lang
+    except Exception:
+        pass
+    return {"success": True, "status": "active", "message": "Access granted successfully.", "username": username,
+            "language": language, "validity": validity, "user": _user(b, e, "active", language, validity)}, 200
