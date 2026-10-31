@@ -504,19 +504,16 @@ async def show_details(request: Request, show_id: Optional[str] = None):
 
     # Build clean show object with only essential fields
     raw_stats = primary_show.get("stats") if (primary_show and isinstance(primary_show.get("stats"), dict)) else {}
-    show_stats = {
-        "total_plays": raw_stats.get("total_plays", 0),
-        "avg_rating": raw_stats.get("avg_rating", 0)
-    }
 
     clean_show = {
         "show_title": primary_show.get("show_title") or primary_show.get("title") or "" if primary_show else "",
         "image_url": primary_show.get("image_url") or primary_show.get("cover_url") or "" if primary_show else "",
         "show_category_rank": primary_show.get("show_category_rank", 0) if primary_show else 0,
+        "total_plays": raw_stats.get("total_plays", 0),
+        "avg_rating": raw_stats.get("avg_rating", 0),
         "show_id": primary_show.get("show_id") or sid if primary_show else sid,
         "episodes_count": primary_show.get("episodes_count") or primary_show.get("total_episodes") or len(formatted_stories) if primary_show else len(formatted_stories),
-        "stories": formatted_stories,
-        "stats": show_stats
+        "stories": formatted_stories
     }
 
     return JSONResponse(status_code=status_code, content={
