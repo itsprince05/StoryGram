@@ -476,28 +476,18 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             "duration": ep.get("duration", 0),
         }
 
-        # video_url extracted from video_info.web.video_url (fallback to video_url)
+        # video_url from video_info.web.video_url, audio_url from original ep.video_url (null if not available)
         raw_video_info = ep.get("video_info")
-        v_url = None
+        web_video_url = None
         if isinstance(raw_video_info, dict):
             web_info = raw_video_info.get("web")
             if isinstance(web_info, dict):
-                v_url = web_info.get("video_url")
-        if not v_url:
-            v_url = ep.get("video_url")
+                web_video_url = web_info.get("video_url")
 
-        if v_url:
-            item["video_url"] = v_url
-            if "/" in v_url:
-                url_without_query = v_url.split("?")[0]
-                base_dir = url_without_query.rsplit("/", 1)[0]
-                query_part = f"?{v_url.split('?', 1)[1]}" if "?" in v_url else ""
-                item["audio_url"] = f"{base_dir}/audio.mp4{query_part}"
-            else:
-                item["audio_url"] = None
-        else:
-            item["video_url"] = None
-            item["audio_url"] = None
+        old_video_url = ep.get("video_url")
+
+        item["video_url"] = web_video_url if web_video_url else None
+        item["audio_url"] = old_video_url if old_video_url else None
 
         item["story_title"] = ep.get("story_title") or ep.get("title") or ""
         item["story_id"] = ep.get("story_id") or ep.get("id") or ep.get("episode_id") or ""
