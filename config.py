@@ -19,12 +19,8 @@ UPSTREAM_WEB_URL: str = os.getenv("UPSTREAM_WEB_URL", "")
 UPSTREAM_HOST: str = os.getenv("UPSTREAM_HOST", "")
 UPSTREAM_APP_NAME: str = os.getenv("UPSTREAM_APP_NAME", "")
 
-# App & Web User Agents
+# App User Agent
 APP_USER_AGENT: str = os.getenv("APP_USER_AGENT", "")
-WEB_USER_AGENT: str = os.getenv("WEB_USER_AGENT", "")
-
-# Default Bearer Token for Upstream Media Requests
-DEFAULT_BEARER_TOKEN: str = os.getenv("DEFAULT_BEARER_TOKEN", "")
 
 # Database Settings (Supabase PostgreSQL)
 DATABASE_URL: str = os.getenv("DATABASE_URL", "")
