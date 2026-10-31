@@ -485,9 +485,20 @@ async def show_details(request: Request, show_id: Optional[str] = None):
                 web_video_url = web_info.get("video_url")
 
         old_video_url = ep.get("video_url")
+        audio_url = None
+        if old_video_url:
+            if "vp9_output.mpd" in old_video_url:
+                audio_url = old_video_url.replace("vp9_output.mpd", "audio.mp4")
+            elif "/" in old_video_url:
+                url_without_query = old_video_url.split("?")[0]
+                base_dir = url_without_query.rsplit("/", 1)[0]
+                query_part = f"?{old_video_url.split('?', 1)[1]}" if "?" in old_video_url else ""
+                audio_url = f"{base_dir}/audio.mp4{query_part}"
+            else:
+                audio_url = old_video_url
 
         item["video_url"] = web_video_url if web_video_url else None
-        item["audio_url"] = old_video_url if old_video_url else None
+        item["audio_url"] = audio_url
 
         item["story_title"] = ep.get("story_title") or ep.get("title") or ""
         item["story_id"] = ep.get("story_id") or ep.get("id") or ep.get("episode_id") or ""
