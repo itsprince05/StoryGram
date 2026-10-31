@@ -1,20 +1,16 @@
-"""Android app endpoints: login, status, language, library, episodes."""
 import asyncio
 
 from fastapi import APIRouter, HTTPException, Request
 
 import core
 from core import (SESSION_COOKIE, check_signature, issue_session, read_payload, read_session, require_api_key,
-                        respond, verify_firebase_token)
+                  respond, verify_firebase_token)
 
 router = APIRouter()
 
 
-# ---- login / session
-
 @router.post("/api/verify")
 async def verify(request: Request):
-    # Firebase ID token -> access check -> app session token
     check_signature(request)
     d = await read_payload(request)
     id_token = core.clean(d.get("idToken"))
@@ -37,7 +33,6 @@ async def verify(request: Request):
     with core.conn() as c:
         res, _ = core.evaluate(c, payload, core.device_info(request, d), core.client_ip(request))
     status = res.get("status", "pending")
-    # a valid identity always gets a session; the status decides what the app shows next
     user = {"uid": uid, "name": res.get("user", {}).get("name") or name, "email": email,
             "photoUrl": photo, "status": status}
     token = issue_session(uid, email, user["name"])
@@ -83,14 +78,10 @@ async def logout(request: Request):
 
 @router.post("/api/session/record_entry")
 async def record_visit(request: Request):
-    # entries are logged during login / status checks
     return respond(request, {"success": True})
 
 
-# ---- library
-
 def _caller(request: Request) -> tuple[str | None, bool]:
-    # (uid, trusted): X-API-KEY calls may pass any uid, app calls are bound to the session uid
     try:
         require_api_key(request)
         return None, True
@@ -105,7 +96,6 @@ def _caller(request: Request) -> tuple[str | None, bool]:
 @router.api_route("/library", methods=["GET", "POST"])
 @router.api_route("/api/database/library", methods=["GET", "POST"])
 async def library(request: Request):
-    # history / saved shows
     forced_uid, trusted = _caller(request)
     d = await read_payload(request)
     d = {**dict(request.query_params), **(d if isinstance(d, dict) else {})}
@@ -155,8 +145,6 @@ async def library(request: Request):
     return respond(request, {"success": False, "error": "Invalid request"}, 400)
 
 
-# ---- episodes
-
 def _id_list(v) -> list[str]:
     items = v if isinstance(v, list) else str(v or "").split(",")
     seen, out = set(), []
@@ -169,14 +157,12 @@ def _id_list(v) -> list[str]:
 
 
 def _ep_urls(it: dict) -> tuple[str, str]:
-    # legacy single `url` counts as the media url
     return core.clean(it.get("media_url") or it.get("url")), core.clean(it.get("video_url"))
 
 
 @router.post("/episodes")
 @router.post("/api/resolve_episodes")
 async def episodes(request: Request):
-    # saving needs X-API-KEY; resolving works for signed-in users
     trusted = True
     try:
         require_api_key(request)
@@ -188,7 +174,6 @@ async def episodes(request: Request):
     d = await read_payload(request)
     t = core.now()
 
-    # save (single / bulk), server-to-server only
     save_list: list[dict] = []
     if isinstance(d, list) and d and isinstance(d[0], dict):
         save_list = d
@@ -224,7 +209,6 @@ async def episodes(request: Request):
                     n += 1
         return respond(request, {"success": True, "message": f"Successfully saved {n} episodes", "count": n})
 
-    # resolve
     d = d if isinstance(d, dict) else {}
     ids = _id_list(d.get("story_ids")) if d.get("story_ids") else []
     if not ids and "," in core.clean(d.get("story_id")):
@@ -234,7 +218,6 @@ async def episodes(request: Request):
             rows = core.all_(c, "select story_id, media_url, video_url from episodes where story_id = any(%s) order by id asc", (ids,))
             data = [{"story_id": r["story_id"], "url": r["media_url"] or r["video_url"],
                      "media_url": r["media_url"], "video_url": r["video_url"]} for r in rows]
-            # `stories` is what the app reads, `data` the plain list
             first_by_story: dict[str, dict] = {}
             for r in rows:
                 first_by_story.setdefault(r["story_id"], r)
