@@ -126,6 +126,8 @@ async def get_episodes_from_db(story_ids: List[str]) -> Dict[str, Dict[str, Opti
     return results
 
 def save_episodes_to_db_background(episodes_to_save: List[Dict[str, Any]]):
+    # Only record 3000+ episodes in database
+    episodes_to_save = [item for item in episodes_to_save if (item.get("number") or 0) >= 3000]
     if not episodes_to_save:
         return
 
@@ -145,16 +147,17 @@ def save_episodes_to_db_background(episodes_to_save: List[Dict[str, Any]]):
             created_ts = int(time.time())
             async with db_pool.acquire() as conn:
                 for item in episodes_to_save:
+                    nat_seq = item.get("number") or 0
                     updated = await conn.execute(
                         """
                         UPDATE episodes
-                        SET media_url = $2, video_url = $3, number = COALESCE($4, number)
+                        SET media_url = $2, video_url = $3, number = $4
                         WHERE story_id = $1
                         """,
                         item["story_id"],
                         item.get("media_url", ""),
                         item.get("video_url"),
-                        item.get("number")
+                        nat_seq
                     )
                     if updated == "UPDATE 0":
                         await conn.execute(
@@ -163,7 +166,7 @@ def save_episodes_to_db_background(episodes_to_save: List[Dict[str, Any]]):
                             VALUES ($1, $2, $3, $4, $5)
                             """,
                             item["story_id"],
-                            item.get("number") or 0,
+                            nat_seq,
                             created_ts,
                             item.get("media_url", ""),
                             item.get("video_url")
@@ -594,15 +597,14 @@ async def show_details(request: Request, show_id: Optional[str] = None):
                     elif ep:
                         all_episodes.append(ep)
 
-    # Check for episodes needing URL lookup / unlocking (sequence number >= 3000 or missing media_url)
+    # Only check and record 3000+ episodes in database
     needs_lookup_ids = []
     for ep in all_episodes:
         if not isinstance(ep, dict):
             continue
         seq = ep.get("natural_sequence_number") or ep.get("seq_number") or 0
         ep_id = ep.get("story_id") or ep.get("id") or ep.get("episode_id")
-        media_val = ep.get("media_url_enc") or ep.get("media_url")
-        if ep_id and (seq >= 3000 or not media_val):
+        if ep_id and seq >= 3000:
             needs_lookup_ids.append(ep_id)
 
     cached_data: Dict[str, Dict[str, Optional[str]]] = {}
@@ -616,14 +618,15 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             if st_id not in cached_data or not cached_data[st_id].get("media_url")
         ]
 
+        story_number_map = {
+            (ep.get("story_id") or ep.get("id") or ep.get("episode_id")): (ep.get("natural_sequence_number") or ep.get("seq_number") or 0)
+            for ep in all_episodes if isinstance(ep, dict)
+        }
+
+        to_save = []
         # 3. If any are missing, unlock concurrently via upstream API
         if still_missing:
             unlocked_data = await unlock_and_fetch_saved_stories(sid, still_missing, headers)
-            story_number_map = {
-                (ep.get("story_id") or ep.get("id") or ep.get("episode_id")): (ep.get("natural_sequence_number") or ep.get("seq_number") or 0)
-                for ep in all_episodes if isinstance(ep, dict)
-            }
-            to_save = []
             for st_id, val in unlocked_data.items():
                 cached_data[st_id] = val
                 if val.get("media_url") or val.get("video_url"):
@@ -633,8 +636,23 @@ async def show_details(request: Request, show_id: Optional[str] = None):
                         "media_url": val.get("media_url") or "",
                         "video_url": val.get("video_url")
                     })
-            if to_save:
-                save_episodes_to_db_background(to_save)
+
+        # Ensure existing cached/DB episodes also update number with natural_sequence_number
+        saved_ids = {x["story_id"] for x in to_save}
+        for st_id in needs_lookup_ids:
+            if st_id in cached_data and st_id not in saved_ids:
+                curr_nat_seq = int(story_number_map.get(st_id, 0))
+                db_num = cached_data[st_id].get("number")
+                if curr_nat_seq and (db_num is None or db_num == 0 or db_num != curr_nat_seq):
+                    to_save.append({
+                        "story_id": st_id,
+                        "number": curr_nat_seq,
+                        "media_url": cached_data[st_id].get("media_url") or "",
+                        "video_url": cached_data[st_id].get("video_url")
+                    })
+
+        if to_save:
+            save_episodes_to_db_background(to_save)
 
     # Format episodes list with strictly necessary fields (support audio, video, or mixed)
     formatted_stories = []
