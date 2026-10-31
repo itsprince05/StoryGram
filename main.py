@@ -90,20 +90,10 @@ async def init_db_pool():
         print("[DATABASE] Supabase PostgreSQL connection pool initialized successfully.")
         async with db_pool.acquire() as conn:
             await conn.fetchval("SELECT 1")
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS unlocked_episodes (
-                    story_id VARCHAR(100) PRIMARY KEY,
-                    show_id VARCHAR(100),
-                    media_url TEXT,
-                    video_url TEXT,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                );
-                CREATE INDEX IF NOT EXISTS idx_unlocked_episodes_story_id ON unlocked_episodes(story_id);
-            """)
     except Exception as e:
         print(f"[DATABASE] Supabase connection warning: {str(e)}")
 
-# In-Memory Cache and DB Helpers for Unlocked Episodes
+# In-Memory Cache and DB Helpers for Episodes Table
 unlocked_memory_cache: Dict[str, Dict[str, Optional[str]]] = {}
 
 async def get_episodes_from_db(story_ids: List[str]) -> Dict[str, Dict[str, Optional[str]]]:
@@ -119,18 +109,19 @@ async def get_episodes_from_db(story_ids: List[str]) -> Dict[str, Dict[str, Opti
         try:
             async with db_pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "SELECT story_id, media_url, video_url FROM unlocked_episodes WHERE story_id = ANY($1::varchar[])",
+                    "SELECT story_id, media_url, video_url, number FROM episodes WHERE story_id = ANY($1::text[])",
                     missing_from_cache
                 )
                 for r in rows:
                     data = {
                         "media_url": r["media_url"] or "",
-                        "video_url": r["video_url"]
+                        "video_url": r["video_url"],
+                        "number": r["number"]
                     }
                     results[r["story_id"]] = data
                     unlocked_memory_cache[r["story_id"]] = data
         except Exception as e:
-            print(f"[DATABASE] Query error for unlocked episodes: {e}")
+            print(f"[DATABASE] Query error from episodes table: {e}")
 
     return results
 
@@ -142,7 +133,8 @@ def save_episodes_to_db_background(episodes_to_save: List[Dict[str, Any]]):
         sid = item["story_id"]
         unlocked_memory_cache[sid] = {
             "media_url": item.get("media_url") or "",
-            "video_url": item.get("video_url")
+            "video_url": item.get("video_url"),
+            "number": item.get("number")
         }
 
     if not db_pool:
@@ -150,23 +142,34 @@ def save_episodes_to_db_background(episodes_to_save: List[Dict[str, Any]]):
 
     async def _persist():
         try:
+            created_ts = int(time.time())
             async with db_pool.acquire() as conn:
                 for item in episodes_to_save:
-                    await conn.execute(
+                    updated = await conn.execute(
                         """
-                        INSERT INTO unlocked_episodes (story_id, show_id, media_url, video_url)
-                        VALUES ($1, $2, $3, $4)
-                        ON CONFLICT (story_id) DO UPDATE SET
-                            media_url = EXCLUDED.media_url,
-                            video_url = EXCLUDED.video_url
+                        UPDATE episodes
+                        SET media_url = $2, video_url = $3, number = COALESCE($4, number)
+                        WHERE story_id = $1
                         """,
                         item["story_id"],
-                        item.get("show_id", ""),
                         item.get("media_url", ""),
-                        item.get("video_url")
+                        item.get("video_url"),
+                        item.get("number")
                     )
+                    if updated == "UPDATE 0":
+                        await conn.execute(
+                            """
+                            INSERT INTO episodes (story_id, number, created, media_url, video_url)
+                            VALUES ($1, $2, $3, $4, $5)
+                            """,
+                            item["story_id"],
+                            item.get("number") or 0,
+                            created_ts,
+                            item.get("media_url", ""),
+                            item.get("video_url")
+                        )
         except Exception as e:
-            print(f"[DATABASE] Background save error: {e}")
+            print(f"[DATABASE] Error saving to episodes table: {e}")
 
     asyncio.create_task(_persist())
 
@@ -591,41 +594,96 @@ async def show_details(request: Request, show_id: Optional[str] = None):
                     elif ep:
                         all_episodes.append(ep)
 
+    # Check for episodes needing URL lookup / unlocking (sequence number >= 3000 or missing media_url)
+    needs_lookup_ids = []
+    for ep in all_episodes:
+        if not isinstance(ep, dict):
+            continue
+        seq = ep.get("natural_sequence_number") or ep.get("seq_number") or 0
+        ep_id = ep.get("story_id") or ep.get("id") or ep.get("episode_id")
+        media_val = ep.get("media_url_enc") or ep.get("media_url")
+        if ep_id and (seq >= 3000 or not media_val):
+            needs_lookup_ids.append(ep_id)
+
+    cached_data: Dict[str, Dict[str, Optional[str]]] = {}
+    if needs_lookup_ids:
+        # 1. Check in Database / Memory Cache
+        cached_data = await get_episodes_from_db(needs_lookup_ids)
+
+        # 2. Check which episodes are still missing in DB
+        still_missing = [
+            st_id for st_id in needs_lookup_ids
+            if st_id not in cached_data or not cached_data[st_id].get("media_url")
+        ]
+
+        # 3. If any are missing, unlock concurrently via upstream API
+        if still_missing:
+            unlocked_data = await unlock_and_fetch_saved_stories(sid, still_missing, headers)
+            story_number_map = {
+                (ep.get("story_id") or ep.get("id") or ep.get("episode_id")): (ep.get("natural_sequence_number") or ep.get("seq_number") or 0)
+                for ep in all_episodes if isinstance(ep, dict)
+            }
+            to_save = []
+            for st_id, val in unlocked_data.items():
+                cached_data[st_id] = val
+                if val.get("media_url") or val.get("video_url"):
+                    to_save.append({
+                        "story_id": st_id,
+                        "number": int(story_number_map.get(st_id, 0)),
+                        "media_url": val.get("media_url") or "",
+                        "video_url": val.get("video_url")
+                    })
+            if to_save:
+                save_episodes_to_db_background(to_save)
+
     # Format episodes list with strictly necessary fields (support audio, video, or mixed)
     formatted_stories = []
     for ep in all_episodes:
         if not isinstance(ep, dict):
             continue
 
-        # video_url from video_info.web.video_url, audio_url from original ep.video_url (null if not available)
-        raw_video_info = ep.get("video_info")
-        web_video_url = None
-        if isinstance(raw_video_info, dict):
-            web_info = raw_video_info.get("web")
-            if isinstance(web_info, dict):
-                web_video_url = web_info.get("video_url")
+        ep_id = ep.get("story_id") or ep.get("id") or ep.get("episode_id") or ""
+        seq = ep.get("natural_sequence_number") or ep.get("seq_number") or 1
 
-        old_video_url = ep.get("video_url")
-        audio_url = None
-        if old_video_url:
-            if "vp9_output.mpd" in old_video_url:
-                audio_url = old_video_url.replace("vp9_output.mpd", "audio.mp4")
-            elif "/" in old_video_url:
-                url_without_query = old_video_url.split("?")[0]
-                base_dir = url_without_query.rsplit("/", 1)[0]
-                query_part = f"?{old_video_url.split('?', 1)[1]}" if "?" in old_video_url else ""
-                audio_url = f"{base_dir}/audio.mp4{query_part}"
-            else:
-                audio_url = old_video_url
+        if ep_id in cached_data and cached_data[ep_id].get("media_url"):
+            # Unlocked story (or from DB)
+            media_url = cached_data[ep_id]["media_url"]
+            video_url = cached_data[ep_id].get("video_url")
+            # For 3000+ or unlocked stories, audio_url is null
+            audio_url = None
+        else:
+            # Standard flow
+            raw_video_info = ep.get("video_info")
+            web_video_url = None
+            if isinstance(raw_video_info, dict):
+                web_info = raw_video_info.get("web")
+                if isinstance(web_info, dict):
+                    web_video_url = web_info.get("video_url")
+
+            old_video_url = ep.get("video_url")
+            audio_url = None
+            if old_video_url:
+                if "vp9_output.mpd" in old_video_url:
+                    audio_url = old_video_url.replace("vp9_output.mpd", "audio.mp4")
+                elif "/" in old_video_url:
+                    url_without_query = old_video_url.split("?")[0]
+                    base_dir = url_without_query.rsplit("/", 1)[0]
+                    query_part = f"?{old_video_url.split('?', 1)[1]}" if "?" in old_video_url else ""
+                    audio_url = f"{base_dir}/audio.mp4{query_part}"
+                else:
+                    audio_url = old_video_url
+
+            video_url = web_video_url if web_video_url else None
+            media_url = ep.get("media_url_enc") or ep.get("media_url") or ""
 
         item = {
             "duration": ep.get("duration", 0),
-            "natural_sequence_number": ep.get("natural_sequence_number") or ep.get("seq_number") or 1,
-            "story_id": ep.get("story_id") or ep.get("id") or ep.get("episode_id") or "",
+            "natural_sequence_number": seq,
+            "story_id": ep_id,
             "story_title": ep.get("story_title") or ep.get("title") or "",
-            "video_url": web_video_url if web_video_url else None,
+            "video_url": video_url,
             "audio_url": audio_url,
-            "media_url": ep.get("media_url_enc") or ep.get("media_url") or "",
+            "media_url": media_url,
         }
 
         formatted_stories.append(item)
