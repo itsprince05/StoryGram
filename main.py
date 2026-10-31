@@ -479,15 +479,15 @@ async def get_or_resolve_upstream_license_url(show_id: str, request: Request) ->
         try:
             license_url = decrypt_drm_blob(1770000000, "mobile-web", blob)
         except Exception as e:
-            print(f"[LICENSE] Decryption error for {show_id}: {str(e)}")
-            return None
+            print(f"[LICENSE] Decryption warning for {show_id}: {str(e)}")
+            license_url = None
     else:
         license_url = data.get("license_url") or (data.get("result", {}) if isinstance(data.get("result"), dict) else {}).get("license_url")
 
-    if license_url:
+    if blob or license_url:
         result = {
-            "license_url": license_url,
-            "blob": blob
+            "license_url": license_url or "",
+            "blob": blob or ""
         }
         show_license_cache[show_id] = result
         return result
