@@ -90,8 +90,133 @@ async def init_db_pool():
         print("[DATABASE] Supabase PostgreSQL connection pool initialized successfully.")
         async with db_pool.acquire() as conn:
             await conn.fetchval("SELECT 1")
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS unlocked_episodes (
+                    story_id VARCHAR(100) PRIMARY KEY,
+                    show_id VARCHAR(100),
+                    media_url TEXT,
+                    video_url TEXT,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+                CREATE INDEX IF NOT EXISTS idx_unlocked_episodes_story_id ON unlocked_episodes(story_id);
+            """)
     except Exception as e:
         print(f"[DATABASE] Supabase connection warning: {str(e)}")
+
+# In-Memory Cache and DB Helpers for Unlocked Episodes
+unlocked_memory_cache: Dict[str, Dict[str, Optional[str]]] = {}
+
+async def get_episodes_from_db(story_ids: List[str]) -> Dict[str, Dict[str, Optional[str]]]:
+    results: Dict[str, Dict[str, Optional[str]]] = {}
+    missing_from_cache: List[str] = []
+    for sid in story_ids:
+        if sid in unlocked_memory_cache:
+            results[sid] = unlocked_memory_cache[sid]
+        else:
+            missing_from_cache.append(sid)
+
+    if missing_from_cache and db_pool:
+        try:
+            async with db_pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT story_id, media_url, video_url FROM unlocked_episodes WHERE story_id = ANY($1::varchar[])",
+                    missing_from_cache
+                )
+                for r in rows:
+                    data = {
+                        "media_url": r["media_url"] or "",
+                        "video_url": r["video_url"]
+                    }
+                    results[r["story_id"]] = data
+                    unlocked_memory_cache[r["story_id"]] = data
+        except Exception as e:
+            print(f"[DATABASE] Query error for unlocked episodes: {e}")
+
+    return results
+
+def save_episodes_to_db_background(episodes_to_save: List[Dict[str, Any]]):
+    if not episodes_to_save:
+        return
+
+    for item in episodes_to_save:
+        sid = item["story_id"]
+        unlocked_memory_cache[sid] = {
+            "media_url": item.get("media_url") or "",
+            "video_url": item.get("video_url")
+        }
+
+    if not db_pool:
+        return
+
+    async def _persist():
+        try:
+            async with db_pool.acquire() as conn:
+                for item in episodes_to_save:
+                    await conn.execute(
+                        """
+                        INSERT INTO unlocked_episodes (story_id, show_id, media_url, video_url)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (story_id) DO UPDATE SET
+                            media_url = EXCLUDED.media_url,
+                            video_url = EXCLUDED.video_url
+                        """,
+                        item["story_id"],
+                        item.get("show_id", ""),
+                        item.get("media_url", ""),
+                        item.get("video_url")
+                    )
+        except Exception as e:
+            print(f"[DATABASE] Background save error: {e}")
+
+    asyncio.create_task(_persist())
+
+async def unlock_and_fetch_saved_stories(show_id: str, missing_story_ids: List[str], headers: dict) -> Dict[str, Dict[str, Optional[str]]]:
+    if not missing_story_ids:
+        return {}
+
+    # 1. Trigger subscribe_story for all missing episodes concurrently
+    async def subscribe_single(sid: str):
+        payload = {
+            "action": "subscribe_story",
+            "entity_id": show_id,
+            "entity_type": "show",
+            "progress_action": "",
+            "source": "player",
+            "story_id": sid
+        }
+        target_url = f"{UPSTREAM_API_URL}/v2/user_api/user_action.update"
+        return await fetch_from_upstream(target_url, headers, method="POST", body=payload)
+
+    sub_tasks = [subscribe_single(sid) for sid in missing_story_ids]
+    await asyncio.gather(*sub_tasks)
+
+    # 2. Fetch saved stories from feed_api (retry up to 3 times if empty)
+    feed_url = f"{UPSTREAM_API_URL}/v2/feed_api/get_saved_stories?show_ids={show_id}"
+    saved_stories_map: Dict[str, Dict[str, Optional[str]]] = {}
+
+    for attempt in range(3):
+        code, res = await fetch_from_upstream(feed_url, headers, method="GET")
+        if isinstance(res, dict) and isinstance(res.get("result"), dict):
+            st_list = res["result"].get("stories") or []
+            if isinstance(st_list, list) and len(st_list) > 0:
+                for st in st_list:
+                    if isinstance(st, dict) and st.get("story_id"):
+                        v_url = st.get("video_url")
+                        if not v_url and isinstance(st.get("video_info"), dict):
+                            web_info = st["video_info"].get("web")
+                            if isinstance(web_info, dict):
+                                v_url = web_info.get("video_url")
+
+                        saved_stories_map[st["story_id"]] = {
+                            "media_url": st.get("media_url_enc") or st.get("media_url") or "",
+                            "video_url": v_url or None
+                        }
+                if any(sid in saved_stories_map for sid in missing_story_ids):
+                    break
+        if attempt < 2:
+            await asyncio.sleep(0.5)
+
+    return saved_stories_map
 
 @app.on_event("startup")
 async def startup_event():
@@ -472,10 +597,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         if not isinstance(ep, dict):
             continue
 
-        item = {
-            "duration": ep.get("duration", 0),
-        }
-
         # video_url from video_info.web.video_url, audio_url from original ep.video_url (null if not available)
         raw_video_info = ep.get("video_info")
         web_video_url = None
@@ -497,13 +618,15 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             else:
                 audio_url = old_video_url
 
-        item["video_url"] = web_video_url if web_video_url else None
-        item["audio_url"] = audio_url
-
-        item["story_title"] = ep.get("story_title") or ep.get("title") or ""
-        item["story_id"] = ep.get("story_id") or ep.get("id") or ep.get("episode_id") or ""
-        item["media_url_enc"] = ep.get("media_url_enc") or ep.get("media_url") or ""
-        item["natural_sequence_number"] = ep.get("natural_sequence_number") or ep.get("seq_number") or 1
+        item = {
+            "duration": ep.get("duration", 0),
+            "natural_sequence_number": ep.get("natural_sequence_number") or ep.get("seq_number") or 1,
+            "story_id": ep.get("story_id") or ep.get("id") or ep.get("episode_id") or "",
+            "story_title": ep.get("story_title") or ep.get("title") or "",
+            "video_url": web_video_url if web_video_url else None,
+            "audio_url": audio_url,
+            "media_url": ep.get("media_url_enc") or ep.get("media_url") or "",
+        }
 
         formatted_stories.append(item)
 
