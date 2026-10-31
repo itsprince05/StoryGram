@@ -1,21 +1,17 @@
-# Environment variables & secrets
 .env
 *.env
 
-# Python Cache & Bytecode
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 
-# Virtual Environments
 env/
 venv/
 .venv/
 ENV/
 
-# System & Temporary Files
 .DS_Store
 Thumbs.db
 *.log
