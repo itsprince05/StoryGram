@@ -1,4 +1,3 @@
-"""Admin panel: login, roles, buyers, entries, app versions, admins."""
 import time
 from pathlib import Path
 
@@ -15,7 +14,6 @@ router = APIRouter()
 COOKIE = "storygram_admin"
 HERE = Path(__file__).resolve().parent
 
-# validity presets (seconds)
 VALIDITY = {"1_hour": 3600, "1_day": 86400, "1_week": 7 * 86400, "1_month": 30 * 86400,
             "3_months": 90 * 86400, "6_months": 180 * 86400}
 
@@ -35,7 +33,6 @@ def _issue(admin: dict) -> str:
 
 
 def _current_admin(request: Request, c) -> dict | None:
-    # valid cookie and the account still exists / is not blocked (re-checked on every call)
     token = request.cookies.get(COOKIE)
     if not token or not settings.ADMIN_JWT_SECRET:
         return None
@@ -84,8 +81,6 @@ def _latest_device_info(c, email: str, uid: str):
            "(manufacturer is not null or brand is not null or model is not null) order by id desc limit 1", (email, uid))
 
 
-# ---- pages / auth
-
 @router.get("/admin")
 async def admin_page():
     return FileResponse(HERE / "admin.html", headers={"Cache-Control": "no-store"})
@@ -116,11 +111,8 @@ async def logout():
     return r
 
 
-# ---- JSON API
-
 @router.api_route("/admin/api", methods=["GET", "POST"])
 async def api(request: Request):
-    # custom header = CSRF protection
     if request.headers.get("x-requested-with") != "XMLHttpRequest":
         return JSONResponse({"success": False, "error": "Forbidden"}, 403)
     d = await read_payload(request)
