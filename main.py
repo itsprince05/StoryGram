@@ -416,15 +416,20 @@ async def home_feed(request: Request):
                 stats = info.get("stats") or {}
 
                 if show_title or show_id:
+                    total_plays = stats.get("total_plays")
+                    if total_plays is None:
+                        total_plays = stats.get("plays", 0)
+                    avg_rating = stats.get("avg_rating")
+                    if avg_rating is None:
+                        avg_rating = stats.get("rating", 0.0)
+
                     entities.append({
-                        "value": {
-                            "show_id": show_id,
-                            "show_title": show_title,
-                            "show_category_rank": rank,
-                            "avg_rating": stats.get("avg_rating") or stats.get("rating"),
-                            "total_plays_display": format_plays_display(stats.get("total_plays_display") or stats.get("total_plays") or ""),
-                            "image_url": img_url
-                        }
+                        "show_id": show_id,
+                        "title": show_title,
+                        "image": img_url,
+                        "rank": rank,
+                        "plays": total_plays,
+                        "rating": avg_rating
                     })
 
             if entities:
@@ -464,12 +469,21 @@ async def search_shows(request: Request):
         for show in data["result"]["shows"]:
             show_id = show.get("show_id") or show.get("entity_id") or ""
             stats = show.get("stats") or {}
+            rank = show.get("show_category_rank") or show.get("rank") or 0
+            total_plays = stats.get("total_plays")
+            if total_plays is None:
+                total_plays = show.get("plays") or stats.get("plays") or 0
+            rating = stats.get("avg_rating")
+            if rating is None:
+                rating = show.get("avg_rating") or show.get("rating") or 0.0
+
             formatted.append({
                 "show_id": show_id,
                 "title": show.get("title") or show.get("show_title") or "",
-                "plays": format_plays_display(show.get("plays") or stats.get("total_plays_display") or stats.get("total_plays") or ""),
-                "avg_rating": show.get("avg_rating") or stats.get("avg_rating"),
-                "image_url": show.get("image_url") or show.get("cover_url") or ""
+                "image": show.get("image_url") or show.get("cover_url") or show.get("image") or "",
+                "rank": rank,
+                "plays": total_plays,
+                "rating": rating
             })
         return {
             "status": data.get("status", 1),
@@ -727,13 +741,13 @@ async def show_details(request: Request, show_id: Optional[str] = None):
     raw_stats = primary_show.get("stats") if (primary_show and isinstance(primary_show.get("stats"), dict)) else {}
 
     clean_show = {
+        "show_id": primary_show.get("show_id") or sid if primary_show else sid,
+        "title": primary_show.get("show_title") or primary_show.get("title") or "" if primary_show else "",
+        "image": primary_show.get("image_url") or primary_show.get("cover_url") or "" if primary_show else "",
         "rank": primary_show.get("show_category_rank", 0) if primary_show else 0,
         "plays": raw_stats.get("total_plays", 0),
         "rating": raw_stats.get("avg_rating", 0),
         "episodes": total_episodes or len(formatted_stories),
-        "show_title": primary_show.get("show_title") or primary_show.get("title") or "" if primary_show else "",
-        "show_id": primary_show.get("show_id") or sid if primary_show else sid,
-        "image_url": primary_show.get("image_url") or primary_show.get("cover_url") or "" if primary_show else "",
         "stories": formatted_stories
     }
 
