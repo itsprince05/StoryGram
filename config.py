@@ -21,30 +21,17 @@ APP_USER_AGENT: str = os.getenv("APP_USER_AGENT", "")
 
 DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 
+CONTENT_API_URL: str = os.getenv("CONTENT_API_URL", "")
+FIREBASE_PROJECT_ID: str = os.getenv("FIREBASE_PROJECT_ID", "")
 
-def _env(name: str, default: str = "") -> str:
-    return os.getenv(name, default).strip()
+SESSION_SECRET: str = os.getenv("SESSION_SECRET", "")
+ADMIN_JWT_SECRET: str = os.getenv("ADMIN_JWT_SECRET", "")
+API_SECRET_KEY: str = os.getenv("API_SECRET_KEY", "")
 
+OWNER_NAME: str = os.getenv("OWNER_NAME", "Owner")
+OWNER_USERNAME: str = os.getenv("OWNER_USERNAME", "owner")
+OWNER_PASSWORD: str = os.getenv("OWNER_PASSWORD", "")
 
-class Settings:
-    DATABASE_URL = _env("DATABASE_URL")
-    CONTENT_TIMEOUT = float(_env("CONTENT_TIMEOUT", "60"))
-    API_SECRET_KEY = _env("API_SECRET_KEY")
+SIGN_KEY: str = os.getenv("SIGN_KEY", "")
 
-    SESSION_SECRET = _env("SESSION_SECRET")
-    ADMIN_JWT_SECRET = _env("ADMIN_JWT_SECRET") or _env("SESSION_SECRET")
-    SESSION_DAYS = int(_env("SESSION_DAYS", "30"))
-    ADMIN_SESSION_SECONDS = 3600
-
-    FIREBASE_PROJECT_ID = _env("FIREBASE_PROJECT_ID", "story-gram-ce767")
-    SIGN_KEY = _env("SIGN_KEY")
-
-    OWNER_NAME = _env("OWNER_NAME", "Owner")
-    OWNER_USERNAME = _env("OWNER_USERNAME", "owner").lower()
-    OWNER_PASSWORD = _env("OWNER_PASSWORD")
-
-    HIDDEN_UIDS = [u for u in _env("HIDDEN_UIDS").split(",") if u]
-    CORS_ORIGINS = [o for o in _env("CORS_ORIGINS", "*").split(",") if o]
-
-
-settings = Settings()
+LICENSE_SERVER_URL: str = os.getenv("LICENSE_SERVER_URL", "")
