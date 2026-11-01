@@ -12,16 +12,18 @@ else:
 
 PORT: int = int(os.getenv("PORT", 3000))
 
-UPSTREAM_API_URL: str = os.getenv("UPSTREAM_API_URL", "").rstrip("/")
+# content API upstream: the old (UPSTREAM_API_URL) and the new (CONTENT_API_URL) name are the same address, either one works
+CONTENT_API_URL: str = os.getenv("CONTENT_API_URL") or os.getenv("UPSTREAM_API_URL", "")
+UPSTREAM_API_URL: str = (os.getenv("UPSTREAM_API_URL") or CONTENT_API_URL).rstrip("/")
 UPSTREAM_WEB_URL: str = os.getenv("UPSTREAM_WEB_URL", "")
 UPSTREAM_HOST: str = os.getenv("UPSTREAM_HOST", "")
 UPSTREAM_APP_NAME: str = os.getenv("UPSTREAM_APP_NAME", "")
 
 APP_USER_AGENT: str = os.getenv("APP_USER_AGENT", "")
 
-DATABASE_URL: str = os.getenv("DATABASE_URL", "")
-CONTENT_API_URL: str = os.getenv("CONTENT_API_URL", "")
 LICENSE_SERVER_URL: str = os.getenv("LICENSE_SERVER_URL", "")
+
+DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 
 
 def _env(name: str, default: str = "") -> str:
@@ -30,7 +32,7 @@ def _env(name: str, default: str = "") -> str:
 
 class Settings:
     DATABASE_URL = _env("DATABASE_URL")
-    CONTENT_API_URL = _env("CONTENT_API_URL")
+    CONTENT_API_URL = CONTENT_API_URL.strip()
     LICENSE_SERVER_URL = _env("LICENSE_SERVER_URL")
     CONTENT_TIMEOUT = float(_env("CONTENT_TIMEOUT", "60"))
     API_SECRET_KEY = _env("API_SECRET_KEY")
