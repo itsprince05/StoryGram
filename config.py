@@ -50,7 +50,7 @@ class Settings:
     OWNER_PASSWORD = _env("OWNER_PASSWORD")
 
     HIDDEN_UIDS = [u for u in _env("HIDDEN_UIDS").split(",") if u]
-    CORS_ORIGINS = [o for o in _env("CORS_ORIGINS", "*").split(",") if o]
+    CORS_ORIGINS = [o for o in _env("CORS_ORIGINS").split(",") if o]
 
 
 settings = Settings()
