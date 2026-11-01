@@ -69,6 +69,17 @@ def ensure_seed() -> None:
             h = bcrypt.hashpw(settings.OWNER_PASSWORD.encode(), bcrypt.gensalt()).decode()
             c.execute("insert into admins (name, username, password, role, status, created) values (%s,%s,%s,'owner','active',%s)",
                       (settings.OWNER_NAME, settings.OWNER_USERNAME, h, now()))
+        elif settings.OWNER_PASSWORD:
+            # the owner password in the environment is the one that works: changing it there and restarting updates the login
+            row = one(c, "select id, password from admins where role = 'owner' and username = %s", (settings.OWNER_USERNAME,))
+            if row:
+                try:
+                    same = bcrypt.checkpw(settings.OWNER_PASSWORD.encode(), row["password"].replace("$2y$", "$2b$", 1).encode())
+                except ValueError:
+                    same = False
+                if not same:
+                    h = bcrypt.hashpw(settings.OWNER_PASSWORD.encode(), bcrypt.gensalt()).decode()
+                    c.execute("update admins set password = %s where id = %s", (h, row["id"]))
 
 
 SESSION_COOKIE = "storyloot_session"
