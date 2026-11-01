@@ -31,11 +31,11 @@ async def verify(request: Request):
 
     payload = {"uid": uid, "email": email, "name": name, "photo": photo, "language": ""}
     with core.conn() as c:
-        res, _ = core.evaluate(c, payload, core.device_info(request, d), core.client_ip(request))
+        res, _ = core.evaluate(c, payload, core.device_info(request, d), core.client_ip(request), source="open")
     status = res.get("status", "pending")
     user = {"uid": uid, "name": res.get("user", {}).get("name") or name, "email": email,
             "photoUrl": photo, "status": status}
-    token = issue_session(uid, email, user["name"])
+    token = issue_session(uid, email, user["name"], user["photoUrl"])
     return respond(request, {"success": True, "status": status, "token": token, "user": user})
 
 
@@ -45,9 +45,12 @@ async def user_status(request: Request):
     s = read_session(request)
     if not s:
         return respond(request, {"success": False, "status": "unauthorized", "error": "Not signed in"}, 401)
-    payload = {"uid": s.get("uid", ""), "email": s.get("email", ""), "name": s.get("name", "")}
+    payload = {"uid": s.get("uid", ""), "email": s.get("email", ""), "name": s.get("name", ""), "photo": s.get("photo", "")}
+    # x-check: "open" (app opened / came back) logs every outcome, "periodic" (5-minute re-check) logs only a denial, "none" logs nothing
+    source = core.clean(request.headers.get("x-check")).lower()
+    source = source if source in ("open", "periodic", "none") else "periodic"
     with core.conn() as c:
-        res, _ = core.evaluate(c, payload, core.device_info(request, {}), core.client_ip(request))
+        res, _ = core.evaluate(c, payload, core.device_info(request, {}), core.client_ip(request), source=source)
     if res.get("success"):
         u = res["user"]
         res["user"] = {**u, "photo": u.get("photo", "")}
