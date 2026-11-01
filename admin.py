@@ -58,7 +58,7 @@ def _current_admin(request: Request, c) -> dict | None:
 
 
 # A person is one email (or uid when there is no email); the list shows each person once, with the newest entry.
-ENTRY_STATUS = {"pending": "pending", "expired": "expired", "multiple": "multiple", "blocked": "blocked", "active": "active", "buyers": "active"}
+ENTRY_STATUS = {"pending": "pending", "expired": "expired", "multiple": "multiple", "blocked": "blocked", "active": "active", "login": "login", "buyers": "active"}
 USERS_CTE = """
     e as (
         select id, status, lower(btrim(coalesce(nullif(btrim(email), ''), uid))) as ukey
@@ -97,7 +97,6 @@ def _entries_page(c, tab: str, before_id: int = 0):
         order by x.id desc limit {PAGE + 1}""", tuple(params))
     for row in rows:
         row["device"] = (" ".join(p for p in (row["brand"], row["model"]) if p).strip() or row["manufacturer"] or "Unknown Device")
-        row["browser"] = "Android App"
         row["count"] = int(row["count"] or 1)
     return rows[:PAGE], len(rows) > PAGE
 
@@ -243,8 +242,7 @@ async def api(request: Request):
                                 "where (uid = any(%s) or lower(email) = any(%s)) order by created desc, id desc limit 5000", (keys, [email] if email else []))
             for row in mine:
                 row["device"] = (" ".join(p for p in (row["brand"], row["model"]) if p).strip() or row["manufacturer"] or "Unknown Device")
-                row["browser"] = "Android App"
-
+        
             def shows(action_name):
                 seen, out = set(), []
                 for it in core.all_(c, "select show_id, show_name, show_url, created from library where uid = any(%s) and action = %s "
