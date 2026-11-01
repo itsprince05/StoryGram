@@ -813,31 +813,56 @@ async def handle_widevine_license(request: Request, show_id: Optional[str] = Non
     h = request.headers
     sid = show_id or h.get("show-id") or h.get("show_id") or request.query_params.get("show_id") or ""
 
-    if request.method == "GET":
-        sid = h.get("show-id", "").strip()
+    body_data = {}
+    if request.method in ["POST", "PUT"]:
+        try:
+            body_data = await request.json()
+        except Exception:
+            body_data = {}
+
+    if not sid and isinstance(body_data, dict):
+        sid = body_data.get("show_id") or body_data.get("showId") or ""
+
+    if not sid:
+        sid = h.get("show-id") or h.get("show_id") or h.get("showid") or request.query_params.get("show_id") or ""
+    sid = sid.strip()
+
+    is_raw_widevine_post = (request.method == "POST" and (h.get("content-type") == "application/octet-stream" or request.url.path.endswith("widevine-license")))
+
+    if not is_raw_widevine_post:
+        if not sid:
+            return JSONResponse(status_code=400, content={"status": 0, "success": False, "message": "Missing show_id"})
+
         account_id = os.getenv("GUMLET_ACCOUNT_ID", os.getenv("GUMLET_COLLECTION_ID", "")).strip()
         gumlet_secret = os.getenv("GUMLET_SECRET", "").strip()
 
-        if not sid or not account_id or not gumlet_secret:
-            return JSONResponse(status_code=404, content={"status": 0, "message": "License not available"})
+        license_url = None
+        if account_id and gumlet_secret:
+            now_ms = int(time.time() * 1000)
+            expires = now_ms + (2 * 3600 * 1000)
+            rental_duration = 777600
+            try:
+                secret_bytes = base64.b64decode(gumlet_secret)
+            except Exception:
+                secret_bytes = gumlet_secret.encode("utf-8")
+            string_for_token = f"/{account_id}/{sid}?expires={expires}&rental_duration={rental_duration}"
+            token = hmac.new(secret_bytes, string_for_token.encode("utf-8"), hashlib.sha1).hexdigest()
+            license_url = f"https://widevine.gumlet.com/licence/{account_id}/{sid}?expires={expires}&rental_duration={rental_duration}&token={token}"
+        elif LICENSE_SERVER_URL:
+            license_url = LICENSE_SERVER_URL.replace("{show_id}", sid)
+        else:
+            info = await get_or_resolve_upstream_license_url(sid, request)
+            if info and info.get("license_url"):
+                license_url = info["license_url"]
 
-        now_ms = int(time.time() * 1000)
-        expires = now_ms + (2 * 3600 * 1000)
-        rental_duration = 777600
+        if not license_url:
+            return JSONResponse(status_code=404, content={"status": 0, "success": False, "message": "License not available"})
 
-        try:
-            secret_bytes = base64.b64decode(gumlet_secret)
-        except Exception:
-            secret_bytes = gumlet_secret.encode("utf-8")
-
-        string_for_token = f"/{account_id}/{sid}?expires={expires}&rental_duration={rental_duration}"
-        token = hmac.new(secret_bytes, string_for_token.encode("utf-8"), hashlib.sha1).hexdigest()
-
-        final_url = f"https://widevine.gumlet.com/licence/{account_id}/{sid}?expires={expires}&rental_duration={rental_duration}&token={token}"
         return JSONResponse(status_code=200, content={
             "status": 1,
+            "success": True,
             "message": "License server",
-            "license_url": final_url
+            "license_url": license_url
         })
 
     target_license_url = h.get("license-url") or h.get("license_url") or request.query_params.get("url")
