@@ -769,8 +769,8 @@
 
         .badge-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
         .badge-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
-        .badge-multiple { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
-        .badge-expired { background: rgba(249, 115, 22, 0.2); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.4); }
+        .badge-multiple { background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.4); }
+        .badge-expired { background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); }
         .badge-blocked { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
 
         .bottom-sheet-overlay {
@@ -2984,7 +2984,7 @@ function openBuyerSheet(buyer) {
         vEl.style.color = '#4ade80';
     } else if (bVal > 0 && bNow > bVal) {
         vEl.textContent = 'Expired (' + formatISTValidity(buyer.validity) + ')';
-        vEl.style.color = '#fb923c';
+        vEl.style.color = '#a78bfa';
     } else {
         vEl.textContent = formatISTValidity(buyer.validity);
         vEl.style.color = '#4ade80';
