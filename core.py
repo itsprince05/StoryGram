@@ -87,9 +87,9 @@ def require_api_key(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized API request")
 
 
-def issue_session(uid: str, email: str, name: str = "") -> str:
+def issue_session(uid: str, email: str, name: str = "", photo: str = "") -> str:
     t = int(time.time())
-    return jwt.encode({"sub": uid or email, "uid": uid, "email": email, "name": name, "iat": t,
+    return jwt.encode({"sub": uid or email, "uid": uid, "email": email, "name": name, "photo": photo, "iat": t,
                        "exp": t + settings.SESSION_DAYS * 86400, "typ": "app"}, settings.SESSION_SECRET, algorithm="HS256")
 
 
@@ -238,15 +238,26 @@ def find_buyer(c, uid: str, email: str):
 
 
 def record_entry(c, e: dict, status: str, t: int) -> None:
+    """One row per app open (no de-duplication), so the admin sees every visit and its result."""
     try:
-        last = one(c, "select device, status from entries where uid = %s or email = %s order by id desc limit 1", (e["uid"], e["email"]))
-        if not last or last["device"] != e["device"] or last["status"] != status:
-            c.execute("insert into entries (uid, name, email, photo, device, manufacturer, brand, model, ip, status, created) "
-                      "values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                      (e["uid"], e["name"], e["email"], e["photo"], e["device"], e["manufacturer"], e["brand"], e["model"],
-                       e["ip"], status, t))
+        c.execute("insert into entries (uid, name, email, photo, device, manufacturer, brand, model, ip, status, created) "
+                  "values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                  (e["uid"], e["name"], e["email"], e["photo"], e["device"], e["manufacturer"], e["brand"], e["model"],
+                   e["ip"], status, t))
     except Exception as exc:
         print("entries log failed:", exc)
+
+
+def known_photo(c, uid: str, email: str) -> str:
+    """Last non-empty photo url stored for this user (buyers first, then earlier entries)."""
+    for table in ("buyers", "entries"):
+        for col, val in (("email", email), ("uid", uid)):
+            if not val:
+                continue
+            r = one(c, f"select photo from {table} where {col} = %s and coalesce(photo, '') <> '' order by id desc limit 1", (val,))
+            if r and r["photo"]:
+                return r["photo"]
+    return ""
 
 
 def _user(b: dict | None, e: dict, status: str, language="hindi", validity=0) -> dict:
@@ -273,7 +284,9 @@ def app_row(c):
     return one(c, "select * from app where status = 'active' order by id desc limit 1")
 
 
-def evaluate(c, d: dict, dev: dict, ip: str) -> tuple[dict, int]:
+def evaluate(c, d: dict, dev: dict, ip: str, source: str = "open") -> tuple[dict, int]:
+    """source: "open" = the user opened / signed in to the app (every outcome is logged, even active),
+    "periodic" = the 5-minute re-check (logged only when access is denied), "none" = never logged."""
     t = now()
     uid = first(d, "uid", "userId", "user_id", "google_id")
     email = first(d, "email")
@@ -282,6 +295,8 @@ def evaluate(c, d: dict, dev: dict, ip: str) -> tuple[dict, int]:
     if not email and not uid:
         return {"success": False, "status": "invalid_request", "error": "User ID or Email is required"}, 400
 
+    if not photo:
+        photo = known_photo(c, uid, email)
     device = dev["device"] or ("UNKNOWN_DEVICE_" + hashlib.md5((uid or email).encode()).hexdigest()[:12])
     e = {"uid": uid, "name": name, "email": email, "photo": photo, "device": device, "ip": ip,
          "manufacturer": dev["manufacturer"], "brand": dev["brand"], "model": dev["model"]}
@@ -297,9 +312,13 @@ def evaluate(c, d: dict, dev: dict, ip: str) -> tuple[dict, int]:
                     "user": {"uid": uid, "name": name, "email": email, "photo": photo, "device": device,
                              "status": "blocked", "validity": 0}}, 200
 
+    def log(status):
+        if source != "none":
+            record_entry(c, e, status, t)
+
     b = find_buyer(c, uid, email)
     if not b:
-        record_entry(c, e, "pending", t)
+        log("pending")
         return {"success": False, "status": "pending", "message": "No Access", "username": username,
                 "user": _user(None, e, "pending")}, 200
 
@@ -307,12 +326,17 @@ def evaluate(c, d: dict, dev: dict, ip: str) -> tuple[dict, int]:
     e["email"] = b["email"] or email
     e["name"] = name if (name and name != "User") else (b["name"] or name)
     e["photo"] = photo or b["photo"] or ""
+    if e["photo"] and e["photo"] != (b["photo"] or ""):
+        try:
+            c.execute("update buyers set photo=%s where id=%s", (e["photo"], b["id"]))
+        except Exception:
+            pass
     language = (b["language"] or "hindi").lower().strip()
     validity = int(b["validity"] or 0)
     registered = b["device"]
 
     def deny(status, message, **extra):
-        record_entry(c, e, status, t)
+        log(status)
         user_status = extra.pop("user_status", status)
         return {"success": False, "status": status, "message": message, "username": username, **extra,
                 "user": _user(b, e, user_status, language, validity)}, 200
@@ -345,5 +369,7 @@ def evaluate(c, d: dict, dev: dict, ip: str) -> tuple[dict, int]:
         language = final_lang
     except Exception:
         pass
+    if source == "open":
+        log("active")
     return {"success": True, "status": "active", "message": "Access granted successfully.", "username": username,
             "language": language, "validity": validity, "user": _user(b, e, "active", language, validity)}, 200
