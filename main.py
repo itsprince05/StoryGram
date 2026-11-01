@@ -1,9 +1,10 @@
 import os
+import re
 import asyncio
 import time
 import json
 from typing import Optional, List, Dict, Any
-from pathlib import Path
+from urllib.parse import urlencode, quote
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -72,9 +73,6 @@ def decrypt_drm_blob(client_ts: int, device_id: str, cipher_base64: str) -> str:
     aesgcm = AESGCM(derived_key)
     decrypted_bytes = aesgcm.decrypt(iv, ciphertext + tag, None)
     return decrypted_bytes.decode("utf-8")
-
-def is_supabase_configured() -> bool:
-    return bool(DATABASE_URL)
 
 async def init_db_pool():
     global db_pool
@@ -291,9 +289,7 @@ async def fetch_daily_cookies_from_website():
                         if key in ["auth-token", "auth_token", "token"] or (val.startswith("eyJ") and "." in val):
                             cached_token = val
 
-                body_str = res.text
-                import re
-                m = re.search(r"eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}", body_str)
+                m = re.search(r"eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}", res.text)
                 if m:
                     cached_token = m.group(0)
 
@@ -302,10 +298,10 @@ async def fetch_daily_cookies_from_website():
         except Exception as e:
             print(f"[GATEWAY] Failed to fetch daily session from {target_url}: {str(e)}")
 
-async def ensure_daily_session(force: bool = False):
+async def ensure_daily_session():
     global last_fetch_date, is_refreshing_cookies
     today = time.strftime("%Y-%m-%d")
-    if force or last_fetch_date != today or not cached_token:
+    if last_fetch_date != today or not cached_token:
         if not is_refreshing_cookies:
             is_refreshing_cookies = True
             try:
@@ -458,7 +454,6 @@ async def search_shows(request: Request):
     genre = h.get("genre") or request.query_params.get("genre") or ""
     lang = h.get("language") or h.get("selected_language") or h.get("selected-language") or request.query_params.get("language") or "hindi"
 
-    from urllib.parse import urlencode
     params = urlencode({"query": q, "genre": genre, "selected_language": lang, "language": lang})
     url = f"{UPSTREAM_API_URL}/v3/search/universal.search?{params}"
     status_code, data = await fetch_from_upstream(url, headers, "GET")
@@ -527,8 +522,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
     except (ValueError, TypeError):
         start_ptr = 0
 
-    from urllib.parse import urlencode
-
     async def fetch_single_pointer(ptr: int):
         params = urlencode({"show_id": sid, "curr_ptr": str(ptr), "info_level": str(ptr), "page_source": "show_detail"})
         target_url = f"{UPSTREAM_API_URL}/v2/content_api/show.get_details?{params}"
@@ -543,7 +536,7 @@ async def show_details(request: Request, show_id: Optional[str] = None):
     status_code = 200
     for ptr, code, res in results:
         if isinstance(res, dict) and res.get("result"):
-            base_data = json.loads(json.dumps(res))
+            base_data = res
             status_code = code
             break
 
@@ -690,9 +683,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         if not seq:
             seq = 1
 
-        if start_ptr > 0 and seq == 1:
-            continue
-
         if ep_id in cached_data and cached_data[ep_id].get("media_url"):
             media_url = cached_data[ep_id]["media_url"]
             video_url = cached_data[ep_id].get("video_url")
@@ -739,7 +729,7 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         "rank": primary_show.get("show_category_rank", 0) if primary_show else 0,
         "plays": raw_stats.get("total_plays", 0),
         "rating": raw_stats.get("avg_rating", 0),
-        "episodes": total_episodes if total_episodes > 0 else (len(formatted_stories) if primary_show else len(formatted_stories)),
+        "episodes": total_episodes or len(formatted_stories),
         "show_title": primary_show.get("show_title") or primary_show.get("title") or "" if primary_show else "",
         "show_id": primary_show.get("show_id") or sid if primary_show else sid,
         "image_url": primary_show.get("image_url") or primary_show.get("cover_url") or "" if primary_show else "",
@@ -752,53 +742,32 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         "result": [clean_show]
     })
 
-show_license_cache: Dict[str, Dict[str, str]] = {}
+show_license_cache: Dict[str, str] = {}
 
-async def get_or_resolve_upstream_license_url(show_id: str, request: Request) -> Optional[Dict[str, Any]]:
+async def get_upstream_license_url(show_id: str, request: Request) -> Optional[str]:
     if show_id in show_license_cache:
         return show_license_cache[show_id]
 
     headers = build_upstream_headers(request)
-    headers["platform"] = "android"
-    headers["version-name"] = "9.1.3"
-    headers["platform-version"] = "29"
-    headers["app-version"] = "2013"
-    headers["device-id"] = "mobile-web"
-    headers["device_id"] = "mobile-web"
-    headers["client-ts"] = "1770000000"
-    headers["content-type"] = "application/json;charset=utf-8"
-
-    from urllib.parse import quote
     target_url = f"{UPSTREAM_API_URL}/v2/content_api/show.play_details?show_id={quote(show_id)}"
-    status_code, data = await fetch_from_upstream(target_url, headers, "GET")
-
+    _, data = await fetch_from_upstream(target_url, headers, "GET")
     if not isinstance(data, dict):
         return None
 
-    blob = data.get("blob") or (data.get("result", {}) if isinstance(data.get("result"), dict) else {}).get("blob") or ""
-    message = data.get("message") or "Blob Data"
-    ts = data.get("ts")
-
+    result = data.get("result") if isinstance(data.get("result"), dict) else {}
+    blob = data.get("blob") or result.get("blob")
     license_url = None
     if blob:
         try:
             license_url = decrypt_drm_blob(1770000000, "mobile-web", blob)
         except Exception as e:
-            print(f"[LICENSE] Decryption warning for {show_id}: {str(e)}")
-            license_url = None
+            print(f"[LICENSE] Decryption failed for {show_id}: {e}")
     else:
-        license_url = data.get("license_url") or (data.get("result", {}) if isinstance(data.get("result"), dict) else {}).get("license_url")
+        license_url = data.get("license_url") or result.get("license_url")
 
-    if blob or license_url:
-        result = {
-            "license_url": license_url or "",
-            "blob": blob or "",
-            "message": message,
-            "ts": ts
-        }
-        show_license_cache[show_id] = result
-        return result
-    return None
+    if license_url:
+        show_license_cache[show_id] = license_url
+    return license_url
 
 @app.api_route("/license", methods=["GET", "POST"])
 @app.api_route("/license/{show_id}", methods=["GET", "POST"])
@@ -811,23 +780,20 @@ async def get_or_resolve_upstream_license_url(show_id: str, request: Request) ->
 async def handle_widevine_license(request: Request, show_id: Optional[str] = None):
     await ensure_daily_session()
     h = request.headers
-    sid = show_id or h.get("show-id") or h.get("show_id") or request.query_params.get("show_id") or ""
+    sid = show_id or h.get("show-id") or h.get("show_id") or h.get("showid") or request.query_params.get("show_id") or ""
 
-    body_data = {}
-    if request.method in ["POST", "PUT"]:
+    is_raw_widevine_post = request.method == "POST" and (
+        h.get("content-type") == "application/octet-stream" or "widevine-license" in request.url.path
+    )
+
+    if not sid and request.method == "POST" and not is_raw_widevine_post:
         try:
             body_data = await request.json()
+            if isinstance(body_data, dict):
+                sid = body_data.get("show_id") or body_data.get("showId") or ""
         except Exception:
-            body_data = {}
-
-    if not sid and isinstance(body_data, dict):
-        sid = body_data.get("show_id") or body_data.get("showId") or ""
-
-    if not sid:
-        sid = h.get("show-id") or h.get("show_id") or h.get("showid") or request.query_params.get("show_id") or ""
+            pass
     sid = sid.strip()
-
-    is_raw_widevine_post = (request.method == "POST" and (h.get("content-type") == "application/octet-stream" or request.url.path.endswith("widevine-license")))
 
     if not is_raw_widevine_post:
         if not sid:
@@ -851,9 +817,7 @@ async def handle_widevine_license(request: Request, show_id: Optional[str] = Non
         elif LICENSE_SERVER_URL:
             license_url = LICENSE_SERVER_URL.replace("{show_id}", sid)
         else:
-            info = await get_or_resolve_upstream_license_url(sid, request)
-            if info and info.get("license_url"):
-                license_url = info["license_url"]
+            license_url = await get_upstream_license_url(sid, request)
 
         if not license_url:
             return JSONResponse(status_code=404, content={"status": 0, "success": False, "message": "License not available"})
@@ -869,8 +833,7 @@ async def handle_widevine_license(request: Request, show_id: Optional[str] = Non
     if not target_license_url:
         if not sid:
             return JSONResponse(status_code=400, content={"success": False, "error": "Missing show_id or license_url"})
-        info = await get_or_resolve_upstream_license_url(sid, request)
-        target_license_url = info.get("license_url") if info else None
+        target_license_url = await get_upstream_license_url(sid, request)
 
     if not target_license_url:
         return Response(content="Could not scrape upstream license for show", status_code=404)
@@ -894,7 +857,7 @@ async def handle_widevine_license(request: Request, show_id: Optional[str] = Non
             return Response(content=f"Widevine proxy error: {str(e)}", status_code=500)
 
 @app.get("/")
-async def root_status(request: Request):
+async def root_status():
     return {
         "status": "online",
         "service": "running"
