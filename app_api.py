@@ -11,7 +11,7 @@ router = APIRouter()
 
 @router.post("/api/verify")
 async def verify(request: Request):
-    check_signature(request)
+    await check_signature(request)
     d = await read_payload(request)
     id_token = core.clean(d.get("idToken"))
     if not id_token:
@@ -35,13 +35,13 @@ async def verify(request: Request):
     status = res.get("status", "pending")
     user = {"uid": uid, "name": res.get("user", {}).get("name") or name, "email": email,
             "photoUrl": photo, "status": status}
-    token = issue_session(uid, email, user["name"], user["photoUrl"])
+    token = issue_session(uid, email, user["name"], user["photoUrl"], core.device_info(request, d)["device"])
     return respond(request, {"success": True, "status": status, "token": token, "user": user})
 
 
 @router.get("/api/user/status")
 async def user_status(request: Request):
-    check_signature(request)
+    await check_signature(request)
     s = read_session(request)
     if not s:
         return respond(request, {"success": False, "status": "unauthorized", "error": "Not signed in"}, 401)
@@ -60,7 +60,7 @@ async def user_status(request: Request):
 
 @router.post("/api/user/language")
 async def set_language(request: Request):
-    check_signature(request)
+    await check_signature(request)
     s = read_session(request)
     if not s:
         return respond(request, {"success": False, "error": "Not signed in"}, 401)
@@ -84,12 +84,12 @@ async def record_visit(request: Request):
     return respond(request, {"success": True})
 
 
-def _caller(request: Request) -> tuple[str | None, bool]:
+async def _caller(request: Request) -> tuple[str | None, bool]:
     try:
         require_api_key(request)
         return None, True
     except HTTPException:
-        check_signature(request)
+        await check_signature(request)
         s = read_session(request)
         if not s:
             raise HTTPException(status_code=401, detail="Not signed in")
@@ -99,7 +99,7 @@ def _caller(request: Request) -> tuple[str | None, bool]:
 @router.api_route("/library", methods=["GET", "POST"])
 @router.api_route("/api/database/library", methods=["GET", "POST"])
 async def library(request: Request):
-    forced_uid, trusted = _caller(request)
+    forced_uid, trusted = await _caller(request)
     d = await read_payload(request)
     d = {**dict(request.query_params), **(d if isinstance(d, dict) else {})}
     method = request.method
@@ -171,7 +171,7 @@ async def episodes(request: Request):
         require_api_key(request)
     except HTTPException:
         trusted = False
-        check_signature(request)
+        await check_signature(request)
         if not read_session(request):
             raise HTTPException(status_code=401, detail="Not signed in")
     d = await read_payload(request)
