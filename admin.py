@@ -1,3 +1,5 @@
+import hmac
+import re
 import time
 from pathlib import Path
 
@@ -19,7 +21,13 @@ VALIDITY = {"1_hour": 3600, "1_day": 86400, "1_week": 7 * 86400, "1_month": 30 *
             "3_months": 90 * 86400, "6_months": 180 * 86400}
 
 
+BCRYPT_HASH = re.compile(r"^\$2[aby]\$\d{2}\$.{53}$")
+
+
 def _check_password(plain: str, stored: str) -> bool:
+    if not BCRYPT_HASH.match(stored or ""):
+        # a plain-text password typed straight into the admins table (the database trigger normally hashes it on save)
+        return hmac.compare_digest(plain.encode(), (stored or "").encode()) and bool(stored)
     try:
         return bcrypt.checkpw(plain.encode(), stored.replace("$2y$", "$2b$", 1).encode())
     except ValueError:
@@ -100,11 +108,14 @@ async def login(request: Request):
     if core.too_many("adm-ip:" + core.client_ip(request), 20, 900) or core.too_many("adm-user:" + user, 10, 900):
         return JSONResponse({"success": False, "message": "Too many attempts. Try again in a few minutes."}, 429)
     with core.conn() as c:
-        row = core.one(c, "select * from admins where username=%s", (user,)) if user and pw else None
+        row = core.one(c, "select * from admins where lower(username)=%s", (user,)) if user and pw else None
         if row and row["status"] == "blocked":
             return JSONResponse({"success": False, "message": "Your access is blocked"}, 403)
         if not row or not _check_password(pw, row["password"]):
             return JSONResponse({"success": False, "message": "Invalid username or password"}, 401)
+        if not BCRYPT_HASH.match(row["password"] or ""):
+            # first login with a plain-text password: keep only the hash from now on
+            c.execute("update admins set password=%s where id=%s", (bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode(), row["id"]))
     r = JSONResponse({"success": True, "name": row["name"], "role": row["role"]})
     https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
     r.set_cookie(COOKIE, _issue(row), max_age=settings.ADMIN_SESSION_SECONDS, httponly=True, secure=https,
