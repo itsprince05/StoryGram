@@ -57,18 +57,78 @@ def _current_admin(request: Request, c) -> dict | None:
     return row
 
 
+# A person is one email (or uid when there is no email); the list shows each person once, with the newest entry.
+ENTRY_STATUS = {"pending": "pending", "expired": "expired", "multiple": "multiple", "blocked": "blocked", "active": "active", "buyers": "active"}
+USERS_CTE = """
+    e as (
+        select id, status, lower(btrim(coalesce(nullif(btrim(email), ''), uid))) as ukey
+        from entries
+        where (btrim(coalesce(email, '')) <> '' or btrim(coalesce(uid, '')) <> ''){hid}
+    ),
+    r as (
+        select id, status, ukey,
+               row_number() over (partition by ukey order by id desc) as rn,
+               count(*) over (partition by ukey) as total,
+               sum(case when status = %s then 1 else 0 end) over (partition by ukey) as same
+        from e
+    )"""
+
+
+def _hidden(hide):
+    return " and (uid is null or not (uid = any(%s)))" if hide else ""
+
+
+def _entries_page(c, tab: str, before_id: int = 0):
+    """One row per person (their newest entry). tab "all" = every person; a status = people whose newest entry has that status."""
+    hide = settings.HIDDEN_UIDS
+    status = ENTRY_STATUS.get(tab)
+    params = list((hide,) if hide else ()) + [status or ""]
+    where = "r.rn = 1" + (" and r.status = %s" if status else "") + (" and x.id < %s" if before_id else "")
+    if status:
+        params.append(status)
+    if before_id:
+        params.append(before_id)
+    rows = core.all_(c, f"""
+        with {USERS_CTE.format(hid=_hidden(hide))}
+        select x.id, x.uid, x.name, x.email, x.photo, x.ip, x.device as device_id, x.manufacturer, x.brand, x.model,
+               x.status, x.created, {"r.same" if status else "r.total"} as count
+        from r join entries x on x.id = r.id
+        where {where}
+        order by x.id desc limit {PAGE + 1}""", tuple(params))
+    for row in rows:
+        row["device"] = (" ".join(p for p in (row["brand"], row["model"]) if p).strip() or row["manufacturer"] or "Unknown Device")
+        row["browser"] = "Android App"
+        row["count"] = int(row["count"] or 1)
+    return rows[:PAGE], len(rows) > PAGE
+
+
+def _buyers_page(c, before_updated: int = 0, before_id: int = 0):
+    hide = settings.HIDDEN_UIDS
+    params = list((hide,) if hide else ())
+    where = "true" + (_hidden(hide))
+    if before_id or before_updated:
+        where += " and (updated, id) < (%s, %s)"
+        params += [before_updated, before_id]
+    rows = core.all_(c, f"select * from buyers where {where} order by updated desc, id desc limit {PAGE + 1}", tuple(params))
+    return rows[:PAGE], len(rows) > PAGE
+
+
 def _stats(c, t: int) -> dict:
     hide = settings.HIDDEN_UIDS
     ex = " and (uid is null or not (uid = any(%s)))" if hide else ""
     a = (hide,) if hide else ()
     def n(sql, *p):
         return core.one(c, sql, p)["n"]
+    people = core.all_(c, f"""
+        with {USERS_CTE.format(hid=_hidden(hide))}
+        select status, count(*) as n from r where rn = 1 group by status""", a + ("",))
+    by = {p["status"]: int(p["n"]) for p in people}
     return {
-        "entries": n(f"select count(*) n from entries where true{ex}", *a),
-        "entries_pending": n(f"select count(*) n from entries where status='pending'{ex}", *a),
-        "entries_expired": n(f"select count(*) n from entries where status='expired'{ex}", *a),
-        "entries_multiple": n(f"select count(*) n from entries where status='multiple'{ex}", *a),
-        "entries_blocked": n(f"select count(*) n from entries where status='blocked'{ex}", *a),
+        "entries": sum(by.values()),
+        "entries_pending": by.get("pending", 0),
+        "entries_expired": by.get("expired", 0),
+        "entries_multiple": by.get("multiple", 0),
+        "entries_blocked": by.get("blocked", 0),
         "buyers": n(f"select count(*) n from buyers where true{ex}", *a),
         "active": n(f"select count(*) n from buyers where status='active' and (validity=0 or validity>=%s){ex}", t, *a),
         "expired": n(f"select count(*) n from buyers where status='active' and validity>0 and validity<%s{ex}", t, *a),
@@ -149,29 +209,54 @@ async def api(request: Request):
         a = (hide,) if hide else ()
 
         if action == "get_data":
-            entries = core.all_(c, f"select * from entries{ex} order by id desc limit {PAGE + 1}", a)
-            buyers = core.all_(c, f"select * from buyers{ex} order by updated desc, id desc limit {PAGE + 1}", a)
+            entries, more_e = _entries_page(c, "all")
+            buyers, more_b = _buyers_page(c)
             out = {"success": True, "currentTime": t, "stats": _stats(c, t),
                    "me": {"id": me["id"], "name": me["name"], "username": me["username"], "role": me["role"]},
-                   "entries": entries[:PAGE], "has_more_entries": len(entries) > PAGE,
-                   "buyers": buyers[:PAGE], "has_more_buyers": len(buyers) > PAGE,
+                   "entries": entries, "has_more_entries": more_e,
+                   "buyers": buyers, "has_more_buyers": more_b,
                    "apps": _apps(c)}
             if owner:
                 out["admins"] = _admins(c)
             return out
 
-        # next page while scrolling: the rows right after the last one the page already shows
-        if action == "more_entries":
-            hid = " and (uid is null or not (uid = any(%s)))" if hide else ""
-            rows = core.all_(c, f"select * from entries where id < %s{hid} order by id desc limit {PAGE + 1}",
-                             (int(d.get("before_id") or 0),) + a)
-            return {"success": True, "entries": rows[:PAGE], "has_more": len(rows) > PAGE}
+        # entries of one filter tab (all / pending / expired / multiple / blocked); before_id = next page while scrolling
+        if action == "get_tab_entries":
+            tab = core.clean(d.get("tab")).lower() or "all"
+            rows, more = _entries_page(c, tab, int(d.get("before_id") or 0))
+            return {"success": True, "tab": tab, "entries": rows, "has_more": more, "stats": _stats(c, t), "currentTime": t}
 
-        if action == "more_buyers":
-            hid = " and (uid is null or not (uid = any(%s)))" if hide else ""
-            rows = core.all_(c, f"select * from buyers where (updated, id) < (%s, %s){hid} order by updated desc, id desc limit {PAGE + 1}",
-                             (int(d.get("before_updated") or 0), int(d.get("before_id") or 0)) + a)
-            return {"success": True, "buyers": rows[:PAGE], "has_more": len(rows) > PAGE, "currentTime": t}
+        if action in ("get_buyers_list", "more_buyers"):
+            rows, more = _buyers_page(c, int(d.get("before_updated") or 0), int(d.get("before_id") or 0))
+            return {"success": True, "buyers": rows, "has_more": more, "stats": _stats(c, t), "currentTime": t}
+
+        if action == "get_admins_list":
+            return {"success": True, "admins": _admins(c) if owner else [], "currentTime": t}
+
+        # everything one person did: every entry, watched shows (history) and saved shows (favorites)
+        if action == "get_user_activity":
+            uid, email = core.clean(d.get("uid")), core.clean(d.get("email")).lower()
+            if not uid and not email:
+                return {"success": False, "message": "User UID or Email required"}
+            keys = [k for k in (uid, email) if k]
+            mine = core.all_(c, "select id, uid, name, email, ip, device as device_id, manufacturer, brand, model, status, created from entries "
+                                "where (uid = any(%s) or lower(email) = any(%s)) order by created desc, id desc limit 5000", (keys, [email] if email else []))
+            for row in mine:
+                row["device"] = (" ".join(p for p in (row["brand"], row["model"]) if p).strip() or row["manufacturer"] or "Unknown Device")
+                row["browser"] = "Android App"
+
+            def shows(action_name):
+                seen, out = set(), []
+                for it in core.all_(c, "select show_id, show_name, show_url, created from library where uid = any(%s) and action = %s "
+                                       "order by created desc limit 200", (keys, action_name)):
+                    k = it["show_id"] or it["show_name"].lower()
+                    if k not in seen:
+                        seen.add(k)
+                        out.append({"show_name": it["show_name"] or "Untitled Show", "show_url": it["show_url"] or "", "created": it["created"]})
+                return out
+            history, favorites = shows("history"), shows("saved")
+            return {"success": True, "entries": mine, "history": history, "favorites": favorites,
+                    "total_entries": len(mine), "total_history": len(history), "total_favorites": len(favorites)}
 
         if action == "add_admin":
             if not owner:
