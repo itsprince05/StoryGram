@@ -2163,10 +2163,9 @@ button:focus,
                         <button type="button" class="filter-btn" data-filter="pending" onclick="setEntriesFilter('pending', this)"><span>Pending (<span id="pendingEntriesCount">0</span>)</span></button>
                         <button type="button" class="filter-btn" data-filter="expired" onclick="setEntriesFilter('expired', this)"><span>Expired (<span id="expiredEntriesCount">0</span>)</span></button>
                     </div>
-                    <div class="filter-row-2">
+                    <div class="filter-row-2" style="grid-template-columns: repeat(2, 1fr);">
                         <button type="button" class="filter-btn" data-filter="multiple" onclick="setEntriesFilter('multiple', this)"><span>Multiple Device (<span id="multipleEntriesCount">0</span>)</span></button>
                         <button type="button" class="filter-btn" data-filter="blocked" onclick="setEntriesFilter('blocked', this)"><span>Blocked (<span id="blockedEntriesCount">0</span>)</span></button>
-                        <button type="button" class="filter-btn" id="btnRefreshEntries" onclick="manualRefreshList(this)"><span>Refresh List</span></button>
                     </div>
                 </div>
 
@@ -2178,6 +2177,10 @@ button:focus,
                             <i data-lucide="x" style="width: 14px; height: 14px;"></i>
                         </button>
                     </div>
+                    <button type="button" id="btnRefreshEntries" class="btn-refresh-icon" onclick="manualRefreshList(this)" title="Refresh Entries">
+                        <i data-lucide="rotate-cw" id="iconRefreshEntries" class="nav-icon-default" style="width: 15px; height: 15px;"></i>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader nav-icon-loading spin-animation"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg>
+                    </button>
                 </div>
 
                 <div class="user-list" id="entriesListContainer">
@@ -2398,12 +2401,6 @@ button:focus,
                             <div style="display: flex; align-items: baseline; gap: 6px; word-break: break-all;">
                                 <span class="detail-label" style="flex-shrink: 0;">Device</span>
                                 <span class="detail-value" id="sheet_entry_device">Unknown Device</span>
-                            </div>
-                        </div>
-                        <div class="detail-item full-span">
-                            <div style="display: flex; align-items: baseline; gap: 6px; word-break: break-all;">
-                                <span class="detail-label" style="flex-shrink: 0;">Browser</span>
-                                <span class="detail-value" id="sheet_entry_browser">Unknown Browser</span>
                             </div>
                         </div>
                         <div class="detail-item full-span">
@@ -3128,7 +3125,7 @@ function isUserActiveBuyer(item) {
     }
 
     const s = (item.statusNorm || item.status || 'pending').toString().toLowerCase().trim();
-    if (s === 'active' || s === 'access') return true;
+    if (s === 'active' || s === 'access' || s === 'login') return true;
 
     return false;
 }
@@ -3155,7 +3152,7 @@ function renderEntriesDOM() {
 
     for (let i = 0; i < groupedList.length; i++) {
         const e = groupedList[i];
-        const searchData = ((e.name || '') + ' ' + (e.email || '') + ' ' + (e.device || '') + ' ' + (e.browser || '')).toLowerCase();
+        const searchData = ((e.name || '') + ' ' + (e.email || '')).toLowerCase();
         const matchesSearch = !currentEntrySearchQuery || searchData.includes(currentEntrySearchQuery);
         if (matchesSearch) {
             html += renderEntryItemHtml(e);
@@ -3179,12 +3176,7 @@ function renderEntriesDOM() {
 function renderEntryItemHtml(e) {
     const statusNorm = (e.status || 'pending').toString().toLowerCase().trim();
     const deviceVal = (e.device && e.device !== 'None') ? e.device : 'Unknown Device';
-    let browserVal = (e.browser && e.browser !== 'None') ? e.browser : 'Unknown Browser';
-    const lowBro = browserVal.toLowerCase();
-    if (lowBro === 'like' || lowBro === 'e148' || lowBro === '15e148' || lowBro.includes('e148')) {
-        browserVal = 'Safari';
-    }
-    const searchData = ((e.name || '') + ' ' + (e.email || '') + ' ' + deviceVal + ' ' + browserVal).toLowerCase();
+    const searchData = ((e.name || '') + ' ' + (e.email || '')).toLowerCase();
     const entryId = parseInt(e.id, 10);
     const photo = (e.photo || '').trim();
     const name = e.name || 'User';
@@ -3202,8 +3194,8 @@ function renderEntryItemHtml(e) {
     let statusTitle = '';
     if (statusNorm === 'inspect') {
         statusTitle = 'Inspect';
-    } else if (statusNorm === 'access' || statusNorm === 'active') {
-        statusTitle = 'Access';
+    } else if (statusNorm === 'access' || statusNorm === 'active' || statusNorm === 'login') {
+        statusTitle = 'Login';
     } else if (statusNorm === 'free') {
         statusTitle = 'Free';
     } else {
@@ -3212,7 +3204,7 @@ function renderEntryItemHtml(e) {
     const badgeText = `${count} - ${statusTitle}`;
 
     let badgeHtml = '';
-    if (statusNorm === 'active' || statusNorm === 'access') badgeHtml = `<span class="badge badge-active">${escapeHtml(badgeText)}</span>`;
+    if (statusNorm === 'active' || statusNorm === 'access' || statusNorm === 'login') badgeHtml = `<span class="badge badge-active">${escapeHtml(badgeText)}</span>`;
     else if (statusNorm === 'free') badgeHtml = `<span class="badge badge-free">${escapeHtml(badgeText)}</span>`;
     else if (statusNorm === 'expired') badgeHtml = `<span class="badge badge-expired">${escapeHtml(badgeText)}</span>`;
     else if (statusNorm === 'blocked') badgeHtml = `<span class="badge badge-blocked">${escapeHtml(badgeText)}</span>`;
@@ -3235,11 +3227,6 @@ function renderEntryItemHtml(e) {
                 <div class="user-info-text">
                     <div class="user-name-title">${escapeHtml(name)}</div>
                     <div class="user-email-subtitle">${escapeHtml(email)}</div>
-                    <div class="user-meta-subline">
-                        <span class="user-meta-device">${escapeHtml(deviceVal)}</span>
-                        <span style="opacity: 0.4;">•</span>
-                        <span class="user-meta-browser">${escapeHtml(browserVal)}</span>
-                    </div>
                 </div>
             </div>
             <div class="entry-badge-wrap">
@@ -4074,13 +4061,6 @@ function openEntrySheet(entry) {
     if (uidEl) uidEl.textContent = entry.uid || 'N/A';
     const deviceEl = document.getElementById('sheet_entry_device');
     if (deviceEl) deviceEl.textContent = ((entry.device && entry.device !== 'None') ? entry.device : 'Unknown Device') + (entry.device_id ? ' \u2022 ' + entry.device_id : '');
-    const browserEl = document.getElementById('sheet_entry_browser');
-    let sheetBrowser = (entry.browser && entry.browser !== 'None') ? entry.browser : 'Unknown Browser';
-    const lowSheetBro = sheetBrowser.toLowerCase();
-    if (lowSheetBro === 'like' || lowSheetBro === 'e148' || lowSheetBro === '15e148' || lowSheetBro.includes('e148')) {
-        sheetBrowser = 'Safari';
-    }
-    if (browserEl) browserEl.textContent = sheetBrowser;
     const ipEl = document.getElementById('sheet_entry_ip');
     if (ipEl) ipEl.textContent = cleanIp || entry.ip || 'N/A';
 
@@ -4106,8 +4086,8 @@ function openEntrySheet(entry) {
     let statusTitle = '';
     if (s === 'inspect') {
         statusTitle = 'Inspect';
-    } else if (s === 'access' || s === 'active') {
-        statusTitle = 'Access';
+    } else if (s === 'access' || s === 'active' || s === 'login') {
+        statusTitle = 'Login';
     } else if (s === 'free') {
         statusTitle = 'Free';
     } else {
@@ -4116,7 +4096,7 @@ function openEntrySheet(entry) {
     const badgeText = `${count} - ${statusTitle}`;
 
     if (statusBadge) {
-        if (s === 'active' || s === 'access') {
+        if (s === 'active' || s === 'access' || s === 'login') {
             statusBadge.innerHTML = '<span class="badge badge-active">' + escapeHtml(badgeText) + '</span>';
         } else if (s === 'free') {
             statusBadge.innerHTML = '<span class="badge badge-free">' + escapeHtml(badgeText) + '</span>';
@@ -4180,7 +4160,7 @@ function openEntrySheet(entry) {
         if (submitText) submitText.textContent = 'Extend Validity';
         if (submitIcon) submitIcon.setAttribute('data-lucide', 'clock');
         if (submitBtn) submitBtn.disabled = true;
-    } else if (s === 'active' || s === 'access') {
+    } else if (s === 'active' || s === 'access' || s === 'login') {
         if (validitySection) validitySection.style.display = 'block';
         if (submitText) submitText.textContent = 'Extend Validity';
         if (submitIcon) submitIcon.setAttribute('data-lucide', 'clock');
@@ -4764,8 +4744,8 @@ function renderSingleActivityEntryHtml(item) {
     let statusTitle = '';
     let badgeClass = '';
 
-    if (sNorm === 'access' || sNorm === 'active') {
-        statusTitle = 'Access';
+    if (sNorm === 'access' || sNorm === 'active' || sNorm === 'login') {
+        statusTitle = 'Login';
         badgeClass = 'badge-active';
     } else if (sNorm === 'free') {
         statusTitle = 'Free';
@@ -4789,11 +4769,6 @@ function renderSingleActivityEntryHtml(item) {
 
     const cleanIp = extractCleanIp(item.ip);
     const deviceVal = (item.device && item.device !== 'None') ? item.device : 'Unknown Device';
-    let browserVal = (item.browser && item.browser !== 'None') ? item.browser : 'Unknown Browser';
-    const lowBro = browserVal.toLowerCase();
-    if (lowBro === 'like' || lowBro === 'e148' || lowBro === '15e148' || lowBro.includes('e148')) {
-        browserVal = 'Safari';
-    }
     const timeFormatted = formatISTCreatedTime(item.created);
 
     return `
@@ -4807,10 +4782,6 @@ function renderSingleActivityEntryHtml(item) {
                     <div class="ua-entry-line">
                         <span class="ua-entry-line-label">Device:</span>
                         <span class="ua-entry-line-val">${escapeHtml(deviceVal)}</span>
-                    </div>
-                    <div class="ua-entry-line">
-                        <span class="ua-entry-line-label">Browser:</span>
-                        <span class="ua-entry-line-val">${escapeHtml(browserVal)}</span>
                     </div>
                     <div class="ua-entry-line" id="ua_ip_row_${entryId}" style="display: none;">
                         <span class="ua-entry-line-label">IP Address:</span>
