@@ -87,9 +87,9 @@ def require_api_key(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized API request")
 
 
-def issue_session(uid: str, email: str, name: str = "", photo: str = "") -> str:
+def issue_session(uid: str, email: str, name: str = "", photo: str = "", device: str = "") -> str:
     t = int(time.time())
-    return jwt.encode({"sub": uid or email, "uid": uid, "email": email, "name": name, "photo": photo, "iat": t,
+    return jwt.encode({"sub": uid or email, "uid": uid, "email": email, "name": name, "photo": photo, "dev": device, "iat": t,
                        "exp": t + settings.SESSION_DAYS * 86400, "typ": "app"}, settings.SESSION_SECRET, algorithm="HS256")
 
 
@@ -106,7 +106,12 @@ def read_session(request: Request) -> dict | None:
         data = jwt.decode(token, settings.SESSION_SECRET, algorithms=["HS256"])
     except jwt.PyJWTError:
         return None
-    return data if data.get("typ") == "app" else None
+    if data.get("typ") != "app":
+        return None
+    bound, sent = data.get("dev") or "", clean(request.headers.get("x-device-id"))
+    if bound and sent and bound != sent:   # a stolen session token does not work from another phone
+        return None
+    return data
 
 
 def verify_firebase_token(id_token: str) -> dict:
@@ -149,25 +154,65 @@ def encrypt_payload(plain: str) -> str:
     return f"{b(iv)}.{b(out[-16:])}.{b(out[:-16])}"
 
 
-def check_signature(request: Request) -> None:
+_bad: dict[str, list[float]] = {}
+_blocked: dict[str, float] = {}
+_hits: dict[str, list[float]] = {}
+
+
+def too_many(key: str, limit: int, window: int) -> bool:
+    """Sliding-window counter: True once `key` has made more than `limit` calls in the last `window` seconds."""
+    t = time.time()
+    if len(_hits) > 20000:
+        for k in [k for k, v in _hits.items() if not v or v[-1] < t - 3600]:
+            _hits.pop(k, None)
+    arr = [x for x in _hits.get(key, []) if x > t - window]
+    arr.append(t)
+    _hits[key] = arr
+    return len(arr) > limit
+
+
+def _reject(request: Request, why: str) -> None:
+    """Every failed signature looks the same from outside; 15 failures in 10 minutes block the address for 15 minutes."""
+    ip = client_ip(request)
+    t = time.time()
+    if len(_bad) > 20000:
+        _bad.clear()
+    hits = [x for x in _bad.get(ip, []) if x > t - 600] + [t]
+    _bad[ip] = hits
+    if len(hits) >= 15:
+        _blocked[ip] = t + 900
+    print("rejected request:", why, request.method, request.url.path, ip)
+    raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+async def check_signature(request: Request) -> None:
+    """Only the app can pass: HMAC over method, path, time, nonce, sha256(body) and device id, a fresh nonce, and an encrypted body."""
     if not transport_enabled():
         return
+    if _blocked.get(client_ip(request), 0) > time.time():
+        raise HTTPException(status_code=429, detail="Too many requests")
     t = request.headers.get("x-sl-t", "")
     nonce = request.headers.get("x-sl-n", "")
     sig = request.headers.get("x-sl-s", "")
-    if not (t.isdigit() and nonce and sig):
-        raise HTTPException(status_code=401, detail="Missing signature")
+    if not (t.isdigit() and 8 <= len(nonce) <= 64 and sig):
+        _reject(request, "missing signature")
     if abs(time.time() * 1000 - int(t)) > 5 * 60 * 1000:
-        raise HTTPException(status_code=401, detail="Stale request")
+        _reject(request, "stale")
+    body = await request.body()
+    if body and request.headers.get("x-sl-req-enc") != "1":
+        _reject(request, "plain body")
     path = "/" + "/".join(p for p in request.url.path.split("/") if p) if request.url.path.strip("/") else "/"
-    expect = hmac.new(settings.SIGN_KEY.encode(), f"{request.method.upper()}:{path}:{t}:{nonce}".encode(), hashlib.sha256).hexdigest()
+    device = clean(request.headers.get("x-device-id"))
+    msg = f"{request.method.upper()}:{path}:{t}:{nonce}:{hashlib.sha256(body).hexdigest()}:{device}"
+    expect = hmac.new(settings.SIGN_KEY.encode(), msg.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expect, sig):
-        raise HTTPException(status_code=401, detail="Bad signature")
+        _reject(request, "bad signature")
     cutoff = time.time() - 600
-    for k in [k for k, v in _seen_nonces.items() if v < cutoff]:
-        _seen_nonces.pop(k, None)
-    if nonce in _seen_nonces:
-        raise HTTPException(status_code=401, detail="Replay")
+    if len(_seen_nonces) > 5000:
+        for k in [k for k, v in _seen_nonces.items() if v < cutoff]:
+            _seen_nonces.pop(k, None)
+    if nonce in _seen_nonces and _seen_nonces[nonce] >= cutoff:
+        _reject(request, "replay")
     _seen_nonces[nonce] = time.time()
 
 
@@ -190,7 +235,7 @@ async def read_payload(request: Request) -> dict:
 
 
 def respond(request: Request, data: dict, status: int = 200) -> Response:
-    if transport_enabled() and request.headers.get("x-sl-req-enc") == "1":
+    if transport_enabled() and "1" in (request.headers.get("x-sl-req-enc"), request.headers.get("x-sl-res-enc")):
         return Response(encrypt_payload(json.dumps(data, ensure_ascii=False)), status_code=status,
                         media_type="text/plain", headers={"x-sl-encrypted": "1"})
     return JSONResponse(data, status_code=status)
