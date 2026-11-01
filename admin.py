@@ -132,7 +132,7 @@ async def api(request: Request):
         if action == "get_data":
             out = {"success": True, "currentTime": t, "stats": _stats(c, t),
                    "me": {"id": me["id"], "name": me["name"], "username": me["username"], "role": me["role"]},
-                   "entries": core.all_(c, f"select * from entries{ex} order by id desc limit 200", a),
+                   "entries": core.all_(c, f"select * from entries{ex} order by id desc limit 500", a),
                    "buyers": core.all_(c, f"select * from buyers{ex} order by updated desc, id desc limit 200", a),
                    "apps": _apps(c)}
             if owner:
