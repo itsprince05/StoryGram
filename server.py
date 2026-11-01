@@ -54,9 +54,10 @@ async def health():
     try:
         with core.conn() as c:
             core.one(c, "select 1 as ok")
-        return {"ok": True, "db": True}
+        return {"status": "online", "service": "running"}
     except Exception as exc:
-        return JSONResponse({"ok": False, "db": False, "error": str(exc)[:200]}, status_code=503)
+        print("health: db check failed:", repr(exc)[:200])
+        return JSONResponse({"status": "offline", "service": "down"}, status_code=503)
 
 
 def _pick(d: dict, header: str, request: Request, *keys: str, default: str = "") -> str:
