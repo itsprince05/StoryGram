@@ -83,8 +83,12 @@ def _latest_device_info(c, email: str, uid: str):
 
 
 @router.get("/admin")
-async def admin_page():
-    return FileResponse(HERE / "admin.html", headers={"Cache-Control": "no-store"})
+async def admin_page(request: Request):
+    # Nobody gets the dashboard code before logging in: a signed-in admin receives admin.html, everyone else only the small login page.
+    with core.conn() as c:
+        signed_in = _current_admin(request, c) is not None
+    page = "admin.html" if signed_in else "admin_login.html"
+    return FileResponse(HERE / page, headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
 
 
 @router.post("/admin/login")
