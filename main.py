@@ -19,14 +19,15 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from config import (
     PORT,
-    UPSTREAM_API_URL,
-    UPSTREAM_WEB_URL,
-    UPSTREAM_HOST,
-    UPSTREAM_APP_NAME,
-    APP_USER_AGENT,
     DATABASE_URL,
     LICENSE_SERVER_URL,
 )
+
+UPSTREAM_API_URL = "https://api.pocketfm.com"
+UPSTREAM_WEB_URL = "https://pocketfm.com/"
+UPSTREAM_HOST = "api.pocketfm.com"
+UPSTREAM_APP_NAME = "pocket_fm"
+APP_USER_AGENT = "com.radio.pocketfm"
 
 try:
     import asyncpg
