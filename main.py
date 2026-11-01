@@ -22,6 +22,7 @@ from config import (
     UPSTREAM_APP_NAME,
     APP_USER_AGENT,
     DATABASE_URL,
+    LICENSE_SERVER_URL,
 )
 
 try:
@@ -29,7 +30,6 @@ try:
 except ImportError:
     asyncpg = None
 
-# App Initialization
 app = FastAPI(title="StoryGram API Gateway", version="2.0.0", docs_url=None, redoc_url=None)
 
 app.add_middleware(
@@ -40,7 +40,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Supabase Pool
 db_pool: Any = None
 
 def decrypt_drm_blob(client_ts: int, device_id: str, cipher_base64: str) -> str:
@@ -93,7 +92,6 @@ async def init_db_pool():
     except Exception as e:
         print(f"[DATABASE] Supabase connection warning: {str(e)}")
 
-# In-Memory Cache and DB Helpers for Episodes Table
 unlocked_memory_cache: Dict[str, Dict[str, Optional[str]]] = {}
 
 async def get_episodes_from_db(story_ids: List[str]) -> Dict[str, Dict[str, Optional[str]]]:
@@ -126,7 +124,6 @@ async def get_episodes_from_db(story_ids: List[str]) -> Dict[str, Dict[str, Opti
     return results
 
 def save_episodes_to_db_background(episodes_to_save: List[Dict[str, Any]]):
-    # Only record 3000+ episodes in database
     episodes_to_save = [item for item in episodes_to_save if (item.get("number") or 0) >= 3000]
     if not episodes_to_save:
         return
@@ -180,7 +177,6 @@ async def unlock_and_fetch_saved_stories(show_id: str, missing_story_ids: List[s
     if not missing_story_ids:
         return {}
 
-    # 1. Trigger subscribe_story for all missing episodes concurrently
     async def subscribe_single(sid: str):
         payload = {
             "action": "subscribe_story",
@@ -196,7 +192,6 @@ async def unlock_and_fetch_saved_stories(show_id: str, missing_story_ids: List[s
     sub_tasks = [subscribe_single(sid) for sid in missing_story_ids]
     await asyncio.gather(*sub_tasks)
 
-    # 2. Fetch saved stories from feed_api (retry up to 3 times if empty)
     feed_url = f"{UPSTREAM_API_URL}/v2/feed_api/get_saved_stories?show_ids={show_id}"
     saved_stories_map: Dict[str, Dict[str, Optional[str]]] = {}
 
@@ -234,7 +229,6 @@ async def shutdown_event():
     if db_pool:
         await db_pool.close()
 
-# Upstream Session Relay
 cached_cookies = ""
 cached_token = ""
 last_fetch_date = ""
@@ -373,9 +367,6 @@ async def fetch_from_upstream(target_url: str, headers: dict, method: str = "GET
         except Exception as e:
             return 502, {"status": 0, "message": f"Upstream connection failed: {str(e)}"}
 
-# Endpoints
-
-# Health Check & Ping
 @app.get("/health")
 @app.get("/ping")
 @app.get("/supabase/health")
@@ -386,7 +377,6 @@ async def health_check():
         "service": "running"
     }
 
-# Home Feed
 @app.api_route("/home", methods=["GET", "POST"])
 @app.api_route("/feed", methods=["GET", "POST"])
 @app.api_route("/api/feed", methods=["GET", "POST"])
@@ -450,7 +440,6 @@ async def home_feed(request: Request):
         "result": filtered
     }
 
-# Search
 @app.api_route("/search", methods=["GET", "POST"])
 @app.api_route("/api/search", methods=["GET", "POST"])
 async def search_shows(request: Request):
@@ -491,7 +480,6 @@ async def search_shows(request: Request):
         }
     return Response(content=json.dumps(data), status_code=status_code, media_type="application/json")
 
-# Show Details
 @app.api_route("/show", methods=["GET", "POST"])
 @app.api_route("/show/{show_id}", methods=["GET", "POST"])
 @app.api_route("/api/show", methods=["GET", "POST"])
@@ -512,7 +500,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         })
     start_ptr = int(h.get("curr-ptr") or h.get("curr_ptr") or request.query_params.get("curr_ptr") or 0)
 
-    # Fixed batch size: exactly 10 episodes fetched concurrently in parallel
     from urllib.parse import urlencode
 
     async def fetch_single_pointer(ptr: int):
@@ -523,8 +510,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
 
     tasks = [fetch_single_pointer(p) for p in range(start_ptr, start_ptr + 10)]
     results = await asyncio.gather(*tasks)
-
-    # Sort results in sequential pointer order
     results.sort(key=lambda x: x[0])
 
     base_data = None
@@ -541,7 +526,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             return JSONResponse(status_code=first_code, content=first_res)
         return Response(content=str(first_res), status_code=first_code)
 
-    # Locate the primary show dictionary inside base_data
     primary_show = None
     if isinstance(base_data.get("result"), list) and len(base_data["result"]) > 0 and isinstance(base_data["result"][0], dict):
         primary_show = base_data["result"][0]
@@ -550,7 +534,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
     elif isinstance(base_data, dict):
         primary_show = base_data
 
-    # Identify the episodes list key inside the show dict
     candidates = ["stories", "episodes", "messages", "items", "episode_list", "track_list"]
     ep_key = None
     if primary_show is not None:
@@ -564,7 +547,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
                     ep_key = k
                     break
 
-    # Aggregate all episodes from all 10 responses into clean list
     all_episodes = []
     seen_ids = set()
     if ep_key:
@@ -597,7 +579,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
                     elif ep:
                         all_episodes.append(ep)
 
-    # Only check and record 3000+ episodes in database
     needs_lookup_ids = []
     for ep in all_episodes:
         if not isinstance(ep, dict):
@@ -609,10 +590,7 @@ async def show_details(request: Request, show_id: Optional[str] = None):
 
     cached_data: Dict[str, Dict[str, Optional[str]]] = {}
     if needs_lookup_ids:
-        # 1. Check in Database / Memory Cache
         cached_data = await get_episodes_from_db(needs_lookup_ids)
-
-        # 2. Check which episodes are still missing in DB
         still_missing = [
             st_id for st_id in needs_lookup_ids
             if st_id not in cached_data or not cached_data[st_id].get("media_url")
@@ -624,7 +602,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         }
 
         to_save = []
-        # 3. If any are missing, unlock concurrently via upstream API
         if still_missing:
             unlocked_data = await unlock_and_fetch_saved_stories(sid, still_missing, headers)
             for st_id, val in unlocked_data.items():
@@ -637,7 +614,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
                         "video_url": val.get("video_url")
                     })
 
-        # Ensure existing cached/DB episodes also update number with natural_sequence_number
         saved_ids = {x["story_id"] for x in to_save}
         for st_id in needs_lookup_ids:
             if st_id in cached_data and st_id not in saved_ids:
@@ -654,7 +630,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         if to_save:
             save_episodes_to_db_background(to_save)
 
-    # Format episodes list with strictly necessary fields (support audio, video, or mixed)
     formatted_stories = []
     for ep in all_episodes:
         if not isinstance(ep, dict):
@@ -664,13 +639,10 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         seq = ep.get("natural_sequence_number") or ep.get("seq_number") or 1
 
         if ep_id in cached_data and cached_data[ep_id].get("media_url"):
-            # Unlocked story (or from DB)
             media_url = cached_data[ep_id]["media_url"]
             video_url = cached_data[ep_id].get("video_url")
-            # For 3000+ or unlocked stories, audio_url is null
             audio_url = None
         else:
-            # Standard flow
             raw_video_info = ep.get("video_info")
             web_video_url = None
             if isinstance(raw_video_info, dict):
@@ -706,7 +678,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
 
         formatted_stories.append(item)
 
-    # Build clean show object with only essential fields in exact requested order
     raw_stats = primary_show.get("stats") if (primary_show and isinstance(primary_show.get("stats"), dict)) else {}
 
     clean_show = {
@@ -726,8 +697,6 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         "result": [clean_show]
     })
 
-
-# Widevine DRM License & Proxy
 show_license_cache: Dict[str, Dict[str, str]] = {}
 
 async def get_or_resolve_upstream_license_url(show_id: str, request: Request) -> Optional[Dict[str, Any]]:
@@ -789,25 +758,18 @@ async def handle_widevine_license(request: Request, show_id: Optional[str] = Non
     h = request.headers
     sid = show_id or h.get("show-id") or h.get("show_id") or request.query_params.get("show_id") or ""
 
-    # GET Request: Return the actual scraped license data (blob)
     if request.method == "GET":
-        if not sid:
-            return JSONResponse(status_code=400, content={"status": 0, "message": "Missing show-id (pass 'show-id' in headers)", "blob": ""})
-        
-        info = await get_or_resolve_upstream_license_url(sid, request)
-        if not info or not info.get("blob"):
-            return JSONResponse(status_code=404, content={"status": 0, "message": "No DRM license blob found for show", "blob": ""})
+        sid = h.get("show-id", "").strip()
+        if not LICENSE_SERVER_URL or not sid:
+            return JSONResponse(status_code=404, content={"status": 0, "message": "License not available"})
 
-        resp = {
+        final_url = LICENSE_SERVER_URL.replace("{show_id}", sid)
+        return JSONResponse(status_code=200, content={
             "status": 1,
-            "message": info.get("message") or "Blob Data",
-            "blob": info["blob"]
-        }
-        if info.get("ts") is not None:
-            resp["ts"] = info["ts"]
-        return resp
+            "message": "License server",
+            "license_url": final_url
+        })
 
-    # POST Request: ExoPlayer DRM binary challenge
     target_license_url = h.get("license-url") or h.get("license_url") or request.query_params.get("url")
     if not target_license_url:
         if not sid:
@@ -836,7 +798,6 @@ async def handle_widevine_license(request: Request, show_id: Optional[str] = Non
         except Exception as e:
             return Response(content=f"Widevine proxy error: {str(e)}", status_code=500)
 
-# Fallback Handlers
 @app.get("/")
 async def root_status(request: Request):
     return {
