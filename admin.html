@@ -1306,40 +1306,6 @@
 </header>
 
 <div class="admin-wrap">
-        <div id="loginView" style="display: none;">
-        <div class="login-wrap">
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
-                <div class="brand-logo" style="width: 48px; height: 48px; margin-bottom: 4px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none">
-                        <path fill="#e11d48" d="M21.75 12a19.6 19.6 0 0 1-.59 4.634c-.007.033-.006.065-.014.1-.018.072-.043.141-.062.213-.027.108-.062.212-.091.319-.094.343-.183.688-.293 1.02l-.471 1.526a2.76 2.76 0 0 1-2.63 1.94 2.7 2.7 0 0 1-.8-.121l-.966-.3a1.75 1.75 0 0 1-1.161-2.186l1.484-4.854a1.75 1.75 0 0 1 2.187-1.161l.942.289a2.7 2.7 0 0 1 .85.444A17 17 0 0 0 20.25 12a8.25 8.25 0 0 0-16.5 0 17 17 0 0 0 .116 1.865 2.7 2.7 0 0 1 .85-.444l.942-.288a1.75 1.75 0 0 1 2.187 1.16l1.484 4.856a1.747 1.747 0 0 1-1.162 2.185l-.965.3a2.7 2.7 0 0 1-.8.121 2.76 2.76 0 0 1-2.63-1.94L3.3 18.277c-.11-.327-.2-.677-.3-1.024-.028-.1-.062-.2-.089-.309-.018-.072-.043-.139-.061-.212-.008-.033-.007-.065-.014-.1A19.6 19.6 0 0 1 2.25 12a9.75 9.75 0 0 1 19.5 0"></path>
-                    </svg>
-                </div>
-                <h2 style="font-size: 19px; font-weight: 800; margin: 0;">Admin Login</h2>
-                <p style="font-size: 12.5px; color: var(--text-muted); margin: 0;">Enter admin credentials to continue</p>
-            </div>
-            
-            <div id="loginAlert" class="alert alert-error" style="margin: 0; text-align: center; justify-content: center; font-weight: 700; width: 100%; display: none; align-items: center;"></div>
-
-            <form id="loginForm" onsubmit="handleLogin(event)" style="display: flex; flex-direction: column; gap: 14px; width: 100%;" autocomplete="off">
-                <div class="form-group" style="margin: 0; text-align: left;">
-                    <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; text-align: left;">Username</label>
-                    <input type="text" name="admin_username" class="search-input" placeholder="Enter username" style="height: 42px; padding: 0 14px; width: 100%; font-size: 14px; text-align: left; font-weight: 600;" required autofocus autocomplete="off" value="">
-                </div>
-                <div class="form-group" style="margin: 0; text-align: left;">
-                    <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; text-align: left;">Password</label>
-                    <div style="position: relative; width: 100%; display: flex; align-items: center;">
-                        <input type="password" name="admin_password" id="login_admin_password" class="search-input" placeholder="Enter password" style="height: 42px; padding-left: 14px; padding-right: 42px; width: 100%; font-size: 14px; text-align: left; font-weight: 600;" required autocomplete="new-password" value="">
-                        <button type="button" onclick="togglePasswordVisibility('login_admin_password', 'togglePasswordIcon')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #94a3b8; display: flex; align-items: center; justify-content: center; padding: 4px; z-index: 5;" title="Show/Hide Password">
-                            <i data-lucide="eye" id="togglePasswordIcon" style="width: 17px; height: 17px;"></i>
-                        </button>
-                    </div>
-                </div>
-                <button type="submit" name="admin_login" class="btn-fill-parent btn-primary" style="width: 100%; margin: 0; margin-top: 4px; height: 44px; font-size: 14px;">
-                    <i data-lucide="lock" style="width: 16px; height: 16px;"></i> Unlock Dashboard
-                </button>
-            </form>
-        </div>
-        </div>
 
 
 
@@ -3586,46 +3552,16 @@ document.addEventListener('keydown', function(e) {
 </script>
 
 <script>
+// the session is gone: reload, and the server answers /admin with the login page (once, so a server fault cannot loop)
 function showLoginView(message) {
-    document.getElementById('adminBody').classList.add('login-body');
-    document.getElementById('dashView').style.display = 'none';
-    document.getElementById('logoutBtn').style.display = 'none';
-    document.getElementById('adminNameLabel').style.display = 'none';
-    document.getElementById('loginView').style.display = 'block';
-    if (message) showLoginAlert(message);
-    lucide.createIcons();
-}
-
-function showLoginAlert(message) {
-    const el = document.getElementById('loginAlert');
-    if (!el) return;
-    el.textContent = message;
-    el.style.display = 'flex';
-}
-
-async function handleLogin(event) {
-    event.preventDefault();
-    const form = event.target;
-    const btn = form.querySelector('button[type="submit"]');
-    if (btn) btn.disabled = true;
-    try {
-        const r = await fetch('/admin/login', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: form.admin_username.value.trim(), password: form.admin_password.value })
-        });
-        const data = await r.json().catch(() => ({}));
-        if (r.ok && data.success) {
-            form.reset();
-            await bootAdmin();
-        } else {
-            showLoginAlert(data.message || 'Invalid username or password');
-        }
-    } catch (e) {
-        showLoginAlert('Network error. Please try again.');
+    const last = parseInt(sessionStorage.getItem('adminReloadAt') || '0', 10);
+    if (!message && Date.now() - last > 10000) {
+        sessionStorage.setItem('adminReloadAt', String(Date.now()));
+        window.location.reload();
+        return;
     }
-    if (btn) btn.disabled = false;
+    document.body.innerHTML = '<div style="padding: 48px 20px; text-align: center; color: #94a3b8; font-family: sans-serif;">' +
+        (message || 'Could not open the dashboard. Please reload the page.') + '</div>';
 }
 
 async function logoutAdmin(event) {
@@ -3650,7 +3586,6 @@ function enterDashboard(data) {
     nameEl.style.display = 'block';
     document.getElementById('logoutBtn').style.display = 'flex';
     document.getElementById('adminBody').classList.remove('login-body');
-    document.getElementById('loginView').style.display = 'none';
     document.getElementById('dashView').style.display = 'block';
 
     updateStatsUI(data.stats);
