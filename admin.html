@@ -1935,6 +1935,83 @@ let isRefreshingData = false;
 let latestEntriesMap = new Map();
 let latestBuyersMap = new Map();
 
+// Endless scrolling: the first 200 rows come with get_data, the next 200 load when the end of the list comes near.
+let entriesExtra = [];            // older pages already scrolled in (kept when the list refreshes)
+let buyersExtra = [];
+let entriesHasMore = false;
+let buyersHasMore = false;
+let loadingEntries = false;
+let loadingBuyers = false;
+let lastBuyersTime = 0;
+let pagingObserver = null;
+
+function watchSentinel(id, hasMore, loader) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = hasMore ? 'block' : 'none';
+    if (!hasMore) return;
+    if (!pagingObserver) {
+        pagingObserver = new IntersectionObserver(items => {
+            items.forEach(i => { if (i.isIntersecting && typeof i.target._load === 'function') i.target._load(); });
+        }, { rootMargin: '600px' });
+    }
+    el._load = loader;
+    pagingObserver.unobserve(el);
+    pagingObserver.observe(el);   // observing again re-checks at once, so a short page keeps loading until the screen is full
+}
+
+async function loadMoreEntries() {
+    if (loadingEntries || !entriesHasMore || latestEntriesMap.size === 0) return;
+    loadingEntries = true;
+    try {
+        const beforeId = Math.min(...latestEntriesMap.keys());
+        const r = await adminFetch('/admin/api?api=more_entries&before_id=' + beforeId + '&_t=' + Date.now());
+        const data = await r.json();
+        if (data && data.success) {
+            const rows = (data.entries || []).filter(e => !latestEntriesMap.has(parseInt(e.id, 10)));
+            const anchor = document.getElementById('noEntryMatches');
+            if (anchor && rows.length) anchor.insertAdjacentHTML('beforebegin', rows.map(e => renderEntryItemHtml(e)).join(''));
+            rows.forEach(e => { latestEntriesMap.set(parseInt(e.id, 10), e); entriesExtra.push(e); });
+            entriesHasMore = !!data.has_more;
+            applyEntriesFilter();
+            lucide.createIcons();
+        } else {
+            entriesHasMore = false;
+        }
+    } catch (e) {
+        entriesHasMore = false;
+    }
+    loadingEntries = false;
+    watchSentinel('entriesSentinel', entriesHasMore, loadMoreEntries);
+}
+
+async function loadMoreBuyers() {
+    if (loadingBuyers || !buyersHasMore || latestBuyersMap.size === 0) return;
+    loadingBuyers = true;
+    try {
+        const oldest = [...latestBuyersMap.values()].reduce((a, b) =>
+            (parseInt(b.updated, 10) < parseInt(a.updated, 10) || (parseInt(b.updated, 10) === parseInt(a.updated, 10) && parseInt(b.id, 10) < parseInt(a.id, 10))) ? b : a);
+        const r = await adminFetch('/admin/api?api=more_buyers&before_updated=' + parseInt(oldest.updated, 10) + '&before_id=' + parseInt(oldest.id, 10) + '&_t=' + Date.now());
+        const data = await r.json();
+        if (data && data.success) {
+            const now = data.currentTime || lastBuyersTime || Math.floor(Date.now() / 1000);
+            const rows = (data.buyers || []).filter(b => !latestBuyersMap.has(parseInt(b.id, 10)));
+            const anchor = document.getElementById('noBuyerMatches');
+            if (anchor && rows.length) anchor.insertAdjacentHTML('beforebegin', rows.map(b => renderBuyerItemHtml(b, now)).join(''));
+            rows.forEach(b => { latestBuyersMap.set(parseInt(b.id, 10), b); buyersExtra.push(b); });
+            buyersHasMore = !!data.has_more;
+            onBuyerSearch(currentBuyerSearchQuery);
+            lucide.createIcons();
+        } else {
+            buyersHasMore = false;
+        }
+    } catch (e) {
+        buyersHasMore = false;
+    }
+    loadingBuyers = false;
+    watchSentinel('buyersSentinel', buyersHasMore, loadMoreBuyers);
+}
+
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str)
@@ -2088,10 +2165,10 @@ function refreshDataSilently(onComplete) {
                     updateStatsUI(data.stats);
                 }
                 if (Array.isArray(data.entries)) {
-                    syncEntriesDOM(data.entries);
+                    syncEntriesDOM(data.entries, data.has_more_entries);
                 }
                 if (Array.isArray(data.buyers)) {
-                    syncBuyersDOM(data.buyers, data.currentTime || Math.floor(Date.now() / 1000));
+                    syncBuyersDOM(data.buyers, data.currentTime || Math.floor(Date.now() / 1000), data.has_more_buyers);
                 }
                 if (Array.isArray(data.apps)) {
                     renderAppVersions(data.apps);
@@ -2137,11 +2214,22 @@ function manualRefreshList(btnElement) {
     });
 }
 
-function syncEntriesDOM(entriesList) {
+function syncEntriesDOM(entriesList, hasMore) {
     const container = document.getElementById('entriesListContainer');
     if (!container) return;
 
     latestEntriesMap.clear();
+
+    // a refresh brings the newest 200 rows; the older pages already scrolled in stay below them
+    if (Array.isArray(entriesList) && entriesList.length) {
+        const lastId = parseInt(entriesList[entriesList.length - 1].id, 10);
+        entriesExtra = entriesExtra.filter(x => parseInt(x.id, 10) < lastId);
+        if (entriesExtra.length === 0) entriesHasMore = !!hasMore;
+        entriesList = entriesList.concat(entriesExtra);
+    } else {
+        entriesExtra = [];
+        entriesHasMore = false;
+    }
 
     if (!Array.isArray(entriesList) || entriesList.length === 0) {
         container.innerHTML = '<div class="empty-state" id="emptyEntriesMsg">No entries found in database.</div><div id="noEntryMatches" class="empty-state" style="display: none;">No matching entries found.</div>';
@@ -2154,17 +2242,32 @@ function syncEntriesDOM(entriesList) {
 
     let html = entriesList.map(e => renderEntryItemHtml(e)).join('');
     html += '<div id="noEntryMatches" class="empty-state" style="display: none;">No matching entries found.</div>';
+    html += '<div id="entriesSentinel" class="empty-state" style="display: none;">Loading more...</div>';
     container.innerHTML = html;
 
     applyEntriesFilter();
     lucide.createIcons();
+    watchSentinel('entriesSentinel', entriesHasMore, loadMoreEntries);
 }
 
-function syncBuyersDOM(buyersList, currentTime) {
+function syncBuyersDOM(buyersList, currentTime, hasMore) {
     const container = document.getElementById('buyersListContainer');
     if (!container) return;
 
     latestBuyersMap.clear();
+    lastBuyersTime = currentTime;
+
+    // the newest page comes from the server; older pages already scrolled in stay below it
+    if (Array.isArray(buyersList) && buyersList.length) {
+        const last = buyersList[buyersList.length - 1];
+        const lu = parseInt(last.updated, 10), li = parseInt(last.id, 10);
+        buyersExtra = buyersExtra.filter(x => parseInt(x.updated, 10) < lu || (parseInt(x.updated, 10) === lu && parseInt(x.id, 10) < li));
+        if (buyersExtra.length === 0) buyersHasMore = !!hasMore;
+        buyersList = buyersList.concat(buyersExtra);
+    } else {
+        buyersExtra = [];
+        buyersHasMore = false;
+    }
 
     if (!Array.isArray(buyersList) || buyersList.length === 0) {
         container.innerHTML = '<div class="empty-state" id="emptyBuyersMsg">No VIP buyers found in database.</div><div id="noBuyerMatches" class="empty-state" style="display: none;">No matching buyers found.</div>';
@@ -2177,10 +2280,12 @@ function syncBuyersDOM(buyersList, currentTime) {
 
     let html = buyersList.map(b => renderBuyerItemHtml(b, currentTime)).join('');
     html += '<div id="noBuyerMatches" class="empty-state" style="display: none;">No matching buyers found.</div>';
+    html += '<div id="buyersSentinel" class="empty-state" style="display: none;">Loading more...</div>';
     container.innerHTML = html;
 
     onBuyerSearch(currentBuyerSearchQuery);
     lucide.createIcons();
+    watchSentinel('buyersSentinel', buyersHasMore, loadMoreBuyers);
 }
 
 function handleApproveSubmit(event) {
@@ -3549,8 +3654,8 @@ function enterDashboard(data) {
     document.getElementById('dashView').style.display = 'block';
 
     updateStatsUI(data.stats);
-    syncEntriesDOM(data.entries || []);
-    syncBuyersDOM(data.buyers || [], data.currentTime || Math.floor(Date.now() / 1000));
+    syncEntriesDOM(data.entries || [], data.has_more_entries);
+    syncBuyersDOM(data.buyers || [], data.currentTime || Math.floor(Date.now() / 1000), data.has_more_buyers);
     appVersionsList = data.apps || [];
     renderAppVersions(appVersionsList);
     if (isCurrentAdminOwner) renderAdminsList(data.admins || []);
