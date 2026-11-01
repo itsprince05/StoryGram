@@ -284,13 +284,19 @@ def find_buyer(c, uid: str, email: str):
 
 def record_entry(c, e: dict, status: str, t: int) -> None:
     """One row per app open (no de-duplication), so the admin sees every visit and its result."""
+    sql = ("insert into entries (uid, name, email, photo, device, manufacturer, brand, model, ip, status, created) "
+           "values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)")
+    row = [e["uid"], e["name"], e["email"], e["photo"], e["device"], e["manufacturer"], e["brand"], e["model"], e["ip"], status, t]
     try:
-        c.execute("insert into entries (uid, name, email, photo, device, manufacturer, brand, model, ip, status, created) "
-                  "values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                  (e["uid"], e["name"], e["email"], e["photo"], e["device"], e["manufacturer"], e["brand"], e["model"],
-                   e["ip"], status, t))
+        c.execute(sql, row)
     except Exception as exc:
         print("entries log failed:", exc)
+        if status == "login":   # the table still has the old status list (run supabase.sql): keep the visit as "active"
+            try:
+                row[9] = "active"
+                c.execute(sql, row)
+            except Exception as exc2:
+                print("entries log retry failed:", exc2)
 
 
 def known_photo(c, uid: str, email: str) -> str:
@@ -330,7 +336,7 @@ def app_row(c):
 
 
 def evaluate(c, d: dict, dev: dict, ip: str, source: str = "open") -> tuple[dict, int]:
-    """source: "open" = the user opened / signed in to the app (every outcome is logged, even active),
+    """source: "open" = the user opened / signed in to the app (every outcome is logged; a clean open is recorded as "login"),
     "periodic" = the 5-minute re-check (logged only when access is denied), "none" = never logged."""
     t = now()
     uid = first(d, "uid", "userId", "user_id", "google_id")
@@ -415,6 +421,6 @@ def evaluate(c, d: dict, dev: dict, ip: str, source: str = "open") -> tuple[dict
     except Exception:
         pass
     if source == "open":
-        log("active")
+        log("login")
     return {"success": True, "status": "active", "message": "Access granted successfully.", "username": username,
             "language": language, "validity": validity, "user": _user(b, e, "active", language, validity)}, 200
