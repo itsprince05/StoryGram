@@ -1,17 +1,14 @@
 .env
 *.env
-
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-
 env/
 venv/
 .venv/
 ENV/
-
 .DS_Store
 Thumbs.db
 *.log
