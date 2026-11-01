@@ -63,8 +63,9 @@ def all_(c, sql: str, params=()):
 
 def ensure_seed() -> None:
     with conn() as c:
-        c.execute("insert into app (version, status, username, created) values ('1','active','index_guide',%s) "
-                  "on conflict (version) do nothing", (now(),))
+        # first run only: with several versions that can each be switched on / off, a deleted row must stay deleted
+        c.execute("insert into app (version, status, username, created) select '1','active','index_guide',%s "
+                  "where not exists (select 1 from app)", (now(),))
         if one(c, "select count(*) as n from admins")["n"] == 0 and settings.OWNER_PASSWORD:
             h = bcrypt.hashpw(settings.OWNER_PASSWORD.encode(), bcrypt.gensalt()).decode()
             c.execute("insert into admins (name, username, password, role, status, created) values (%s,%s,%s,'owner','active',%s)",
@@ -331,8 +332,23 @@ def has_access(c, uid: str, email: str, device: str) -> bool:
     return not (b["device"] and real_device and b["device"] != device)
 
 
-def app_row(c):
-    return one(c, "select * from app where status = 'active' order by id desc limit 1")
+def admin_username(raw) -> str:
+    """Contact-admin name shown in the app. Empty / null / NULL (any case) => "" => the app hides the admin section."""
+    name = clean(raw).lstrip("@").strip()
+    return "" if name.lower() in ("", "null", "none") else name
+
+
+def app_gate(c, version: str):
+    """(row that governs this app build, newest enabled row, update needed). Every row in `app` is an app version that can
+    be enabled or disabled on its own: a build runs only while its own version is enabled. A build that sends no version
+    (or an empty table) is let through, and then the newest enabled row supplies the admin name."""
+    rows = all_(c, "select version, status, username from app order by id desc")
+    enabled = [r for r in rows if r["status"] == "active"]
+    latest = enabled[0] if enabled else None
+    if not rows or not version:
+        return latest, latest, False
+    mine = next((r for r in enabled if clean(r["version"]) == version), None)
+    return mine, latest, mine is None
 
 
 def evaluate(c, d: dict, dev: dict, ip: str, source: str = "open") -> tuple[dict, int]:
@@ -352,16 +368,15 @@ def evaluate(c, d: dict, dev: dict, ip: str, source: str = "open") -> tuple[dict
     e = {"uid": uid, "name": name, "email": email, "photo": photo, "device": device, "ip": ip,
          "manufacturer": dev["manufacturer"], "brand": dev["brand"], "model": dev["model"]}
 
-    app = app_row(c)
-    username = "index_guide"
-    if app:
-        username = (clean(app["username"]).lstrip("@") or "index_guide")
-        db_version = clean(app["version"])
-        if db_version and dev["version"] and dev["version"] != db_version:
-            return {"success": False, "status": "update_required", "message": "Update App", "db_version": db_version,
-                    "app_version": dev["version"], "username": username,
-                    "user": {"uid": uid, "name": name, "email": email, "photo": photo, "device": device,
-                             "status": "blocked", "validity": 0}}, 200
+    app, latest, outdated = app_gate(c, dev["version"])
+    username = admin_username(app["username"]) if app else ""
+    if outdated:
+        # this build's version is disabled (or unknown): the user has to update
+        return {"success": False, "status": "update_required", "message": "Update App",
+                "db_version": clean(latest["version"]) if latest else "", "app_version": dev["version"],
+                "username": admin_username(latest["username"]) if latest else "",
+                "user": {"uid": uid, "name": name, "email": email, "photo": photo, "device": device,
+                         "status": "blocked", "validity": 0}}, 200
 
     def log(status):
         if source != "none":
