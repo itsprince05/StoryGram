@@ -34,7 +34,25 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Story Gram API", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+# no cross-origin sites by default: the app is native and the admin page is same-origin
 app.add_middleware(CORSMiddleware, allow_origins=settings.CORS_ORIGINS, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
+
+
+@app.middleware("http")
+async def guard(request: Request, call_next):
+    path = request.url.path
+    if request.method != "OPTIONS" and path not in ("/", "/health"):
+        ip = core.client_ip(request)
+        # generous: many phones share one mobile-network address
+        if core.too_many("ip:" + ip, 600, 60) or (path == "/api/verify" and core.too_many("verify:" + ip, 30, 60)):
+            return JSONResponse({"success": False, "error": "Too many requests"}, status_code=429)
+    resp = await call_next(request)
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Referrer-Policy"] = "no-referrer"
+    resp.headers["Strict-Transport-Security"] = "max-age=31536000"
+    if not path.startswith("/admin") or path.startswith("/admin/api"):
+        resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @app.exception_handler(HTTPException)
@@ -65,7 +83,7 @@ def _pick(d: dict, header: str, request: Request, *keys: str, default: str = "")
 
 
 async def _forward(request: Request, path: str, params: dict[str, str]):
-    core.check_signature(request)
+    await core.check_signature(request)
     s = core.read_session(request)
     if not s:
         return core.respond(request, {"success": False, "status": "unauthorized", "error": "Not signed in"}, 401)
