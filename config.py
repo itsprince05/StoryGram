@@ -20,6 +20,8 @@ UPSTREAM_APP_NAME: str = os.getenv("UPSTREAM_APP_NAME", "")
 APP_USER_AGENT: str = os.getenv("APP_USER_AGENT", "")
 
 DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+CONTENT_API_URL: str = os.getenv("CONTENT_API_URL", "")
+LICENSE_SERVER_URL: str = os.getenv("LICENSE_SERVER_URL", "")
 
 
 def _env(name: str, default: str = "") -> str:
@@ -28,6 +30,8 @@ def _env(name: str, default: str = "") -> str:
 
 class Settings:
     DATABASE_URL = _env("DATABASE_URL")
+    CONTENT_API_URL = _env("CONTENT_API_URL")
+    LICENSE_SERVER_URL = _env("LICENSE_SERVER_URL")
     CONTENT_TIMEOUT = float(_env("CONTENT_TIMEOUT", "60"))
     API_SECRET_KEY = _env("API_SECRET_KEY")
 
