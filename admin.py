@@ -12,6 +12,7 @@ from core import read_payload
 
 router = APIRouter()
 COOKIE = "storygram_admin"
+PAGE = 200   # rows per page of the Entries / Buyers lists; the next page loads while scrolling
 HERE = Path(__file__).resolve().parent
 
 VALIDITY = {"1_hour": 3600, "1_day": 86400, "1_week": 7 * 86400, "1_month": 30 * 86400,
@@ -91,6 +92,9 @@ async def login(request: Request):
     d = await read_payload(request)
     user = core.clean(d.get("username")).lower().lstrip("@")
     pw = d.get("password") or ""
+    # brute-force guard: 20 tries per address and 10 per username in 15 minutes
+    if core.too_many("adm-ip:" + core.client_ip(request), 20, 900) or core.too_many("adm-user:" + user, 10, 900):
+        return JSONResponse({"success": False, "message": "Too many attempts. Try again in a few minutes."}, 429)
     with core.conn() as c:
         row = core.one(c, "select * from admins where username=%s", (user,)) if user and pw else None
         if row and row["status"] == "blocked":
@@ -130,14 +134,29 @@ async def api(request: Request):
         a = (hide,) if hide else ()
 
         if action == "get_data":
+            entries = core.all_(c, f"select * from entries{ex} order by id desc limit {PAGE + 1}", a)
+            buyers = core.all_(c, f"select * from buyers{ex} order by updated desc, id desc limit {PAGE + 1}", a)
             out = {"success": True, "currentTime": t, "stats": _stats(c, t),
                    "me": {"id": me["id"], "name": me["name"], "username": me["username"], "role": me["role"]},
-                   "entries": core.all_(c, f"select * from entries{ex} order by id desc limit 500", a),
-                   "buyers": core.all_(c, f"select * from buyers{ex} order by updated desc, id desc limit 200", a),
+                   "entries": entries[:PAGE], "has_more_entries": len(entries) > PAGE,
+                   "buyers": buyers[:PAGE], "has_more_buyers": len(buyers) > PAGE,
                    "apps": _apps(c)}
             if owner:
                 out["admins"] = _admins(c)
             return out
+
+        # next page while scrolling: the rows right after the last one the page already shows
+        if action == "more_entries":
+            hid = " and (uid is null or not (uid = any(%s)))" if hide else ""
+            rows = core.all_(c, f"select * from entries where id < %s{hid} order by id desc limit {PAGE + 1}",
+                             (int(d.get("before_id") or 0),) + a)
+            return {"success": True, "entries": rows[:PAGE], "has_more": len(rows) > PAGE}
+
+        if action == "more_buyers":
+            hid = " and (uid is null or not (uid = any(%s)))" if hide else ""
+            rows = core.all_(c, f"select * from buyers where (updated, id) < (%s, %s){hid} order by updated desc, id desc limit {PAGE + 1}",
+                             (int(d.get("before_updated") or 0), int(d.get("before_id") or 0)) + a)
+            return {"success": True, "buyers": rows[:PAGE], "has_more": len(rows) > PAGE, "currentTime": t}
 
         if action == "add_admin":
             if not owner:
