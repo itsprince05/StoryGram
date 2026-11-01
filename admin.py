@@ -302,25 +302,24 @@ async def api(request: Request):
 
         if action == "add_app_version":
             version = core.clean(d.get("version"))
-            username = core.clean(d.get("username") or "index_guide").lstrip("@").strip() or "index_guide"
+            # blank or "null" (any case) is kept as "null": the app then hides its admin section
+            username = core.clean(d.get("username")).lstrip("@").strip() or "null"
             status = core.clean(d.get("status") or "active")
             status = status if status in ("active", "blocked") else "active"
             if not version: return {"success": False, "message": "Version Code is required"}
-            if status == "active":
-                c.execute("update app set status='blocked'")
+            # every version is switched on / off on its own: adding one never touches the others
             c.execute("insert into app (version, status, username, created) values (%s,%s,%s,%s) "
                       "on conflict (version) do update set status=excluded.status, username=excluded.username",
                       (version, status, username, t))
-            return {"success": True, "message": f"Version Code {version} enabled successfully! (Previous active version disabled)",
+            return {"success": True, "message": f"Version Code {version} " + ("enabled" if status == "active" else "added (disabled)"),
                     "apps": _apps(c)}
 
         if action in ("toggle_app_status", "toggle_app_version"):
             app_id = int(d.get("app_id") or 0)
             cur = core.clean(d.get("current_status") or "active")
             target = core.clean(d.get("target_status")) or ("blocked" if cur == "active" else "active")
+            target = target if target in ("active", "blocked") else "blocked"
             version = core.clean(d.get("version"))
-            if target == "active":
-                c.execute("update app set status='blocked'")
             c.execute("update app set status=%s where " + ("id=%s" if app_id > 0 else "version=%s"),
                       (target, app_id if app_id > 0 else version))
             return {"success": True, "message": "Version status updated to " + ("ENABLED" if target == "active" else "DISABLED"),
