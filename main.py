@@ -10,6 +10,8 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import base64
+import hmac
+import hashlib
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -488,6 +490,17 @@ async def show_details(request: Request, show_id: Optional[str] = None):
     await ensure_daily_session()
     h = request.headers
     sid = h.get("show-id") or h.get("show_id") or h.get("showId") or show_id or request.query_params.get("show_id") or ""
+
+    body_data = {}
+    if request.method in ["POST", "PUT"]:
+        try:
+            body_data = await request.json()
+        except Exception:
+            body_data = {}
+
+    if not sid and isinstance(body_data, dict):
+        sid = body_data.get("show_id") or body_data.get("showId") or ""
+
     if not sid:
         return JSONResponse(status_code=400, content={"success": False, "error": "Missing show_id (pass 'show-id' in headers)"})
 
@@ -498,7 +511,21 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             "message": "Missing Upstream Authorization token. Pass header 'authorization: Bearer <token>' (or 'auth')",
             "result": {}
         })
-    start_ptr = int(h.get("curr-ptr") or h.get("curr_ptr") or request.query_params.get("curr_ptr") or 0)
+
+    raw_ptr = (
+        h.get("curr-ptr")
+        or h.get("curr_ptr")
+        or h.get("currptr")
+        or (body_data.get("curr_ptr") if isinstance(body_data, dict) else None)
+        or (body_data.get("start_ptr") if isinstance(body_data, dict) else None)
+        or request.query_params.get("curr_ptr")
+        or request.query_params.get("start_ptr")
+        or 0
+    )
+    try:
+        start_ptr = int(raw_ptr)
+    except (ValueError, TypeError):
+        start_ptr = 0
 
     from urllib.parse import urlencode
 
@@ -534,6 +561,13 @@ async def show_details(request: Request, show_id: Optional[str] = None):
     elif isinstance(base_data, dict):
         primary_show = base_data
 
+    total_episodes = 0
+    if primary_show:
+        try:
+            total_episodes = int(primary_show.get("episodes_count") or primary_show.get("total_episodes") or 0)
+        except (ValueError, TypeError):
+            total_episodes = 0
+
     candidates = ["stories", "episodes", "messages", "items", "episode_list", "track_list"]
     ep_key = None
     if primary_show is not None:
@@ -554,6 +588,9 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             if not isinstance(res, dict):
                 continue
 
+            if total_episodes > 0 and ptr >= total_episodes:
+                continue
+
             curr_show = None
             if isinstance(res.get("result"), list) and len(res["result"]) > 0 and isinstance(res["result"][0], dict):
                 curr_show = res["result"][0]
@@ -568,15 +605,25 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             ep_list = curr_show.get(ep_key) or []
             if isinstance(ep_list, list):
                 for ep in ep_list:
-                    if isinstance(ep, dict):
-                        ep_id = ep.get("story_id") or ep.get("episode_id") or ep.get("id") or ep.get("message_id")
-                        if ep_id:
-                            if ep_id not in seen_ids:
-                                seen_ids.add(ep_id)
-                                all_episodes.append(ep)
-                        else:
+                    if not isinstance(ep, dict):
+                        continue
+
+                    try:
+                        seq = int(ep.get("natural_sequence_number") or ep.get("seq_number") or 0)
+                    except (ValueError, TypeError):
+                        seq = 0
+
+                    if start_ptr > 0 and seq == 1:
+                        continue
+                    if total_episodes > 0 and seq > total_episodes:
+                        continue
+
+                    ep_id = ep.get("story_id") or ep.get("episode_id") or ep.get("id") or ep.get("message_id")
+                    if ep_id:
+                        if ep_id not in seen_ids:
+                            seen_ids.add(ep_id)
                             all_episodes.append(ep)
-                    elif ep:
+                    else:
                         all_episodes.append(ep)
 
     needs_lookup_ids = []
@@ -636,7 +683,15 @@ async def show_details(request: Request, show_id: Optional[str] = None):
             continue
 
         ep_id = ep.get("story_id") or ep.get("id") or ep.get("episode_id") or ""
-        seq = ep.get("natural_sequence_number") or ep.get("seq_number") or 1
+        try:
+            seq = int(ep.get("natural_sequence_number") or ep.get("seq_number") or 0)
+        except (ValueError, TypeError):
+            seq = 0
+        if not seq:
+            seq = 1
+
+        if start_ptr > 0 and seq == 1:
+            continue
 
         if ep_id in cached_data and cached_data[ep_id].get("media_url"):
             media_url = cached_data[ep_id]["media_url"]
@@ -684,7 +739,7 @@ async def show_details(request: Request, show_id: Optional[str] = None):
         "rank": primary_show.get("show_category_rank", 0) if primary_show else 0,
         "plays": raw_stats.get("total_plays", 0),
         "rating": raw_stats.get("avg_rating", 0),
-        "episodes": primary_show.get("episodes_count") or primary_show.get("total_episodes") or len(formatted_stories) if primary_show else len(formatted_stories),
+        "episodes": total_episodes if total_episodes > 0 else (len(formatted_stories) if primary_show else len(formatted_stories)),
         "show_title": primary_show.get("show_title") or primary_show.get("title") or "" if primary_show else "",
         "show_id": primary_show.get("show_id") or sid if primary_show else sid,
         "image_url": primary_show.get("image_url") or primary_show.get("cover_url") or "" if primary_show else "",
@@ -760,10 +815,25 @@ async def handle_widevine_license(request: Request, show_id: Optional[str] = Non
 
     if request.method == "GET":
         sid = h.get("show-id", "").strip()
-        if not LICENSE_SERVER_URL or not sid:
+        account_id = os.getenv("GUMLET_ACCOUNT_ID", os.getenv("GUMLET_COLLECTION_ID", "")).strip()
+        gumlet_secret = os.getenv("GUMLET_SECRET", "").strip()
+
+        if not sid or not account_id or not gumlet_secret:
             return JSONResponse(status_code=404, content={"status": 0, "message": "License not available"})
 
-        final_url = LICENSE_SERVER_URL.replace("{show_id}", sid)
+        now_ms = int(time.time() * 1000)
+        expires = now_ms + (2 * 3600 * 1000)
+        rental_duration = 777600
+
+        try:
+            secret_bytes = base64.b64decode(gumlet_secret)
+        except Exception:
+            secret_bytes = gumlet_secret.encode("utf-8")
+
+        string_for_token = f"/{account_id}/{sid}?expires={expires}&rental_duration={rental_duration}"
+        token = hmac.new(secret_bytes, string_for_token.encode("utf-8"), hashlib.sha1).hexdigest()
+
+        final_url = f"https://widevine.gumlet.com/licence/{account_id}/{sid}?expires={expires}&rental_duration={rental_duration}&token={token}"
         return JSONResponse(status_code=200, content={
             "status": 1,
             "message": "License server",
